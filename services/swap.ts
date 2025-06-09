@@ -1,0 +1,590 @@
+import { BN, Idl, Program, utils } from "@coral-xyz/anchor";
+import { GetBinArrayParams, GetTokenOutputParams } from "../types/services";
+
+import { getPriceFromId } from "../utils/price";
+import { Connection, PublicKey } from "@solana/web3.js";
+import {
+  BASIS_POINT_MAX,
+  BIN_ARRAY_SIZE,
+  PRECISION,
+  SCALE_OFFSET,
+  VARIABLE_FEE_PRECISION,
+} from "../constants/config";
+import { Buffer } from "buffer";
+
+class LBError extends Error {
+  static BinNotFound = new LBError("Bin not found");
+  static BinArrayIndexMismatch = new LBError("Bin array index mismatch");
+
+  constructor(message: string) {
+    super(message);
+    this.name = "LBError";
+  }
+}
+
+class BinArrayPair {
+  constructor(public binArrayLower: any, public binArrayUpper: any) {
+    if (binArrayUpper.index !== binArrayLower.index + 1) {
+      throw LBError.BinArrayIndexMismatch;
+    }
+  }
+
+  getBinMut(binId: number) {
+    if (binId > this.binArrayUpper.index * BIN_ARRAY_SIZE) {
+      return this.binArrayUpper.bins[binId % BIN_ARRAY_SIZE];
+    }
+    return this.binArrayLower.bins[binId % BIN_ARRAY_SIZE];
+  }
+}
+
+export class LBSwapService {
+  lbProgram!: Program<Idl>;
+  volatilityAccumulator: number;
+  volatilityReference: number;
+  timeLastUpdated: number;
+  referenceId: number;
+  connection: Connection;
+
+  constructor(lbProgram: Program<Idl>, connection: Connection) {
+    this.lbProgram = lbProgram;
+    this.connection = connection;
+    this.volatilityAccumulator = 0;
+    this.volatilityReference = 0;
+    this.referenceId = 0;
+    this.timeLastUpdated = 0;
+  }
+
+  static fromLbConfig(lbProgram: Program<Idl>, connection: Connection) {
+    return new LBSwapService(lbProgram, connection);
+  }
+
+  getBinArray(params: GetBinArrayParams) {
+    const { binArrayIndex, pair } = params;
+
+    const binArray = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from(utils.bytes.utf8.encode("bin_array")),
+        pair.toBuffer(),
+        new BN(binArrayIndex).toArrayLike(Buffer, "le", 4),
+      ],
+      this.lbProgram.programId
+    )[0];
+
+    return binArray;
+  }
+
+  public async calculateInOutAmount(params: GetTokenOutputParams) {
+    const { amount, swapForY, pair, isExactInput } = params;
+    try {
+      //@ts-expect-error abc
+      const pairInfo = await this.lbProgram.account.pair.fetch(pair);
+      if (!pairInfo) throw new Error("Pair not found");
+
+      let binArrayIndex = pairInfo.activeId / BIN_ARRAY_SIZE;
+      if (pairInfo.activeId % BIN_ARRAY_SIZE < BIN_ARRAY_SIZE / 2) {
+        binArrayIndex -= 1;
+      }
+
+      const binArrayLower = this.getBinArray({
+        pair,
+        binArrayIndex,
+      });
+      const binArrayUpper = this.getBinArray({
+        pair,
+        binArrayIndex: binArrayIndex + 1,
+      });
+
+      const [binArrayLowerInfo, binArrayUpperInfo] = await Promise.all([
+        //@ts-expect-error abc
+        this.lbProgram.account.binArray.fetch(binArrayLower),
+        //@ts-expect-error abc
+        this.lbProgram.account.binArray.fetch(binArrayUpper),
+      ]);
+
+      const bins = new BinArrayPair(binArrayLowerInfo, binArrayUpperInfo);
+
+      const isTotalSupplyIsZero = [
+        ...binArrayLowerInfo.bins,
+        ...binArrayUpperInfo.bins,
+      ].every((item) => item.totalSupply.eq(new BN(0)));
+
+      if (isTotalSupplyIsZero) {
+        throw Error("Total supply is zero");
+      }
+
+      const amountAfterTransferFee = amount;
+
+      if (isExactInput) {
+        const amountOut = await this.calculateAmountOut(
+          BigInt(amountAfterTransferFee),
+          bins,
+          pairInfo,
+          swapForY
+        );
+
+        return {
+          amountIn: BigInt(amount),
+          amountOut,
+        };
+      } else {
+        const amountIn = await this.calculateAmountIn(
+          BigInt(amountAfterTransferFee),
+          bins,
+          pairInfo,
+          swapForY
+        );
+
+        return {
+          amountIn,
+          amountOut: BigInt(amountAfterTransferFee),
+        };
+      }
+    } catch (error) {
+      throw new Error(error as string);
+    }
+  }
+
+  /**
+   * @description Calculate the input amount for the swap. isExactInput = false
+   */
+  public async calculateAmountIn(
+    amount: bigint,
+    bins: BinArrayPair,
+    pairInfo: any,
+    swapForY: boolean
+  ) {
+    let amountIn = BigInt(0);
+    let totalProtocolFee = BigInt(0);
+    let amountOutLeft = amount;
+    let activeId = pairInfo.activeId;
+
+    await this.updateReferences(pairInfo, activeId);
+
+    while (amountOutLeft > 0n) {
+      this.updateVolatilityAccumulator(pairInfo, activeId);
+      if (
+        activeId > (bins.binArrayUpper.index + 1) * BIN_ARRAY_SIZE ||
+        activeId < bins.binArrayLower.index * BIN_ARRAY_SIZE
+      ) {
+        break;
+      }
+      const activeBin = bins.getBinMut(activeId);
+
+      const fee = this.getTotalFee(pairInfo);
+
+      const {
+        amountInWithFees,
+        amountOut: amountOutOfBin,
+        protocolFeeAmount,
+      } = this.swapExactOutput({
+        binStep: pairInfo.binStep,
+        activeId,
+        amountOutLeft,
+        fee,
+        protocolShare: pairInfo.staticFeeParameters.protocolShare,
+        swapForY,
+        reserveX: activeBin.reserveX,
+        reserveY: activeBin.reserveY,
+      });
+
+      amountIn += amountInWithFees;
+      amountOutLeft -= amountOutOfBin;
+      totalProtocolFee += protocolFeeAmount;
+
+      if (!amountOutLeft) break;
+      activeId = this.moveActiveId(activeId, swapForY);
+    }
+
+    return amountIn;
+  }
+
+  /**
+   * @description Calculate the output amount for the swap. isExactInput = true
+   */
+  public async calculateAmountOut(
+    amount: bigint,
+    bins: BinArrayPair,
+    pairInfo: any,
+    swapForY: boolean
+  ) {
+    try {
+      let amountOut = 0n;
+      let totalProtocolFee = 0n;
+      let amountInLeft = amount;
+      let activeId = pairInfo.activeId;
+
+      await this.updateReferences(pairInfo, activeId);
+
+      while (amountInLeft > 0n) {
+        this.updateVolatilityAccumulator(pairInfo, activeId);
+        const activeBin = bins.getBinMut(activeId);
+        if (
+          activeId > (bins.binArrayUpper.index + 1) * BIN_ARRAY_SIZE ||
+          activeId < bins.binArrayLower.index * BIN_ARRAY_SIZE
+        ) {
+          break;
+        }
+
+        const fee = this.getTotalFee(pairInfo);
+
+        const {
+          amountInWithFees,
+          amountOut: amountOutOfBin,
+          protocolFeeAmount,
+        } = this.swapExactInput({
+          binStep: pairInfo.binStep,
+          activeId,
+          amountInLeft,
+          fee,
+          protocolShare: pairInfo.staticFeeParameters.protocolShare,
+          swapForY,
+          reserveX: activeBin.reserveX,
+          reserveY: activeBin.reserveY,
+        });
+
+        amountOut += amountOutOfBin;
+        amountInLeft -= amountInWithFees;
+        totalProtocolFee += protocolFeeAmount;
+
+        if (!amountInLeft) break;
+        activeId = this.moveActiveId(activeId, swapForY);
+      }
+
+      return amountOut;
+    } catch (error) {
+      throw new Error(error as string);
+    }
+  }
+
+  public swapExactOutput(params: {
+    binStep: number;
+    activeId: number;
+    amountOutLeft: bigint;
+    fee: bigint;
+    protocolShare: number;
+    swapForY: boolean;
+    reserveX: BN;
+    reserveY: BN;
+  }) {
+    const {
+      binStep,
+      activeId,
+      amountOutLeft,
+      protocolShare,
+      swapForY,
+      reserveX,
+      reserveY,
+      fee,
+    } = params;
+    const protocolShareBigInt = BigInt(protocolShare);
+    const binReserveOut = swapForY ? reserveY : reserveX;
+
+    if (binReserveOut.isZero()) {
+      return {
+        amountInWithFees: 0n,
+        amountOut: 0n,
+        feeAmount: 0n,
+        protocolFeeAmount: 0n,
+      };
+    }
+
+    const binReserveOutBigInt = BigInt(binReserveOut.toString());
+    const amountOut =
+      amountOutLeft > binReserveOutBigInt ? binReserveOutBigInt : amountOutLeft;
+
+    /** @notice assume base token and quote token have the same decimals to get the price */
+    const price = getPriceFromId(binStep, activeId, 9, 9);
+    // Encode price as bigint with SCALE_OFFSET
+    const priceScaled = BigInt(
+      Math.round(Number(price) * Math.pow(2, SCALE_OFFSET))
+    );
+
+    const amountInWithoutFee = this.calcAmountInByPrice(
+      amountOut,
+      priceScaled,
+      SCALE_OFFSET,
+      swapForY,
+      "up"
+    );
+
+    const feeAmount = this.getFeeForAmount(amountInWithoutFee, fee);
+
+    const amountIn = amountInWithoutFee + feeAmount;
+    const protocolFeeAmount = this.getProtocolFee(
+      feeAmount,
+      protocolShareBigInt
+    );
+
+    return {
+      amountInWithFees: amountIn,
+      amountOut,
+      feeAmount,
+      protocolFeeAmount,
+    };
+  }
+
+  public swapExactInput(params: {
+    binStep: number;
+    activeId: number;
+    amountInLeft: bigint;
+    fee: bigint;
+    protocolShare: number;
+    swapForY: boolean;
+    reserveX: BN;
+    reserveY: BN;
+  }) {
+    const {
+      binStep,
+      activeId,
+      amountInLeft,
+      protocolShare,
+      swapForY,
+      reserveX,
+      reserveY,
+      fee,
+    } = params;
+    const protocolShareBigInt = BigInt(protocolShare);
+    const binReserveOut = swapForY ? reserveY : reserveX;
+
+    if (binReserveOut.isZero()) {
+      return {
+        amountInWithFees: 0n,
+        amountOut: 0n,
+        feeAmount: 0n,
+        protocolFeeAmount: 0n,
+      };
+    }
+
+    const binReserveOutBigInt = BigInt(binReserveOut.toString());
+
+    /** @notice assume base token and quote token have the same decimals to get the price */
+    const price = getPriceFromId(binStep, activeId, 9, 9);
+    // Encode price as bigint with SCALE_OFFSET
+    const priceScaled = BigInt(
+      Math.round(Number(price) * Math.pow(2, SCALE_OFFSET))
+    );
+
+    // Calculate maxAmountIn (input needed to take all output in bin, before fee)
+    let maxAmountIn = this.calcAmountInByPrice(
+      binReserveOutBigInt,
+      priceScaled,
+      SCALE_OFFSET,
+      swapForY,
+      "up"
+    );
+
+    // Add fee to get total input needed (ceil)
+    const maxFeeAmount = this.getFeeForAmount(maxAmountIn, fee);
+    maxAmountIn += maxFeeAmount;
+
+    let amountOut = 0n;
+    let amountIn = 0n;
+    let feeAmount = 0n;
+
+    if (amountInLeft >= maxAmountIn) {
+      feeAmount = maxFeeAmount;
+      amountIn = maxAmountIn - feeAmount;
+      amountOut = binReserveOutBigInt;
+    } else {
+      feeAmount = this.getFeeAmount(amountInLeft, fee);
+      amountIn = amountInLeft - feeAmount;
+      amountOut = this.calcAmountOutByPrice(
+        amountIn,
+        priceScaled,
+        SCALE_OFFSET,
+        swapForY,
+        "down"
+      );
+      if (amountOut > binReserveOutBigInt) {
+        amountOut = binReserveOutBigInt;
+      }
+    }
+
+    const protocolFeeAmount =
+      protocolShare > 0n
+        ? this.getProtocolFee(feeAmount, protocolShareBigInt)
+        : 0n;
+
+    return {
+      amountInWithFees: amountIn + feeAmount,
+      amountOut,
+      feeAmount,
+      protocolFeeAmount,
+    };
+  }
+
+  public async updateReferences(pairInfo: any, activeId: number) {
+    this.referenceId = pairInfo.dynamicFeeParameters.idReference;
+    this.timeLastUpdated =
+      pairInfo.dynamicFeeParameters.timeLastUpdated.toNumber();
+    this.volatilityReference =
+      pairInfo.dynamicFeeParameters.volatilityReference;
+
+    const slot = await this.connection.getSlot(); // Lấy slot hiện tại
+    const blockTimeStamp = await this.connection.getBlockTime(slot);
+
+    if (blockTimeStamp) {
+      const timeDelta = blockTimeStamp - this.timeLastUpdated;
+
+      if (timeDelta > pairInfo.staticFeeParameters.filterPeriod) {
+        this.referenceId = activeId;
+
+        if (timeDelta >= pairInfo.staticFeeParameters.decayPeriod) {
+          this.volatilityReference = 0;
+        } else {
+          return this.updateVolatilityReference(pairInfo);
+        }
+      }
+
+      this.timeLastUpdated = blockTimeStamp;
+    }
+
+    return this.updateVolatilityAccumulator(pairInfo, activeId);
+  }
+
+  public updateVolatilityReference(pairInfo: any) {
+    this.volatilityReference =
+      (this.volatilityAccumulator *
+        pairInfo.staticFeeParameters.reductionFactor) /
+      10000;
+  }
+
+  public updateVolatilityAccumulator(pairInfo: any, activeId: number) {
+    const deltaId = Math.abs(
+      activeId - pairInfo.dynamicFeeParameters.idReference
+    );
+    const volatilityAccumulator = deltaId * 10000 + this.volatilityReference;
+
+    const maxVolatilityAccumulator =
+      pairInfo.staticFeeParameters.maxVolatilityAccumulator;
+
+    if (volatilityAccumulator > maxVolatilityAccumulator) {
+      this.volatilityAccumulator = maxVolatilityAccumulator;
+    } else {
+      this.volatilityAccumulator = volatilityAccumulator;
+    }
+  }
+
+  public getVariableFee(pairInfo: any): bigint {
+    const variableFeeControl = BigInt(
+      pairInfo.staticFeeParameters.variableFeeControl
+    );
+    if (variableFeeControl > 0n) {
+      const prod = BigInt(
+        Math.floor(this.volatilityAccumulator * pairInfo.binStep)
+      );
+      const variableFee =
+        (prod * prod * variableFeeControl +
+          BigInt(VARIABLE_FEE_PRECISION) -
+          1n) /
+        BigInt(VARIABLE_FEE_PRECISION);
+      return variableFee;
+    }
+    return variableFeeControl;
+  }
+
+  public getBaseFee(binStep: number, baseFactor: number): bigint {
+    return BigInt(binStep) * BigInt(baseFactor) * 10n;
+  }
+
+  public getFeeForAmount(amount: bigint, fee: bigint) {
+    const denominator = BigInt(PRECISION) - fee;
+    const feeForAmount = (amount * fee + denominator - 1n) / denominator;
+
+    return feeForAmount;
+  }
+
+  public getFeeAmount(amount: bigint, fee: bigint) {
+    const feeAmount =
+      (amount * fee + BigInt(PRECISION) - 1n) / BigInt(PRECISION);
+
+    return feeAmount;
+  }
+
+  public getProtocolFee(fee: bigint, protocolShare: bigint) {
+    const protocolFee = (fee * protocolShare) / BigInt(BASIS_POINT_MAX);
+
+    return protocolFee;
+  }
+
+  public getTotalFee(pairInfo: any) {
+    return (
+      this.getBaseFee(
+        pairInfo.binStep,
+        pairInfo.staticFeeParameters.baseFactor
+      ) + this.getVariableFee(pairInfo)
+    );
+  }
+
+  public moveActiveId(pairId: number, swapForY: boolean) {
+    if (swapForY) {
+      return pairId - 1;
+    } else {
+      return pairId + 1;
+    }
+  }
+
+  /**
+   * Calculates the input amount required for a swap based on the desired output amount and price.
+   *
+   * @param amountOut - The desired output amount as a bigint.
+   * @param priceScaled - The scaled price as a bigint.
+   * @param scaleOffset - The scaling factor used for price adjustments.
+   * @param swapForY - A boolean indicating the direction of the swap
+   * @param rounding - Specifies the rounding mode
+   * @returns The calculated input amount as a bigint.
+   */
+  private calcAmountInByPrice(
+    amountOut: bigint,
+    priceScaled: bigint,
+    scaleOffset: number,
+    swapForY: boolean,
+    rounding: "up" | "down"
+  ): bigint {
+    if (swapForY) {
+      // amountIn = (amountOut << scaleOffset) / priceScaled
+      return rounding === "up"
+        ? ((amountOut << BigInt(scaleOffset)) + priceScaled - 1n) / priceScaled
+        : (amountOut << BigInt(scaleOffset)) / priceScaled;
+    } else {
+      // amountIn = (amountOut * priceScaled) >> scaleOffset
+      return rounding === "up"
+        ? (amountOut * priceScaled + (1n << BigInt(scaleOffset)) - 1n) >>
+            BigInt(scaleOffset)
+        : (amountOut * priceScaled) >> BigInt(scaleOffset);
+    }
+  }
+
+  /**
+   * Calculates the output amount based on the input amount, price, and scaling factors.
+   *
+   * @param amountIn - The input amount as a bigint.
+   * @param priceScaled - The scaled price as a bigint.
+   * @param scaleOffset - The scaling offset as a number, used to adjust the precision.
+   * @param swapForY - A boolean indicating the direction of the swap
+   * @param rounding - The rounding mode to apply when calculating the output amount
+   * @returns The calculated output amount as a bigint.
+   */
+  private calcAmountOutByPrice(
+    amountIn: bigint,
+    priceScaled: bigint,
+    scaleOffset: number,
+    swapForY: boolean,
+    rounding: "up" | "down"
+  ): bigint {
+    if (swapForY) {
+      // price = (Y / X) & swapForY => amountOut = amountIn * price
+      // amountOut = (amountIn * priceScaled) >> scaleOffset
+      return rounding === "up"
+        ? (amountIn * priceScaled + (1n << BigInt(scaleOffset)) - 1n) >>
+            BigInt(scaleOffset)
+        : (amountIn * priceScaled) >> BigInt(scaleOffset);
+    } else {
+      // price = (X / Y) & !swapForY => amountOut = amountIn / price
+      // amountOut = (amountIn << scaleOffset) / priceScaled
+      return rounding === "up"
+        ? ((amountIn << BigInt(scaleOffset)) + priceScaled - 1n) / priceScaled
+        : (amountIn << BigInt(scaleOffset)) / priceScaled;
+    }
+  }
+}
