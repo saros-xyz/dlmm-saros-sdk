@@ -1,22 +1,23 @@
-# Saros DLMM Swap
+# Saros DLMM
+
+The engine that powers the Internet Capital Market on Solana.
 
 # Installation
 
-Use your environment's package manager to install saros-sdk into your project.
+Use your environment's package manager to install @saros-finance/dlmm-sdk into your project.
 
 ```
-yarn add @saros-finance/sdk
+yarn add @saros-finance/dlmm-sdk
 ```
 
 ```
-npm install @saros-finance/sdk
+npm install @saros-finance/dlmm-sdk
 ```
 
 # Usage
 
 ```
-import { LiquidityBookServices } from "./services";
-import { MODE } from "./types";
+import { LiquidityBookServices, MODE } from "@saros-finance/dlmm-sdk";
 import { PublicKey } from "@solana/web3.js";
 
 const liquidityBookServices = new LiquidityBookServices({
