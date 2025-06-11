@@ -66,7 +66,7 @@ const onSwap = async () => {
 		slippage: POOL_PARAMS.slippage,
 	});
 
-	const { amountIn, amountOut } = quoteData; // slippage included
+	const { amountIn, amountOut, priceImpact } = quoteData; // slippage included
 
 	const transaction = await liquidityBookServices.swap({
 		amount: amountIn,
