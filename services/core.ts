@@ -4,6 +4,7 @@ import {
   BIN_ARRAY_INDEX,
   BIN_ARRAY_SIZE,
   PRECISION,
+  SCALE_OFFSET,
   WRAP_SOL_ADDRESS,
 } from "../constants/config";
 import { BN, utils } from "@coral-xyz/anchor";
@@ -18,6 +19,9 @@ import {
   SwapParams,
 } from "../types/services";
 import { LBSwapService } from "./swap";
+import bigDecimal from "js-big-decimal";
+import { getPriceFromId } from "../utils/price";
+import { mulShr, shlDiv } from "../utils/math";
 
 export class LiquidityBookServices extends LiquidityBookAbstract {
   bufferGas?: number;
@@ -282,12 +286,69 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           (amountIn * BigInt(PRECISION)) / BigInt(PRECISION - slippageScaled);
       }
 
+      const { maxAmountOut } = await this.getMaxAmountOutWithFee(
+        params.pair,
+        Number(amountIn.toString()),
+        params.swapForY,
+        params.tokenBaseDecimal,
+        params.tokenQuoteDecimal
+      );
+
+      const priceImpact = new bigDecimal(amountOut)
+        .subtract(new bigDecimal(maxAmountOut))
+        .divide(new bigDecimal(maxAmountOut))
+        .multiply(new bigDecimal(100))
+        .getValue();
+
       return {
         amountIn: maxAmountIn,
         amountOut: minAmountOut,
+        priceImpact: Number(priceImpact),
       };
     } catch (error) {
       throw error;
     }
+  }
+
+  public async getMaxAmountOutWithFee(
+    pairAddress: PublicKey,
+    amount: number,
+    swapForY: boolean = false,
+    decimalBase: number = 9,
+    decimalQuote: number = 9
+  ) {
+    try {
+      let amountIn = BigInt(amount);
+      const pair = await this.getPairAccount(pairAddress);
+      const activeId = pair?.activeId;
+      const binStep = pair?.binStep;
+      const swapService = LBSwapService.fromLbConfig(
+        this.lbProgram,
+        this.connection
+      );
+      const feePrice = swapService.getTotalFee(pair);
+      const activePrice = getPriceFromId(binStep, activeId, 9, 9);
+      const price = getPriceFromId(
+        binStep,
+        activeId,
+        decimalBase,
+        decimalQuote
+      );
+
+      const feeAmount = swapService.getFeeAmount(new BN(amountIn), feePrice);
+      amountIn = BigInt(amountIn) - BigInt(feeAmount); // new BN(amountIn).subtract(new BN(feeAmount));
+      const maxAmountOut = swapForY
+        ? mulShr(Number(amountIn.toString()), activePrice, SCALE_OFFSET, "down")
+        : shlDiv(
+            Number(amountIn.toString()),
+            activePrice,
+            SCALE_OFFSET,
+            "down"
+          );
+
+      return { maxAmountOut, price };
+    } catch {}
+
+    return { maxAmountOut: 0, price: 0 };
   }
 }

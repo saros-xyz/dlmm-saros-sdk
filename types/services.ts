@@ -33,6 +33,7 @@ export interface GetTokenOutputParams {
 export interface GetTokenOutputResponse {
   amountIn: bigint;
   amountOut: bigint;
+  priceImpact: number;
 }
 
 export interface Pair {
