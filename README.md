@@ -2,14 +2,14 @@
 
 # Installation
 
-Use your environment's package manager to install saros-sdk into your project.
+Use your environment's package manager to install @saros-finance/dlmm-sdk into your project.
 
 ```
-yarn add @saros-finance/sdk
+yarn add @saros-finance/dlmm-sdk
 ```
 
 ```
-npm install @saros-finance/sdk
+npm install @saros-finance/dlmm-sdk
 ```
 
 # Usage
