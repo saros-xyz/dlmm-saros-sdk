@@ -15,8 +15,7 @@ npm install @saros-finance/dlmm-sdk
 # Usage
 
 ```
-import { LiquidityBookServices } from "./services";
-import { MODE } from "./types";
+import { LiquidityBookServices, MODE } from "@saros-finance/dlmm-sdk";
 import { PublicKey } from "@solana/web3.js";
 
 const liquidityBookServices = new LiquidityBookServices({
