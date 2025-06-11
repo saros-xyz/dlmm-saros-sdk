@@ -1,4 +1,6 @@
-# Saros DLMM Swap
+# Saros DLMM
+
+The engine that powers the Internet Capital Market on Solana.
 
 # Installation
 
