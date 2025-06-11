@@ -1,4 +1,5 @@
 import { PublicKey } from "@solana/web3.js";
+import { BN } from "@coral-xyz/anchor";
 
 export interface GetBinArrayParams {
   binArrayIndex: number;
@@ -8,8 +9,8 @@ export interface GetBinArrayParams {
 export interface SwapParams {
   tokenMintX: PublicKey;
   tokenMintY: PublicKey;
-  amount: number;
-  otherAmountOffset: number;
+  amount: bigint;
+  otherAmountOffset: bigint;
   swapForY: boolean;
   isExactInput: boolean;
   pair: PublicKey;
@@ -19,15 +20,14 @@ export interface SwapParams {
 
 export interface GetTokenOutputParams {
   pair: PublicKey;
-  binArrayLower: PublicKey;
-  binArrayUpper: PublicKey;
   tokenBase: PublicKey;
   tokenQuote: PublicKey;
-  amount: number;
+  amount: bigint;
   swapForY: boolean;
   isExactInput: boolean;
   tokenBaseDecimal: number;
   tokenQuoteDecimal: number;
+  slippage: number;
 }
 
 export interface GetTokenOutputResponse {
@@ -54,7 +54,7 @@ export interface Pair {
   };
   activeId: number;
   dynamicFeeParameters: {
-    timeLastUpdated: string; // hex string, likely timestamp
+    timeLastUpdated: BN; // hex string, likely timestamp
     volatilityAccumulator: number;
     volatilityReference: number;
     idReference: number;

@@ -1,12 +1,9 @@
-import {
-  PublicKey,
-  SystemProgram,
-  Transaction,
-} from "@solana/web3.js";
+import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { ILiquidityBookConfig } from "../types";
 import {
   BIN_ARRAY_INDEX,
   BIN_ARRAY_SIZE,
+  PRECISION,
   WRAP_SOL_ADDRESS,
 } from "../constants/config";
 import { BN, utils } from "@coral-xyz/anchor";
@@ -265,10 +262,32 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
   public async getQuote(
     params: GetTokenOutputParams
   ): Promise<GetTokenOutputResponse> {
-    const data = await LBSwapService.fromLbConfig(
-      this.lbProgram,
-      this.connection
-    ).calculateInOutAmount(params);
-    return data;
+    try {
+      const data = await LBSwapService.fromLbConfig(
+        this.lbProgram,
+        this.connection
+      ).calculateInOutAmount(params);
+      const { amountIn, amountOut } = data;
+
+      const slippageFraction = params.slippage / 100;
+      const slippageScaled = Math.round(slippageFraction * PRECISION);
+      let maxAmountIn = amountIn;
+      let minAmountOut = amountOut;
+      if (params.isExactInput) {
+        minAmountOut =
+          (amountOut * BigInt(PRECISION - slippageScaled)) / BigInt(PRECISION);
+      } else {
+        // max mount in should div for slippage
+        maxAmountIn =
+          (amountIn * BigInt(PRECISION)) / BigInt(PRECISION - slippageScaled);
+      }
+
+      return {
+        amountIn: maxAmountIn,
+        amountOut: minAmountOut,
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 }

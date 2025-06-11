@@ -1,7 +1,6 @@
 import { BN, Idl, Program, utils } from "@coral-xyz/anchor";
-import { GetBinArrayParams, GetTokenOutputParams } from "../types/services";
+import { Bin, BinArray } from "../types";
 
-import { getPriceFromId } from "../utils/price";
 import { Connection, PublicKey } from "@solana/web3.js";
 import {
   BASIS_POINT_MAX,
@@ -10,7 +9,12 @@ import {
   SCALE_OFFSET,
   VARIABLE_FEE_PRECISION,
 } from "../constants/config";
-import { Buffer } from "buffer";
+import { getPriceFromId } from "../utils/price";
+import {
+  GetBinArrayParams,
+  GetTokenOutputParams,
+  Pair,
+} from "../types/services";
 
 class LBError extends Error {
   static BinNotFound = new LBError("Bin not found");
@@ -22,18 +26,41 @@ class LBError extends Error {
   }
 }
 
-class BinArrayPair {
-  constructor(public binArrayLower: any, public binArrayUpper: any) {
-    if (binArrayUpper.index !== binArrayLower.index + 1) {
+class BinArrayRange {
+  private readonly bins: { [binId: number]: Bin };
+  constructor(
+    binArrayPrevious: BinArray,
+    binArrayCurrent: BinArray,
+    binArrayNext: BinArray
+  ) {
+    if (
+      binArrayCurrent.index !== binArrayPrevious.index + 1 ||
+      binArrayNext.index !== binArrayCurrent.index + 1
+    ) {
       throw LBError.BinArrayIndexMismatch;
     }
+
+    this.bins = {};
+
+    const addBins = (binArray: BinArray) => {
+      binArray.bins.forEach((bin, index) => {
+        const binId = binArray.index * BIN_ARRAY_SIZE + index;
+        this.bins[binId] = bin;
+      });
+    };
+
+    addBins(binArrayPrevious);
+    addBins(binArrayCurrent);
+    addBins(binArrayNext);
   }
 
   getBinMut(binId: number) {
-    if (binId > this.binArrayUpper.index * BIN_ARRAY_SIZE) {
-      return this.binArrayUpper.bins[binId % BIN_ARRAY_SIZE];
-    }
-    return this.binArrayLower.bins[binId % BIN_ARRAY_SIZE];
+    const bin = this.bins[binId];
+    return bin;
+  }
+
+  getAllBins() {
+    return Object.values(this.bins);
   }
 }
 
@@ -77,66 +104,80 @@ export class LBSwapService {
     const { amount, swapForY, pair, isExactInput } = params;
     try {
       //@ts-expect-error abc
-      const pairInfo = await this.lbProgram.account.pair.fetch(pair);
+      const pairInfo: Pair = await this.lbProgram.account.pair.fetch(pair);
       if (!pairInfo) throw new Error("Pair not found");
 
-      let binArrayIndex = pairInfo.activeId / BIN_ARRAY_SIZE;
-      if (pairInfo.activeId % BIN_ARRAY_SIZE < BIN_ARRAY_SIZE / 2) {
-        binArrayIndex -= 1;
-      }
+      const currentBinArrayIndex = Math.floor(
+        pairInfo.activeId / BIN_ARRAY_SIZE
+      );
+      const binArrayIndexes = [
+        currentBinArrayIndex - 1,
+        currentBinArrayIndex,
+        currentBinArrayIndex + 1,
+      ];
+      const binArrayAddresses = binArrayIndexes.map((idx) =>
+        this.getBinArray({
+          binArrayIndex: idx,
+          pair,
+        })
+      );
 
-      const binArrayLower = this.getBinArray({
-        pair,
-        binArrayIndex,
-      });
-      const binArrayUpper = this.getBinArray({
-        pair,
-        binArrayIndex: binArrayIndex + 1,
-      });
+      // Fetch bin arrays in batch, fallback to empty if not found
+      const binArrays: BinArray[] = await Promise.all(
+        binArrayAddresses.map((address, i) =>
+          //@ts-expect-error abc
+          this.lbProgram.account.binArray.fetch(address).catch((error: any) => {
+            console.log(
+              `calculateInOutAmount ~ fetch binArray[${i}] error: ${
+                error.message
+              }. ${JSON.stringify({ pair, address })}`
+            );
+            return { index: binArrayIndexes[i], bins: [] } as BinArray;
+          })
+        )
+      );
 
-      const [binArrayLowerInfo, binArrayUpperInfo] = await Promise.all([
-        //@ts-expect-error abc
-        this.lbProgram.account.binArray.fetch(binArrayLower),
-        //@ts-expect-error abc
-        this.lbProgram.account.binArray.fetch(binArrayUpper),
-      ]);
-
-      const bins = new BinArrayPair(binArrayLowerInfo, binArrayUpperInfo);
-
-      const isTotalSupplyIsZero = [
-        ...binArrayLowerInfo.bins,
-        ...binArrayUpperInfo.bins,
-      ].every((item) => item.totalSupply.eq(new BN(0)));
-
-      if (isTotalSupplyIsZero) {
-        throw Error("Total supply is zero");
+      // Validate bin arrays and build range
+      const binRange = new BinArrayRange(
+        binArrays[0],
+        binArrays[1],
+        binArrays[2]
+      );
+      const totalSupply = binRange
+        .getAllBins()
+        .reduce((acc, cur) => acc.add(cur.totalSupply), new BN(0));
+      if (totalSupply.isZero()) {
+        return {
+          amountIn: 0n,
+          amountOut: 0n,
+        };
       }
 
       const amountAfterTransferFee = amount;
 
       if (isExactInput) {
         const amountOut = await this.calculateAmountOut(
-          BigInt(amountAfterTransferFee),
-          bins,
+          amountAfterTransferFee,
+          binRange,
           pairInfo,
           swapForY
         );
 
         return {
-          amountIn: BigInt(amount),
+          amountIn: amount,
           amountOut,
         };
       } else {
         const amountIn = await this.calculateAmountIn(
-          BigInt(amountAfterTransferFee),
-          bins,
+          amountAfterTransferFee,
+          binRange,
           pairInfo,
           swapForY
         );
 
         return {
           amountIn,
-          amountOut: BigInt(amountAfterTransferFee),
+          amountOut: amountAfterTransferFee,
         };
       }
     } catch (error) {
@@ -149,12 +190,12 @@ export class LBSwapService {
    */
   public async calculateAmountIn(
     amount: bigint,
-    bins: BinArrayPair,
-    pairInfo: any,
+    bins: BinArrayRange,
+    pairInfo: Pair,
     swapForY: boolean
   ) {
-    let amountIn = BigInt(0);
-    let totalProtocolFee = BigInt(0);
+    let amountIn = 0n;
+    let totalProtocolFee = 0n;
     let amountOutLeft = amount;
     let activeId = pairInfo.activeId;
 
@@ -162,13 +203,14 @@ export class LBSwapService {
 
     while (amountOutLeft > 0n) {
       this.updateVolatilityAccumulator(pairInfo, activeId);
-      if (
-        activeId > (bins.binArrayUpper.index + 1) * BIN_ARRAY_SIZE ||
-        activeId < bins.binArrayLower.index * BIN_ARRAY_SIZE
-      ) {
+
+      const activeBin = bins.getBinMut(activeId);
+      if (!activeBin) {
+        console.log(
+          `LBSwapService - calculateAmountIn: Active bin out of bin range: ${activeId}`
+        );
         break;
       }
-      const activeBin = bins.getBinMut(activeId);
 
       const fee = this.getTotalFee(pairInfo);
 
@@ -203,8 +245,8 @@ export class LBSwapService {
    */
   public async calculateAmountOut(
     amount: bigint,
-    bins: BinArrayPair,
-    pairInfo: any,
+    bins: BinArrayRange,
+    pairInfo: Pair,
     swapForY: boolean
   ) {
     try {
@@ -217,11 +259,12 @@ export class LBSwapService {
 
       while (amountInLeft > 0n) {
         this.updateVolatilityAccumulator(pairInfo, activeId);
+
         const activeBin = bins.getBinMut(activeId);
-        if (
-          activeId > (bins.binArrayUpper.index + 1) * BIN_ARRAY_SIZE ||
-          activeId < bins.binArrayLower.index * BIN_ARRAY_SIZE
-        ) {
+        if (!activeBin) {
+          console.log(
+            `LBSwapService - calculateAmountOut: Active bin out of bin range: ${activeId}`
+          );
           break;
         }
 
@@ -308,7 +351,6 @@ export class LBSwapService {
     );
 
     const feeAmount = this.getFeeForAmount(amountInWithoutFee, fee);
-
     const amountIn = amountInWithoutFee + feeAmount;
     const protocolFeeAmount = this.getProtocolFee(
       feeAmount,
@@ -413,7 +455,7 @@ export class LBSwapService {
     };
   }
 
-  public async updateReferences(pairInfo: any, activeId: number) {
+  public async updateReferences(pairInfo: Pair, activeId: number) {
     this.referenceId = pairInfo.dynamicFeeParameters.idReference;
     this.timeLastUpdated =
       pairInfo.dynamicFeeParameters.timeLastUpdated.toNumber();
@@ -442,17 +484,15 @@ export class LBSwapService {
     return this.updateVolatilityAccumulator(pairInfo, activeId);
   }
 
-  public updateVolatilityReference(pairInfo: any) {
+  public updateVolatilityReference(pairInfo: Pair) {
     this.volatilityReference =
-      (this.volatilityAccumulator *
+      (pairInfo.dynamicFeeParameters.volatilityAccumulator *
         pairInfo.staticFeeParameters.reductionFactor) /
-      10000;
+      10_000;
   }
 
-  public updateVolatilityAccumulator(pairInfo: any, activeId: number) {
-    const deltaId = Math.abs(
-      activeId - pairInfo.dynamicFeeParameters.idReference
-    );
+  public updateVolatilityAccumulator(pairInfo: Pair, activeId: number) {
+    const deltaId = Math.abs(activeId - this.referenceId);
     const volatilityAccumulator = deltaId * 10000 + this.volatilityReference;
 
     const maxVolatilityAccumulator =
@@ -465,7 +505,7 @@ export class LBSwapService {
     }
   }
 
-  public getVariableFee(pairInfo: any): bigint {
+  public getVariableFee(pairInfo: Pair): bigint {
     const variableFeeControl = BigInt(
       pairInfo.staticFeeParameters.variableFeeControl
     );
@@ -507,7 +547,7 @@ export class LBSwapService {
     return protocolFee;
   }
 
-  public getTotalFee(pairInfo: any) {
+  public getTotalFee(pairInfo: Pair) {
     return (
       this.getBaseFee(
         pairInfo.binStep,

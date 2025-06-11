@@ -1,5 +1,5 @@
 {
-  "name": "dlmm-saros-sdk",
+  "name": "@saros/dlmm-sdk",
   "version": "1.0.0",
   "description": "DLMM Saros SDK",
   "main": "index.ts",
