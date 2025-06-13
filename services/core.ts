@@ -1,5 +1,11 @@
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
-import { ILiquidityBookConfig } from "../types";
+import {
+  Connection,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  TransactionMessage,
+} from "@solana/web3.js";
+import { ILiquidityBookConfig, PoolMetadata } from "../types";
 import {
   BIN_ARRAY_INDEX,
   BIN_ARRAY_SIZE,
@@ -22,6 +28,8 @@ import { LBSwapService } from "./swap";
 import bigDecimal from "js-big-decimal";
 import { getPriceFromId } from "../utils/price";
 import { mulShr, shlDiv } from "../utils/math";
+import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 
 export class LiquidityBookServices extends LiquidityBookAbstract {
   bufferGas?: number;
@@ -350,5 +358,213 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     } catch {}
 
     return { maxAmountOut: 0, price: 0 };
+  }
+
+  public getDexName() {
+    return "Saros DLMM";
+  }
+
+  public getDexProgramId() {
+    return this.lbProgram.programId;
+  }
+
+  public async fetchPoolAddresses() {
+    const programId = this.getDexProgramId();
+    const connection = this.connection;
+    const pairAccount = LiquidityBookIDL.accounts.find(
+      (acc) => acc.name === "Pair"
+    );
+    const pairAccountDiscriminator = pairAccount
+      ? pairAccount.discriminator
+      : undefined;
+
+    if (!pairAccountDiscriminator) {
+      throw new Error("Pair account not found");
+    }
+
+    const accounts = await connection.getProgramAccounts(
+      new PublicKey(programId),
+      {
+        filters: [
+          {
+            memcmp: { offset: 0, bytes: bs58.encode(pairAccountDiscriminator) },
+          },
+        ],
+      }
+    );
+    if (accounts.length === 0) {
+      throw new Error("Pair not found");
+    }
+    const poolAdresses = accounts.reduce((addresses: string[], account) => {
+      if (account.account.owner.toString() !== programId.toString()) {
+        return addresses;
+      }
+      if (account.account.data.length < 8) {
+        return addresses;
+      }
+      addresses.push(account.pubkey.toString());
+      return addresses;
+    }, []);
+
+    return poolAdresses;
+  }
+
+  public async quote(params: {
+    amount: number;
+    metadata: PoolMetadata;
+    optional: {
+      isExactInput: boolean;
+      swapForY: boolean;
+      slippage: number;
+    };
+  }) {
+    const { amount, metadata, optional } = params;
+
+    return await this.getQuote({
+      amount: BigInt(amount),
+      isExactInput: optional.isExactInput,
+      pair: new PublicKey(metadata.poolAddress),
+      slippage: optional.slippage,
+      swapForY: optional.swapForY,
+      tokenBase: new PublicKey(metadata.baseMint),
+      tokenBaseDecimal: metadata.extra.tokenBaseDecimal,
+      tokenQuote: new PublicKey(metadata.quoteMint),
+      tokenQuoteDecimal: metadata.extra.tokenQuoteDecimal,
+    });
+  }
+
+  public async fetchPoolMetadata(pair: string): Promise<PoolMetadata> {
+    const connection = this.connection;
+
+    // @ts-expect-error abc
+    const pairInfo: Pair = await this.lbProgram.account.pair.fetch(
+      new PublicKey(pair)
+    );
+    if (!pairInfo) {
+      throw new Error("Pair not found");
+    }
+
+    const basePairVault = await this.getPairVaultInfo({
+      tokenAddress: new PublicKey(pairInfo.tokenMintX),
+      pair: new PublicKey(pair),
+    });
+    const quotePairVault = await this.getPairVaultInfo({
+      tokenAddress: new PublicKey(pairInfo.tokenMintY),
+      pair: new PublicKey(pair),
+    });
+
+    const [baseReserve, quoteReserve] = await Promise.all([
+      connection.getTokenAccountBalance(basePairVault).catch(() => ({
+        value: {
+          uiAmount: 0,
+          amount: "0",
+          decimals: 0,
+          uiAmountString: "0",
+        },
+      })),
+      connection.getTokenAccountBalance(quotePairVault).catch(() => ({
+        value: {
+          uiAmount: 0,
+          amount: "0",
+          decimals: 0,
+          uiAmountString: "0",
+        },
+      })),
+    ]);
+
+    return {
+      poolAddress: pair,
+      baseMint: pairInfo.tokenMintX.toString(),
+      baseReserve: baseReserve.value.amount,
+      quoteMint: pairInfo.tokenMintY.toString(),
+      quoteReserve: quoteReserve.value.amount,
+      tradeFee: pairInfo.staticFeeParameters.protocolShare,
+      extra: {
+        hook: pairInfo.hook?.toString(),
+        tokenQuoteDecimal: baseReserve.value.decimals,
+        tokenBaseDecimal: quoteReserve.value.decimals,
+      },
+    };
+  }
+
+  public async getPairVaultInfo(params: {
+    tokenAddress: PublicKey;
+    pair: PublicKey;
+  }) {
+    const { tokenAddress, pair } = params;
+
+    const tokenMint = new PublicKey(tokenAddress);
+    const tokenProgram = await getProgram(tokenMint, this.connection);
+
+    const associatedPairVault = spl.getAssociatedTokenAddressSync(
+      tokenMint,
+      pair,
+      true,
+      tokenProgram
+    );
+
+    return associatedPairVault;
+  }
+
+  public async listenNewPoolAddress(
+    postTxFunction: (address: string) => Promise<void>
+  ) {
+    const LB_PROGRAM_ID = this.getDexProgramId();
+    this.connection.onLogs(
+      LB_PROGRAM_ID,
+      (logInfo) => {
+        if (!logInfo.err) {
+          const logs = logInfo.logs || [];
+          for (const log of logs) {
+            if (log.includes("Instruction: InitializePair")) {
+              const signature = logInfo.signature;
+              postTxFunction(signature);
+
+              this.getPairAddressFromLogs(signature).then((address) => {
+                postTxFunction(address);
+              });
+            }
+          }
+        }
+      },
+      "finalized"
+    );
+  }
+
+  private async getPairAddressFromLogs(signature: string) {
+    const parsedTransaction = await this.connection.getTransaction(signature, {
+      maxSupportedTransactionVersion: 0,
+    });
+    if (!parsedTransaction) {
+      throw new Error("Transaction not found");
+    }
+
+    const compiledMessage = parsedTransaction.transaction.message;
+    const message = TransactionMessage.decompile(compiledMessage);
+    const instructions = message.instructions;
+    const initializePairStruct = LiquidityBookIDL.instructions.find(
+      (item) => item.name === "initialize_pair"
+    )!;
+
+    const initializePairDescrimator = Buffer.from(
+      initializePairStruct!.discriminator
+    );
+
+    let pairAddress = "";
+
+    for (const instruction of instructions) {
+      const descimatorInstruction = instruction.data.subarray(0, 8);
+      if (!descimatorInstruction.equals(initializePairDescrimator)) continue;
+
+      const accounts = initializePairStruct.accounts.map((item, index) => {
+        return {
+          name: item.name,
+          address: instruction.keys[index].pubkey.toString(),
+        };
+      });
+      pairAddress =
+        accounts.find((item) => item.name === "pair")?.address || "";
+    }
+    return pairAddress;
   }
 }
