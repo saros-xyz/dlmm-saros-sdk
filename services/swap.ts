@@ -127,11 +127,6 @@ export class LBSwapService {
         binArrayAddresses.map((address, i) =>
           //@ts-expect-error abc
           this.lbProgram.account.binArray.fetch(address).catch((error: any) => {
-            console.log(
-              `calculateInOutAmount ~ fetch binArray[${i}] error: ${
-                error.message
-              }. ${JSON.stringify({ pair, address })}`
-            );
             return { index: binArrayIndexes[i], bins: [] } as BinArray;
           })
         )
@@ -206,9 +201,6 @@ export class LBSwapService {
 
       const activeBin = bins.getBinMut(activeId);
       if (!activeBin) {
-        console.log(
-          `LBSwapService - calculateAmountIn: Active bin out of bin range: ${activeId}`
-        );
         break;
       }
 
@@ -262,9 +254,6 @@ export class LBSwapService {
 
         const activeBin = bins.getBinMut(activeId);
         if (!activeBin) {
-          console.log(
-            `LBSwapService - calculateAmountOut: Active bin out of bin range: ${activeId}`
-          );
           break;
         }
 
