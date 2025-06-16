@@ -31,7 +31,7 @@ import { mulShr, shlDiv } from "../utils/math";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 
-export class LiquidityBookServicesSDK extends LiquidityBookAbstract {
+export class LiquidityBookServices extends LiquidityBookAbstract {
   bufferGas?: number;
   constructor(config: ILiquidityBookConfig) {
     super(config);
