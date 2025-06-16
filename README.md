@@ -79,7 +79,7 @@ const onSwap = async () => {
 		isExactInput: true, // input amount in
 		swapForY: true, // swap from C98 to USDC
 		pair: new PublicKey(POOL_PARAMS.address),
-		payer: new PublicKey(address!) // Replace with your wallet public key
+		payer: new PublicKey(YOUR_WALLET) // Replace with your wallet public key
 	})
 
 	const signedTransaction = signTransaction(transaction);
