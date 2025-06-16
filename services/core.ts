@@ -522,7 +522,6 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           for (const log of logs) {
             if (log.includes("Instruction: InitializePair")) {
               const signature = logInfo.signature;
-              postTxFunction(signature);
 
               this.getPairAddressFromLogs(signature).then((address) => {
                 postTxFunction(address);
