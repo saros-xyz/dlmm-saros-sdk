@@ -31,7 +31,7 @@ import { mulShr, shlDiv } from "../utils/math";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 
-export class LiquidityBookServices extends LiquidityBookAbstract {
+export class LiquidityBookServicesSDK extends LiquidityBookAbstract {
   bufferGas?: number;
   constructor(config: ILiquidityBookConfig) {
     super(config);
@@ -222,8 +222,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
     const swapInstructions = await this.lbProgram.methods
       .swap(
-        new BN(amount),
-        new BN(otherAmountOffset),
+        new BN(amount.toString()),
+        new BN(otherAmountOffset.toString()),
         swapForY,
         isExactInput ? { exactInput: {} } : { exactOutput: {} }
       )
@@ -343,7 +343,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         decimalQuote
       );
 
-      const feeAmount = swapService.getFeeAmount(new BN(amountIn), feePrice);
+      const feeAmount = swapService.getFeeAmount(amountIn, feePrice);
       amountIn = BigInt(amountIn) - BigInt(feeAmount); // new BN(amountIn).subtract(new BN(feeAmount));
       const maxAmountOut = swapForY
         ? mulShr(Number(amountIn.toString()), activePrice, SCALE_OFFSET, "down")
