@@ -301,8 +301,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         .getValue();
 
       return {
-        amountIn: maxAmountIn,
-        amountOut: minAmountOut,
+        amountIn: amountIn,
+        amountOut: amountOut,
+        amount: params.isExactInput ? maxAmountIn : minAmountOut,
+        otherAmountOffset: params.isExactInput ? minAmountOut : maxAmountIn,
         priceImpact: Number(priceImpact),
       };
     } catch (error) {

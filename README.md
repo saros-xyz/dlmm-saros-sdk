@@ -54,8 +54,8 @@ const POOL_PARAMS = {
 };
 
 const onSwap = async () => {
-	const amountFrom = 10e6; // Token C98
-	const quoteData = await liquidityBookServices.getQuote({
+	const amountFrom = 1e6 // Token C98
+	const quoteData = await service.getQuote({
 		amount: BigInt(amountFrom),
 		isExactInput: true, // input amount in
 		swapForY: true, // swap from C98 to USDC
@@ -64,22 +64,23 @@ const onSwap = async () => {
 		tokenQuote: new PublicKey(POOL_PARAMS.quoteToken.mintAddress),
 		tokenBaseDecimal: POOL_PARAMS.baseToken.decimals,
 		tokenQuoteDecimal: POOL_PARAMS.quoteToken.decimals,
-		slippage: POOL_PARAMS.slippage,
-	});
+		slippage: POOL_PARAMS.slippage
+	})
 
-	const { amountIn, amountOut, priceImpact } = quoteData; // slippage included
+	const { amountIn, amountOut, priceImpact, amount, otherAmountOffset } =
+		quoteData // slippage included
 
-	const transaction = await liquidityBookServices.swap({
-		amount: amountIn,
+	const transaction = await service.swap({
+		amount,
 		tokenMintX: new PublicKey(POOL_PARAMS.baseToken.mintAddress),
 		tokenMintY: new PublicKey(POOL_PARAMS.quoteToken.mintAddress),
-		otherAmountOffset: amountOut,
-		hook: new PublicKey(liquidityBookServices.hooksConfig), // Optional, if you have a hook for reward
+		otherAmountOffset,
+		hook: new PublicKey(service.hooksConfig), // Optional, if you have a hook for reward
 		isExactInput: true, // input amount in
 		swapForY: true, // swap from C98 to USDC
 		pair: new PublicKey(POOL_PARAMS.address),
-		payer: new PublicKey(YOUR_WALLET), // Replace with your wallet public key
-	});
+		payer: new PublicKey(address!) // Replace with your wallet public key
+	})
 
 	const signedTransaction = signTransaction(transaction);
 
