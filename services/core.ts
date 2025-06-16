@@ -22,6 +22,7 @@ import {
   GetBinArrayParams,
   GetTokenOutputParams,
   GetTokenOutputResponse,
+  Pair,
   SwapParams,
 } from "../types/services";
 import { LBSwapService } from "./swap";
@@ -480,7 +481,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       baseReserve: baseReserve.value.amount,
       quoteMint: pairInfo.tokenMintY.toString(),
       quoteReserve: quoteReserve.value.amount,
-      tradeFee: pairInfo.staticFeeParameters.protocolShare,
+      tradeFee:
+        (pairInfo.staticFeeParameters.baseFactor * pairInfo.binStep) / 1e6,
       extra: {
         hook: pairInfo.hook?.toString(),
         tokenQuoteDecimal: baseReserve.value.decimals,
