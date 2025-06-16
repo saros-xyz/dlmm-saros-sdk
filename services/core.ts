@@ -214,8 +214,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
     const swapInstructions = await this.lbProgram.methods
       .swap(
-        new BN(amount),
-        new BN(otherAmountOffset),
+        new BN(amount.toString()),
+        new BN(otherAmountOffset.toString()),
         swapForY,
         isExactInput ? { exactInput: {} } : { exactOutput: {} }
       )
@@ -301,8 +301,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         .getValue();
 
       return {
-        amountIn: maxAmountIn,
-        amountOut: minAmountOut,
+        amountIn: amountIn,
+        amountOut: amountOut,
+        amount: params.isExactInput ? maxAmountIn : minAmountOut,
+        otherAmountOffset: params.isExactInput ? minAmountOut : maxAmountIn,
         priceImpact: Number(priceImpact),
       };
     } catch (error) {
@@ -335,7 +337,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         decimalQuote
       );
 
-      const feeAmount = swapService.getFeeAmount(new BN(amountIn), feePrice);
+      const feeAmount = swapService.getFeeAmount(amountIn, feePrice);
       amountIn = BigInt(amountIn) - BigInt(feeAmount); // new BN(amountIn).subtract(new BN(feeAmount));
       const maxAmountOut = swapForY
         ? mulShr(Number(amountIn.toString()), activePrice, SCALE_OFFSET, "down")

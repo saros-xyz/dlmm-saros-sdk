@@ -127,11 +127,6 @@ export class LBSwapService {
         binArrayAddresses.map((address, i) =>
           //@ts-expect-error abc
           this.lbProgram.account.binArray.fetch(address).catch((error: any) => {
-            console.log(
-              `calculateInOutAmount ~ fetch binArray[${i}] error: ${
-                error.message
-              }. ${JSON.stringify({ pair, address })}`
-            );
             return { index: binArrayIndexes[i], bins: [] } as BinArray;
           })
         )
@@ -148,8 +143,8 @@ export class LBSwapService {
         .reduce((acc, cur) => acc.add(cur.totalSupply), new BN(0));
       if (totalSupply.isZero()) {
         return {
-          amountIn: 0n,
-          amountOut: 0n,
+          amountIn: BigInt(0),
+          amountOut: BigInt(0),
         };
       }
 
@@ -194,21 +189,18 @@ export class LBSwapService {
     pairInfo: Pair,
     swapForY: boolean
   ) {
-    let amountIn = 0n;
-    let totalProtocolFee = 0n;
+    let amountIn = BigInt(0);
+    let totalProtocolFee = BigInt(0);
     let amountOutLeft = amount;
     let activeId = pairInfo.activeId;
 
     await this.updateReferences(pairInfo, activeId);
 
-    while (amountOutLeft > 0n) {
+    while (amountOutLeft > BigInt(0)) {
       this.updateVolatilityAccumulator(pairInfo, activeId);
 
       const activeBin = bins.getBinMut(activeId);
       if (!activeBin) {
-        console.log(
-          `LBSwapService - calculateAmountIn: Active bin out of bin range: ${activeId}`
-        );
         break;
       }
 
@@ -250,21 +242,18 @@ export class LBSwapService {
     swapForY: boolean
   ) {
     try {
-      let amountOut = 0n;
-      let totalProtocolFee = 0n;
+      let amountOut = BigInt(0);
+      let totalProtocolFee = BigInt(0);
       let amountInLeft = amount;
       let activeId = pairInfo.activeId;
 
       await this.updateReferences(pairInfo, activeId);
 
-      while (amountInLeft > 0n) {
+      while (amountInLeft > BigInt(0)) {
         this.updateVolatilityAccumulator(pairInfo, activeId);
 
         const activeBin = bins.getBinMut(activeId);
         if (!activeBin) {
-          console.log(
-            `LBSwapService - calculateAmountOut: Active bin out of bin range: ${activeId}`
-          );
           break;
         }
 
@@ -324,10 +313,10 @@ export class LBSwapService {
 
     if (binReserveOut.isZero()) {
       return {
-        amountInWithFees: 0n,
-        amountOut: 0n,
-        feeAmount: 0n,
-        protocolFeeAmount: 0n,
+        amountInWithFees: BigInt(0),
+        amountOut: BigInt(0),
+        feeAmount: BigInt(0),
+        protocolFeeAmount: BigInt(0),
       };
     }
 
@@ -390,10 +379,10 @@ export class LBSwapService {
 
     if (binReserveOut.isZero()) {
       return {
-        amountInWithFees: 0n,
-        amountOut: 0n,
-        feeAmount: 0n,
-        protocolFeeAmount: 0n,
+        amountInWithFees: BigInt(0),
+        amountOut: BigInt(0),
+        feeAmount: BigInt(0),
+        protocolFeeAmount: BigInt(0),
       };
     }
 
@@ -419,9 +408,9 @@ export class LBSwapService {
     const maxFeeAmount = this.getFeeForAmount(maxAmountIn, fee);
     maxAmountIn += maxFeeAmount;
 
-    let amountOut = 0n;
-    let amountIn = 0n;
-    let feeAmount = 0n;
+    let amountOut = BigInt(0);
+    let amountIn = BigInt(0);
+    let feeAmount = BigInt(0);
 
     if (amountInLeft >= maxAmountIn) {
       feeAmount = maxFeeAmount;
@@ -443,9 +432,9 @@ export class LBSwapService {
     }
 
     const protocolFeeAmount =
-      protocolShare > 0n
+      protocolShare > BigInt(0)
         ? this.getProtocolFee(feeAmount, protocolShareBigInt)
-        : 0n;
+        : BigInt(0);
 
     return {
       amountInWithFees: amountIn + feeAmount,
@@ -509,14 +498,14 @@ export class LBSwapService {
     const variableFeeControl = BigInt(
       pairInfo.staticFeeParameters.variableFeeControl
     );
-    if (variableFeeControl > 0n) {
+    if (variableFeeControl > BigInt(0)) {
       const prod = BigInt(
         Math.floor(this.volatilityAccumulator * pairInfo.binStep)
       );
       const variableFee =
         (prod * prod * variableFeeControl +
           BigInt(VARIABLE_FEE_PRECISION) -
-          1n) /
+          BigInt(1)) /
         BigInt(VARIABLE_FEE_PRECISION);
       return variableFee;
     }
@@ -524,19 +513,19 @@ export class LBSwapService {
   }
 
   public getBaseFee(binStep: number, baseFactor: number): bigint {
-    return BigInt(binStep) * BigInt(baseFactor) * 10n;
+    return BigInt(binStep) * BigInt(baseFactor) * BigInt(10);
   }
 
   public getFeeForAmount(amount: bigint, fee: bigint) {
     const denominator = BigInt(PRECISION) - fee;
-    const feeForAmount = (amount * fee + denominator - 1n) / denominator;
+    const feeForAmount = (amount * fee + denominator - BigInt(1)) / denominator;
 
     return feeForAmount;
   }
 
   public getFeeAmount(amount: bigint, fee: bigint) {
     const feeAmount =
-      (amount * fee + BigInt(PRECISION) - 1n) / BigInt(PRECISION);
+      (amount * fee + BigInt(PRECISION) - BigInt(1)) / BigInt(PRECISION);
 
     return feeAmount;
   }
@@ -584,12 +573,15 @@ export class LBSwapService {
     if (swapForY) {
       // amountIn = (amountOut << scaleOffset) / priceScaled
       return rounding === "up"
-        ? ((amountOut << BigInt(scaleOffset)) + priceScaled - 1n) / priceScaled
+        ? ((amountOut << BigInt(scaleOffset)) + priceScaled - BigInt(1)) /
+            priceScaled
         : (amountOut << BigInt(scaleOffset)) / priceScaled;
     } else {
       // amountIn = (amountOut * priceScaled) >> scaleOffset
       return rounding === "up"
-        ? (amountOut * priceScaled + (1n << BigInt(scaleOffset)) - 1n) >>
+        ? (amountOut * priceScaled +
+            (BigInt(1) << BigInt(scaleOffset)) -
+            BigInt(1)) >>
             BigInt(scaleOffset)
         : (amountOut * priceScaled) >> BigInt(scaleOffset);
     }
@@ -616,14 +608,17 @@ export class LBSwapService {
       // price = (Y / X) & swapForY => amountOut = amountIn * price
       // amountOut = (amountIn * priceScaled) >> scaleOffset
       return rounding === "up"
-        ? (amountIn * priceScaled + (1n << BigInt(scaleOffset)) - 1n) >>
+        ? (amountIn * priceScaled +
+            (BigInt(1) << BigInt(scaleOffset)) -
+            BigInt(1)) >>
             BigInt(scaleOffset)
         : (amountIn * priceScaled) >> BigInt(scaleOffset);
     } else {
       // price = (X / Y) & !swapForY => amountOut = amountIn / price
       // amountOut = (amountIn << scaleOffset) / priceScaled
       return rounding === "up"
-        ? ((amountIn << BigInt(scaleOffset)) + priceScaled - 1n) / priceScaled
+        ? ((amountIn << BigInt(scaleOffset)) + priceScaled - BigInt(1)) /
+            priceScaled
         : (amountIn << BigInt(scaleOffset)) / priceScaled;
     }
   }
