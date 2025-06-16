@@ -23,7 +23,7 @@ import bigDecimal from "js-big-decimal";
 import { getPriceFromId } from "../utils/price";
 import { mulShr, shlDiv } from "../utils/math";
 
-export class LiquidityBookServicesSDK extends LiquidityBookAbstract {
+export class LiquidityBookServices extends LiquidityBookAbstract {
   bufferGas?: number;
   constructor(config: ILiquidityBookConfig) {
     super(config);
