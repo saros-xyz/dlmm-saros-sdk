@@ -55,7 +55,7 @@ const POOL_PARAMS = {
 
 const onSwap = async () => {
 	const amountFrom = 1e6 // Token C98
-	const quoteData = await service.getQuote({
+	const quoteData = await liquidityBookServices.getQuote({
 		amount: BigInt(amountFrom),
 		isExactInput: true, // input amount in
 		swapForY: true, // swap from C98 to USDC
@@ -70,12 +70,12 @@ const onSwap = async () => {
 	const { amountIn, amountOut, priceImpact, amount, otherAmountOffset } =
 		quoteData // slippage included
 
-	const transaction = await service.swap({
+	const transaction = await liquidityBookServices.swap({
 		amount,
 		tokenMintX: new PublicKey(POOL_PARAMS.baseToken.mintAddress),
 		tokenMintY: new PublicKey(POOL_PARAMS.quoteToken.mintAddress),
 		otherAmountOffset,
-		hook: new PublicKey(service.hooksConfig), // Optional, if you have a hook for reward
+		hook: new PublicKey(liquidityBookServices.hooksConfig), // Optional, if you have a hook for reward
 		isExactInput: true, // input amount in
 		swapForY: true, // swap from C98 to USDC
 		pair: new PublicKey(POOL_PARAMS.address),
