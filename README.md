@@ -102,37 +102,37 @@ const onSwap = async () => {
 };
 
 // Get Dex Name
-  const getDexName = () => {
+const getDexName = () => {
     try {
       const response = liquidityBookServices.getDexName();
       return response;
     } catch (error) {
       return "";
     }
-  };
+};
 
-  // Get Dex Program ID
-  const getDexProgramId = () => {
+// Get Dex Program ID
+const getDexProgramId = () => {
     try {
       const response = liquidityBookServices.getDexProgramId();
       return response;
     } catch (error) {
       return "";
     }
-  };
+};
 
-  // Query all pools on Saros DLMM
-  const getPoolAddresses = async () => {
+// Query all pools on Saros DLMM
+const getPoolAddresses = async () => {
     try {
       const response = await liquidityBookServices.fetchPoolAddresses();
       return response;
     } catch (error) {
       return [];
     }
-  };
+};
 
-  // Fetch Pool Metatdata
-  const fetchPoolMetadata = async () => {
+// Fetch Pool Metatdata
+const fetchPoolMetadata = async () => {
     try {
       const response = await liquidityBookServices.fetchPoolMetadata(
         POOL_PARAMS.address
@@ -141,13 +141,14 @@ const onSwap = async () => {
     } catch (error) {
       return {};
     }
-  };
+};
 
-  // Listen new pool address
-  const onListenNewPoolAddress = async () => {
+// Listen new pool address
+const onListenNewPoolAddress = async () => {
     const postTx = async (poolAddres: string) => {
       console.log("🚀 ~ onListenNewPoolAddress ~ poolAddres:", poolAddres);
     };
     await liquidityBookServices.listenNewPoolAddress(postTx);
-  };
+};
+
 ```
