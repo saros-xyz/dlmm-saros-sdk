@@ -34,6 +34,8 @@ export interface GetTokenOutputResponse {
   amountIn: bigint;
   amountOut: bigint;
   priceImpact: number;
+  amount: bigint;
+  otherAmountOffset: bigint;
 }
 
 export interface Pair {

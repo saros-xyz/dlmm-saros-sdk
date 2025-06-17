@@ -22,6 +22,7 @@ import {
   GetBinArrayParams,
   GetTokenOutputParams,
   GetTokenOutputResponse,
+  Pair,
   SwapParams,
 } from "../types/services";
 import { LBSwapService } from "./swap";
@@ -222,8 +223,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
     const swapInstructions = await this.lbProgram.methods
       .swap(
-        new BN(amount),
-        new BN(otherAmountOffset),
+        new BN(amount.toString()),
+        new BN(otherAmountOffset.toString()),
         swapForY,
         isExactInput ? { exactInput: {} } : { exactOutput: {} }
       )
@@ -309,8 +310,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         .getValue();
 
       return {
-        amountIn: maxAmountIn,
-        amountOut: minAmountOut,
+        amountIn: amountIn,
+        amountOut: amountOut,
+        amount: params.isExactInput ? maxAmountIn : minAmountOut,
+        otherAmountOffset: params.isExactInput ? minAmountOut : maxAmountIn,
         priceImpact: Number(priceImpact),
       };
     } catch (error) {
@@ -343,7 +346,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         decimalQuote
       );
 
-      const feeAmount = swapService.getFeeAmount(new BN(amountIn), feePrice);
+      const feeAmount = swapService.getFeeAmount(amountIn, feePrice);
       amountIn = BigInt(amountIn) - BigInt(feeAmount); // new BN(amountIn).subtract(new BN(feeAmount));
       const maxAmountOut = swapForY
         ? mulShr(Number(amountIn.toString()), activePrice, SCALE_OFFSET, "down")
@@ -478,7 +481,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       baseReserve: baseReserve.value.amount,
       quoteMint: pairInfo.tokenMintY.toString(),
       quoteReserve: quoteReserve.value.amount,
-      tradeFee: pairInfo.staticFeeParameters.protocolShare,
+      tradeFee:
+        (pairInfo.staticFeeParameters.baseFactor * pairInfo.binStep) / 1e6,
       extra: {
         hook: pairInfo.hook?.toString(),
         tokenQuoteDecimal: baseReserve.value.decimals,
@@ -518,7 +522,6 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           for (const log of logs) {
             if (log.includes("Instruction: InitializePair")) {
               const signature = logInfo.signature;
-              postTxFunction(signature);
 
               this.getPairAddressFromLogs(signature).then((address) => {
                 postTxFunction(address);
