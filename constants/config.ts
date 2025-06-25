@@ -33,6 +33,127 @@ export const BASIS_POINT_MAX = 10_000;
 export const ONE = 1 << SCALE_OFFSET;
 export const PRECISION = 1_000_000_000;
 
-export const UNIT_PRICE_DEFAULT = 100_000;
-export const CCU_LIMIT = 400;
+export const UNIT_PRICE_DEFAULT = 1_000_000;
+export const CCU_LIMIT = 400_000;
 export const WRAP_SOL_ADDRESS = "So11111111111111111111111111111111111111112";
+export const FIXED_LENGTH = 16;
+
+export const BIN_STEP_CONFIGS = [
+  {
+    binStep: 1,
+    feeParameters: {
+      baseFactor: 10000,
+      filterPeriod: 10,
+      decayPeriod: 120,
+      reductionFactor: 5000,
+      variableFeeControl: 2000000,
+      maxVolatilityAccumulator: 100000,
+      protocolShare: 2000,
+      space: [0, 0],
+    },
+  },
+  {
+    binStep: 2,
+    feeParameters: {
+      baseFactor: 10000,
+      filterPeriod: 10,
+      decayPeriod: 120,
+      reductionFactor: 5000,
+      variableFeeControl: 500000,
+      maxVolatilityAccumulator: 250000,
+      protocolShare: 2000,
+      space: [0, 0],
+    },
+  },
+  {
+    binStep: 5,
+    feeParameters: {
+      baseFactor: 10000,
+      filterPeriod: 30,
+      decayPeriod: 600,
+      reductionFactor: 5000,
+      variableFeeControl: 120000,
+      maxVolatilityAccumulator: 300000,
+      protocolShare: 2000,
+      space: [0, 0],
+    },
+  },
+  {
+    binStep: 10,
+    feeParameters: {
+      baseFactor: 10000,
+      filterPeriod: 30,
+      decayPeriod: 600,
+      reductionFactor: 5000,
+      variableFeeControl: 40000,
+      maxVolatilityAccumulator: 350000,
+      protocolShare: 2000,
+      space: [0, 0],
+    },
+  },
+  {
+    binStep: 20,
+    feeParameters: {
+      baseFactor: 10000,
+      filterPeriod: 30,
+      decayPeriod: 600,
+      reductionFactor: 5000,
+      variableFeeControl: 20000,
+      maxVolatilityAccumulator: 350000,
+      protocolShare: 2000,
+      space: [0, 0],
+    },
+  },
+  {
+    binStep: 50,
+    feeParameters: {
+      baseFactor: 10000,
+      filterPeriod: 120,
+      decayPeriod: 1200,
+      reductionFactor: 5000,
+      variableFeeControl: 10000,
+      maxVolatilityAccumulator: 250000,
+      protocolShare: 2000,
+      space: [0, 0],
+    },
+  },
+  {
+    binStep: 100,
+    feeParameters: {
+      baseFactor: 10000,
+      filterPeriod: 300,
+      decayPeriod: 1200,
+      reductionFactor: 5000,
+      variableFeeControl: 7500,
+      maxVolatilityAccumulator: 150000,
+      protocolShare: 2000,
+      space: [0, 0],
+    },
+  },
+  {
+    binStep: 200,
+    feeParameters: {
+      baseFactor: 10000,
+      filterPeriod: 300,
+      decayPeriod: 1200,
+      reductionFactor: 5000,
+      variableFeeControl: 7500,
+      maxVolatilityAccumulator: 150000,
+      protocolShare: 2000,
+      space: [0, 0],
+    },
+  },
+  {
+    binStep: 250,
+    feeParameters: {
+      baseFactor: 20000,
+      filterPeriod: 300,
+      decayPeriod: 1200,
+      reductionFactor: 5000,
+      variableFeeControl: 7500,
+      maxVolatilityAccumulator: 150000,
+      protocolShare: 2000,
+      space: [0, 0],
+    },
+  },
+];
