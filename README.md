@@ -17,8 +17,26 @@ npm install @saros-finance/dlmm-sdk
 # Usage
 
 ```
-import { LiquidityBookServices, MODE } from "@saros-finance/dlmm-sdk";
-import { PublicKey } from "@solana/web3.js";
+import {
+  BIN_STEP_CONFIGS,
+  LiquidityBookServices,
+  MODE,
+} from "@saros-finance/dlmm-sdk";
+import { PublicKey, Transaction, Keypair } from "@solana/web3.js";
+import {
+  LiquidityShape,
+  PositionInfo,
+  RemoveLiquidityType,
+} from "@saros-finance/dlmm-sdk/types/services";
+import {
+  createUniformDistribution,
+  findPosition,
+  getBinRange,
+  getMaxBinArray,
+  getMaxPosition,
+} from "@saros-finance/dlmm-sdk/utils";
+import bigDecimal from "js-big-decimal";
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 
 const liquidityBookServices = new LiquidityBookServices({
 	mode: MODE.MAINNET,
@@ -149,6 +167,19 @@ const onListenNewPoolAddress = async () => {
       console.log("🚀 ~ onListenNewPoolAddress ~ poolAddres:", poolAddres);
     };
     await liquidityBookServices.listenNewPoolAddress(postTx);
+};
+
+const convertBalanceToWei = (strValue: number, iDecimal: number = 9) => {
+  	if (strValue === 0) return 0;
+
+  	try {
+    	const multiplyNum = new bigDecimal(Math.pow(10, iDecimal));
+    	const convertValue = new bigDecimal(Number(strValue));
+    	const result = multiplyNum.multiply(convertValue);
+    	return result.getValue();
+  	} catch {
+    	return 0;
+  	}
 };
 
 // Create Pool
