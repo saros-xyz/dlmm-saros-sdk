@@ -103,7 +103,7 @@ export class LBSwapService {
   public async calculateInOutAmount(params: GetTokenOutputParams) {
     const { amount, swapForY, pair, isExactInput } = params;
     try {
-      //@ts-expect-error abc
+       //@ts-ignore
       const pairInfo: Pair = await this.lbProgram.account.pair.fetch(pair);
       if (!pairInfo) throw new Error("Pair not found");
 
@@ -125,7 +125,7 @@ export class LBSwapService {
       // Fetch bin arrays in batch, fallback to empty if not found
       const binArrays: BinArray[] = await Promise.all(
         binArrayAddresses.map((address, i) =>
-          //@ts-expect-error abc
+           //@ts-ignore
           this.lbProgram.account.binArray.fetch(address).catch((error: any) => {
             return { index: binArrayIndexes[i], bins: [] } as BinArray;
           })
