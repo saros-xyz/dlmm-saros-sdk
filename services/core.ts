@@ -64,12 +64,12 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
   }
 
   public async getPairAccount(pair: PublicKey) {
-    //@ts-expect-error abc
+    //@ts-ignore
     return await this.lbProgram.account.pair.fetch(pair);
   }
 
   public async getPositionAccount(position: PublicKey) {
-    //@ts-expect-error abc
+    //@ts-ignore
     return await this.lbProgram.account.position.fetch(position);
   }
 
@@ -110,8 +110,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       pair,
       payer,
     });
-
-    //@ts-expect-error abc
+    //@ts-ignore
     const { bins } = await this.lbProgram.account.binArray.fetch(binArray);
     try {
       const binArrayOther = await this.getBinArray({
@@ -119,7 +118,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         pair,
         payer,
       });
-      //@ts-expect-error abc
+      //@ts-ignore
       const res = await this.lbProgram.account.binArray.fetch(binArrayOther);
 
       result = [...bins, ...res.bins];
@@ -129,7 +128,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         pair,
         payer,
       });
-      //@ts-expect-error abc
+      //@ts-ignore
       const res = await this.lbProgram.account.binArray.fetch(binArrayOther);
       result = [...res.bins, ...bins];
       resultIndex -= 1;
@@ -1197,7 +1196,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         try {
           const accountInfo = await connection.getAccountInfo(positionPda);
           if (!accountInfo) return null;
-          //@ts-expect-error abc
+          //@ts-ignore
           const position = await this.lbProgram.account.position.fetch(
             positionPda
           );
@@ -1237,8 +1236,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
   public async fetchPoolMetadata(pair: string): Promise<PoolMetadata> {
     const connection = this.connection;
-
-    // @ts-expect-error abc
+    //@ts-ignore
     const pairInfo: Pair = await this.lbProgram.account.pair.fetch(
       new PublicKey(pair)
     );
@@ -1407,7 +1405,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     for (const instruction of instructions) {
       const descimatorInstruction = instruction.data.subarray(0, 8);
       if (!descimatorInstruction.equals(initializePairDescrimator)) continue;
-
+      //@ts-ignore
       const accounts = initializePairStruct.accounts.map((item, index) => {
         return {
           name: item.name,
@@ -1415,7 +1413,9 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         };
       });
       pairAddress =
-        accounts.find((item) => item.name === "pair")?.address || "";
+        accounts.find(
+          (item: { name: string; address: string }) => item.name === "pair"
+        )?.address || "";
     }
     return pairAddress;
   }

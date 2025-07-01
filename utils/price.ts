@@ -6,7 +6,7 @@ const getBase = (binStep: number) => {
 
   const basisPointMaxBigInt = BASIS_POINT_MAX
 
-  //@ts-expect-error abc
+  //@ts-ignore
   if (basisPointMaxBigInt === 0) return null
   const fraction = quotient / basisPointMaxBigInt
 
