@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { Commitment, ConnectionConfig, PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 
 export enum MODE {
@@ -27,10 +27,10 @@ export type LiquidityBookConfig = {
 
 export interface ILiquidityBookConfig {
   mode: MODE;
-  liquidBookConfig?: LiquidityBookConfig;
   options?: {
     rpcUrl: string;
-  };
+    commitmentOrConfig?: Commitment | ConnectionConfig
+  }
 }
 
 export type Bin = {

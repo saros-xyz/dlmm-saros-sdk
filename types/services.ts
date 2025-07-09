@@ -98,13 +98,6 @@ interface Bin {
   reserveY: string;
 }
 
-export interface BinArray {
-  index: number;
-  pair: PublicKey;
-  bins: Bin[];
-  space: number[];
-}
-
 export interface CreatePairWithConfigParams {
   tokenBase: {
     decimal: number;
