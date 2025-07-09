@@ -6,14 +6,8 @@ import {
   MAX_BASIS_POINTS,
   UNIT_PRICE_DEFAULT,
 } from "../constants/config";
-import { LiquidityShape, PositionInfo } from "../types/services";
+import { Distribution, LiquidityShape, PositionInfo } from "../types/services";
 import { divRem } from "./math";
-
-export interface Distribution {
-  relativeBinId: number;
-  distributionX: number;
-  distributionY: number;
-}
 
 interface CreateLiquidityDistributionParams {
   shape: LiquidityShape;
@@ -512,13 +506,13 @@ export const getBinRange = (index: number, activeId: number) => {
   };
 };
 
-export const findPosition =
-  (index: number, activeBin = ACTIVE_ID) =>
-  (position: PositionInfo) => {
-    const { binLower, binUpper } = getBinRange(index, activeBin);
+export const findPosition = (index: number, activeBin = ACTIVE_ID) => (
+  position: PositionInfo
+) => {
+  const { binLower, binUpper } = getBinRange(index, activeBin);
 
-    return position.lowerBinId <= binLower && position.upperBinId >= binUpper;
-  };
+  return position.lowerBinId <= binLower && position.upperBinId >= binUpper;
+};
 
 export const getGasPrice = async (connection: Connection): Promise<number> => {
   const buffNum = 100;

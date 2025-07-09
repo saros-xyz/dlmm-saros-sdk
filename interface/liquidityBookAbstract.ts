@@ -1,5 +1,5 @@
 import { Connection } from "@solana/web3.js";
-import { AnchorProvider, Idl, Program } from "@coral-xyz/anchor";
+import { AnchorProvider, Idl, Program, Wallet } from "@coral-xyz/anchor";
 import { ILiquidityBookConfig } from "../types";
 import { CONFIG } from "../constants/config";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
@@ -15,17 +15,12 @@ export abstract class LiquidityBookAbstract {
     // Initialize the services heref
     this.connection = new Connection(
       config.options?.rpcUrl || CONFIG[config.mode].rpc,
-      {
-        commitment: "confirmed",
-        httpHeaders: {
-          development: "coin98",
-        },
-      }
+      config.options?.commitmentOrConfig || "confirmed"
     );
 
     const provider = new AnchorProvider(
       this.connection,
-      (window as any).solana,
+      {} as Wallet,
       AnchorProvider.defaultOptions()
     );
 
