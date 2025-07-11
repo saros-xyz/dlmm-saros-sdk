@@ -835,20 +835,57 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     const pairInfo = await this.getPairAccount(pair);
     if (!pairInfo) throw new Error("Pair not found");
 
-    let binArrayIndex = pairInfo.activeId / BIN_ARRAY_SIZE;
-    if (pairInfo.activeId % BIN_ARRAY_SIZE < BIN_ARRAY_SIZE / 2) {
-      binArrayIndex -= 1;
+    const currentBinArrayIndex = Math.floor(pairInfo.activeId / BIN_ARRAY_SIZE);
+
+    const surroundingIndexes = [
+      currentBinArrayIndex - 1,
+      currentBinArrayIndex,
+      currentBinArrayIndex + 1,
+    ];
+
+    const binArrayAddresses = await Promise.all(
+      surroundingIndexes.map(
+        async (idx) =>
+          await this.getBinArray({
+            binArrayIndex: idx,
+            pair,
+            payer,
+          })
+      )
+    );
+    
+    const binArrayAccountsInfo = await this.connection.getMultipleAccountsInfo(
+      binArrayAddresses
+    );
+
+    const validIndexes = surroundingIndexes.filter(
+      (_, i) => binArrayAccountsInfo[i]
+    );
+
+    if (validIndexes.length < 2) {
+      throw new Error("No valid bin arrays found for the pair");
+    }
+
+    let binArrayLowerIndex: number;
+    let binArrayUpperIndex: number;
+    if (validIndexes.length === 2) {
+      [binArrayLowerIndex, binArrayUpperIndex] = validIndexes;
+    } else {
+      const activeOffset = pairInfo.activeId % BIN_ARRAY_SIZE;
+      const [first, second, third] = validIndexes;
+      [binArrayLowerIndex, binArrayUpperIndex] =
+        activeOffset < BIN_ARRAY_SIZE / 2 ? [first, second] : [second, third];
     }
 
     const binArrayLower = await this.getBinArray({
-      binArrayIndex,
       pair,
+      binArrayIndex: binArrayLowerIndex,
       payer,
     });
 
     const binArrayUpper = await this.getBinArray({
-      binArrayIndex: binArrayIndex + 1,
       pair,
+      binArrayIndex: binArrayUpperIndex,
       payer,
     });
 
