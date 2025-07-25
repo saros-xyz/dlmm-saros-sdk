@@ -189,47 +189,57 @@ export class LBSwapService {
     pairInfo: Pair,
     swapForY: boolean
   ) {
-    let amountIn = BigInt(0);
-    let totalProtocolFee = BigInt(0);
-    let amountOutLeft = amount;
-    let activeId = pairInfo.activeId;
+    try {
+      let amountIn = BigInt(0);
+      let totalProtocolFee = BigInt(0);
+      let amountOutLeft = amount;
+      let activeId = pairInfo.activeId;
+      let totalBinUsed = 0;
 
-    await this.updateReferences(pairInfo, activeId);
+      await this.updateReferences(pairInfo, activeId);
 
-    while (amountOutLeft > BigInt(0)) {
-      this.updateVolatilityAccumulator(pairInfo, activeId);
+      while (amountOutLeft > BigInt(0)) {
+        totalBinUsed++;
+        this.updateVolatilityAccumulator(pairInfo, activeId);
 
-      const activeBin = bins.getBinMut(activeId);
-      if (!activeBin) {
-        break;
+        const activeBin = bins.getBinMut(activeId);
+        if (!activeBin) {
+          break;
+        }
+
+        const fee = this.getTotalFee(pairInfo);
+
+        const {
+          amountInWithFees,
+          amountOut: amountOutOfBin,
+          protocolFeeAmount,
+        } = this.swapExactOutput({
+          binStep: pairInfo.binStep,
+          activeId,
+          amountOutLeft,
+          fee,
+          protocolShare: pairInfo.staticFeeParameters.protocolShare,
+          swapForY,
+          reserveX: activeBin.reserveX,
+          reserveY: activeBin.reserveY,
+        });
+
+        amountIn += amountInWithFees;
+        amountOutLeft -= amountOutOfBin;
+        totalProtocolFee += protocolFeeAmount;
+
+        if (!amountOutLeft) break;
+        activeId = this.moveActiveId(activeId, swapForY);
       }
 
-      const fee = this.getTotalFee(pairInfo);
+      if (totalBinUsed >= 30) {
+        throw "Swap crosses too many bins – quote aborted.";
+      }
 
-      const {
-        amountInWithFees,
-        amountOut: amountOutOfBin,
-        protocolFeeAmount,
-      } = this.swapExactOutput({
-        binStep: pairInfo.binStep,
-        activeId,
-        amountOutLeft,
-        fee,
-        protocolShare: pairInfo.staticFeeParameters.protocolShare,
-        swapForY,
-        reserveX: activeBin.reserveX,
-        reserveY: activeBin.reserveY,
-      });
-
-      amountIn += amountInWithFees;
-      amountOutLeft -= amountOutOfBin;
-      totalProtocolFee += protocolFeeAmount;
-
-      if (!amountOutLeft) break;
-      activeId = this.moveActiveId(activeId, swapForY);
+      return amountIn;
+    } catch (error) {
+      throw error;
     }
-
-    return amountIn;
   }
 
   /**
@@ -246,10 +256,12 @@ export class LBSwapService {
       let totalProtocolFee = BigInt(0);
       let amountInLeft = amount;
       let activeId = pairInfo.activeId;
+      let totalBinUsed = 0;
 
       await this.updateReferences(pairInfo, activeId);
 
       while (amountInLeft > BigInt(0)) {
+        totalBinUsed++;
         this.updateVolatilityAccumulator(pairInfo, activeId);
 
         const activeBin = bins.getBinMut(activeId);
@@ -281,10 +293,13 @@ export class LBSwapService {
         if (!amountInLeft) break;
         activeId = this.moveActiveId(activeId, swapForY);
       }
+      if (totalBinUsed >= 30) {
+        throw "Swap crosses too many bins – quote aborted.";
+      }
 
       return amountOut;
     } catch (error) {
-      throw new Error(error as string);
+      throw error;
     }
   }
 
