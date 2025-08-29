@@ -5,7 +5,7 @@ import {
   Transaction,
   TransactionMessage,
 } from "@solana/web3.js";
-import { ILiquidityBookConfig, PoolMetadata } from "../types";
+import { ILiquidityBookConfig, MODE, PoolMetadata } from "../types";
 import {
   BIN_ARRAY_INDEX,
   BIN_ARRAY_SIZE,
@@ -56,10 +56,16 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
   }
 
   get lbConfig() {
+    if (this.mode === MODE.DEVNET) {
+      return new PublicKey("DK6EoxvbMxJTkgcTAYfUnKyDZUTKb6wwPUFfpWsgeiR9");
+    }
     return new PublicKey("BqPmjcPbAwE7mH23BY8q8VUEN4LSjhLUv41W87GsXVn8");
   }
 
   get hooksConfig() {
+    if (this.mode === MODE.DEVNET) {
+      return new PublicKey("2uAiHvYkmmvQkNh5tYtdR9sAUDwmbL7PjZcwAEYDqyES");
+    }
     return new PublicKey("DgW5ARD9sU3W6SJqtyJSH3QPivxWt7EMvjER9hfFKWXF");
   }
 
@@ -934,14 +940,13 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     if (!infoUserVaultX) {
-      const userVaultXInstructions =
-        spl.createAssociatedTokenAccountInstruction(
-          payer,
-          associatedUserVaultX,
-          payer,
-          tokenMintX,
-          tokenProgramX
-        );
+      const userVaultXInstructions = spl.createAssociatedTokenAccountInstruction(
+        payer,
+        associatedUserVaultX,
+        payer,
+        tokenMintX,
+        tokenProgramX
+      );
 
       tx.add(userVaultXInstructions);
     }
@@ -951,35 +956,34 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     if (!infoUserVaultY) {
-      const userVaultYInstructions =
-        spl.createAssociatedTokenAccountInstruction(
-          payer,
-          associatedUserVaultY,
-          payer,
-          tokenMintY,
-          tokenProgramY
-        );
+      const userVaultYInstructions = spl.createAssociatedTokenAccountInstruction(
+        payer,
+        associatedUserVaultY,
+        payer,
+        tokenMintY,
+        tokenProgramY
+      );
 
       tx.add(userVaultYInstructions);
     }
 
-    const hookBinArrayLower = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode("bin_array")),
-        hook.toBuffer(),
-        new BN(BIN_ARRAY_INDEX).toArrayLike(Buffer, "le", 4),
-      ],
-      this.hooksProgram.programId
-    )[0];
+    // const hookBinArrayLower = PublicKey.findProgramAddressSync(
+    //   [
+    //     Buffer.from(utils.bytes.utf8.encode("bin_array")),
+    //     hook.toBuffer(),
+    //     new BN(BIN_ARRAY_INDEX).toArrayLike(Buffer, "le", 4),
+    //   ],
+    //   this.hooksProgram.programId
+    // )[0];
 
-    const hookBinArrayUpper = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode("bin_array")),
-        hook.toBuffer(),
-        new BN(BIN_ARRAY_INDEX + 1).toArrayLike(Buffer, "le", 4),
-      ],
-      this.hooksProgram.programId
-    )[0];
+    // const hookBinArrayUpper = PublicKey.findProgramAddressSync(
+    //   [
+    //     Buffer.from(utils.bytes.utf8.encode("bin_array")),
+    //     hook.toBuffer(),
+    //     new BN(BIN_ARRAY_INDEX + 1).toArrayLike(Buffer, "le", 4),
+    //   ],
+    //   this.hooksProgram.programId
+    // )[0];
 
     if (
       tokenMintY.toString() === WRAP_SOL_ADDRESS ||
@@ -1034,13 +1038,13 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         tokenProgramX,
         tokenProgramY,
         user: payer,
+        hook: hook || null,
+        hooksProgram: this.hooksProgram.programId
       })
       .remainingAccounts([
         { pubkey: pair, isWritable: false, isSigner: false },
         { pubkey: binArrayLower, isWritable: false, isSigner: false },
         { pubkey: binArrayUpper, isWritable: false, isSigner: false },
-        { pubkey: hookBinArrayLower, isWritable: true, isSigner: false },
-        { pubkey: hookBinArrayUpper, isWritable: true, isSigner: false },
       ])
       .instruction();
 
