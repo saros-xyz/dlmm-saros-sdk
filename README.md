@@ -16,7 +16,7 @@ npm install @saros-finance/dlmm-sdk
 
 # Usage
 
-```
+```javascript
 import {
   BIN_STEP_CONFIGS,
   LiquidityBookServices,
@@ -69,6 +69,30 @@ const POOL_PARAMS = {
 	quoteToken: USDC_TOKEN,
 	slippage: 0.5,
 	hook: "", // config for reward, adding later
+};
+
+const WSOL_TOKEN_DEVNET = {
+  id: "wsol",
+	mintAddress: "So11111111111111111111111111111111111111112",
+	symbol: "WSOL",
+	name: "WSOL",
+	decimals: 9,
+}
+
+const SAROS_TOKEN_DEVNET = {
+  id: "saros",
+	mintAddress: "mntCAkd76nKSVTYxwu8qwQnhPcEE9JyEbgW6eEpwr1N",
+	symbol: "DEXV3-SAROS",
+	name: "Dex V3 Saros",
+	decimals: 6,
+}
+
+const POOL_PARAMS_DEVNET = {
+  address: "C8xWcMpzqetpxwLj7tJfSQ6J8Juh1wHFdT5KrkwdYPQB",
+  baseToken: SAROS_TOKEN_DEVNET,
+  quoteToken: SOL_TOKEN_DEVNET,
+  slippage: 0.5,
+  hook: "", // config for reward, adding later
 };
 
 const onSwap = async () => {
