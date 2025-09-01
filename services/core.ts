@@ -329,7 +329,6 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       relativeBinIdLeft,
       relativeBinIdRight,
       pair,
-      binArrayIndex,
       positionMint,
       transaction,
     } = params;
@@ -361,7 +360,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     await this.getBinArray({
-      binArrayIndex,
+      binArrayIndex: binArrayIndexLower,
       pair,
       payer,
     });
@@ -370,7 +369,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
     if (binArrayIndexLower !== binArrayIndexUpper) {
     await this.getBinArray({
-      binArrayIndex: binArrayIndex + 1,
+      binArrayIndex: binArrayIndexUpper + 1,
       pair,
       payer,
     });
