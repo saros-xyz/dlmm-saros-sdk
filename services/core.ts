@@ -369,7 +369,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
     if (binArrayIndexLower !== binArrayIndexUpper) {
     await this.getBinArray({
-      binArrayIndex: binArrayIndexUpper + 1,
+      binArrayIndex: binArrayIndexUpper,
       pair,
       payer,
     });
