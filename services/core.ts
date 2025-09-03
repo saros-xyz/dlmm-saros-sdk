@@ -40,6 +40,7 @@ import {
   ReserveParams,
   SwapParams,
   UserPositionsParams,
+  CheckBinArrayParams
 } from "../types/services";
 import { LBSwapService } from "./swap";
 import bigDecimal from "js-big-decimal";
@@ -48,6 +49,8 @@ import { mulDiv, mulShr, shlDiv } from "../utils/math";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import { getGasPrice } from "../utils";
+import { getMint } from "@solana/spl-token";
+
 
 export class LiquidityBookServices extends LiquidityBookAbstract {
   bufferGas?: number;
@@ -1459,5 +1462,41 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         )?.address || "";
     }
     return pairAddress;
+  }
+
+  public async checkBinArray(params:CheckBinArrayParams){
+    const {binArrayIndex,pair} = params;
+    const binArray = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from(utils.bytes.utf8.encode("bin_array")),
+        pair.toBuffer(),
+        new BN(binArrayIndex).toArrayLike(Buffer, "le", 4),
+      ],
+      this.lbProgram.programId
+    )[0];
+
+      const binArrayInfo = await this.connection.getAccountInfo(binArray);
+
+      if(!binArrayInfo) return false;
+
+      return true;
+
+  }
+
+  public async getCurrentPrice(poolAddress:PublicKey){
+
+    const pairInfo = await this.getPairAccount(poolAddress);
+    const { binStep, tokenMintX, tokenMintY,activeId } = pairInfo;
+  
+    const TokenXprogramId = await getProgram(poolAddress, this.connection);
+    const TokenYprogramId = await getProgram(poolAddress, this.connection);
+  
+    const tokenXdecimal = (await getMint(this.connection, tokenMintX, "confirmed", TokenXprogramId)).decimals;
+    const tokenYdecimal = (await getMint(this.connection, tokenMintY, "confirmed", TokenYprogramId)).decimals;
+    
+    const currentPrice = getPriceFromId(binStep,activeId,tokenXdecimal,tokenYdecimal);
+
+    return currentPrice;
+
   }
 }
