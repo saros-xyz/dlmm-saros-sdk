@@ -12,6 +12,54 @@ const lbServices = new LiquidityBookServices({
 });
 ```
 
+## 📋 API Overview
+
+### Method Categories
+
+```mermaid
+graph TD
+    A[DLMM SDK API] --> B[Core Trading]
+    A --> C[Liquidity Management]
+    A --> D[Analytics & Data]
+    A --> E[Utility Functions]
+
+    B --> F[swap()<br/>Execute trades]
+    B --> G[getQuote()<br/>Price quotes]
+
+    C --> H[addLiquidity()<br/>Deposit tokens]
+    C --> I[removeLiquidity()<br/>Withdraw tokens]
+    C --> J[claimFees()<br/>Collect rewards]
+
+    D --> K[getPairAccount()<br/>Pool info]
+    D --> L[getUserPositions()<br/>LP positions]
+    D --> M[getBinArrays()<br/>Bin data]
+
+    E --> N[calculateBinPrice()<br/>Price math]
+    E --> O[getTokenBalance()<br/>Balance checks]
+```
+
+### Typical Usage Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant SDK as DLMM SDK
+    participant P as Pool
+
+    U->>SDK: Initialize SDK
+    SDK->>P: Connect to network
+
+    U->>SDK: getQuote(params)
+    SDK->>P: Calculate swap path
+    P-->>SDK: Return quote
+    SDK-->>U: Quote with fees & slippage
+
+    U->>SDK: swap(params)
+    SDK->>P: Execute transaction
+    P-->>SDK: Transaction result
+    SDK-->>U: Success confirmation
+```
+
 ## 📋 Table of Contents
 
 | Category | Description |

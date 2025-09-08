@@ -6,6 +6,58 @@
 
 **DLMM (Dynamic Liquidity Market Maker)** is an advanced AMM protocol that concentrates liquidity in specific price ranges, providing **1000x better efficiency** than traditional AMMs.
 
+### Traditional AMM vs DLMM Architecture
+
+```mermaid
+graph TD
+    subgraph "Traditional AMM"
+        A1[Single Price Curve] --> B1[All liquidity spread from $0 to ∞]
+        B1 --> C1[Capital Efficiency: 1%]
+        C1 --> D1[High slippage for large trades]
+    end
+
+    subgraph "DLMM"
+        A2[Multiple Price Bins] --> B2[Liquidity concentrated around current price]
+        B2 --> C2[Capital Efficiency: 80%]
+        C2 --> D2[Low slippage, better execution]
+    end
+
+    E[Result] --> F[DLMM: 1000x better efficiency]
+```
+
+### DLMM Pool Structure
+
+```mermaid
+graph TB
+    subgraph "DLMM Pool Architecture"
+        A[Pool Configuration]
+        B[Bin Array 0<br/>Bins 0-255]
+        C[Bin Array 1<br/>Bins 256-511]
+        D[Bin Array N<br/>Bins N*256-(N+1)*256]
+
+        A --> B
+        A --> C
+        A --> D
+
+        subgraph "Bin Array 0 Details"
+            B1[Bin 0: $0.95-$1.05]
+            B2[Bin 1: $1.05-$1.15]
+            B3[Bin 2: $1.15-$1.25]
+            B4[Bin 255: Higher prices]
+        end
+    end
+
+    E[Active Bin<br/>Current Price]
+    F[Liquidity Positions]
+    G[Fee Parameters]
+
+    E --> A
+    F --> B
+    F --> C
+    F --> D
+    G --> A
+```
+
 ### The Problem with Traditional AMMs
 
 Traditional AMMs spread liquidity across all prices from $0 to infinity:
@@ -48,28 +100,34 @@ Capital Utilization: ~80%
 
 **Bins** are discrete price buckets where liquidity providers deposit their tokens. Each bin represents a specific price range.
 
-```typescript
-interface Bin {
-  binId: number;           // Unique identifier (e.g., 100)
-  price: number;           // Price at this bin (e.g., 1.50)
-  liquidity: bigint;       // Amount of liquidity in this bin
-  tokenXAmount: bigint;    // Amount of token X
-  tokenYAmount: bigint;    // Amount of token Y
-  fee: number;            // Fee rate for this bin
-}
+```mermaid
+graph LR
+    subgraph "Bin Structure"
+        A[Bin ID: 100] --> B[Price Range: $1.45-$1.55]
+        B --> C[Liquidity: 10,000 tokens]
+        C --> D[Token X: 5,000 X]
+        D --> E[Token Y: 7,500 Y]
+    end
+
+    subgraph "Bin Relationships"
+        F[Bin 99<br/>$1.35-$1.45] --> A
+        A --> G[Bin 101<br/>$1.55-$1.65]
+    end
 ```
 
 ### Bin Step = Price Precision
 
 **Bin Step** determines the price granularity between bins:
 
-```typescript
-const BIN_STEPS = [
-  { step: 1,   precision: "0.01%", fee: "0.001%" },  // Very precise, low fees
-  { step: 10,  precision: "0.1%",  fee: "0.01%"  },  // Balanced precision/fees
-  { step: 100, precision: "1%",    fee: "0.1%"   },  // Wide range, higher fees
-  { step: 1000, precision: "10%",  fee: "1%"     }   // Very wide, highest fees
-];
+```mermaid
+graph TD
+    A[Bin Step Selection] --> B[1 bps<br/>0.01% precision<br/>Very precise<br/>Low fees]
+    A --> C[10 bps<br/>0.1% precision<br/>Balanced<br/>Medium fees]
+    A --> D[100 bps<br/>1% precision<br/>Wide range<br/>Higher fees]
+
+    B --> E[Best for: Stable pairs<br/>USDC/USDT]
+    C --> F[Best for: Normal pairs<br/>SOL/USDC]
+    D --> G[Best for: Volatile pairs<br/>MEME/SOL]
 ```
 
 **How it works:**
@@ -87,11 +145,81 @@ Current Price: $1.45 (Bin 100)
 Active Range: Bins 96-104 (concentrated liquidity)
 ```
 
+### Active Bin Dynamics
+
+```mermaid
+stateDiagram-v2
+    [*] --> ActiveBin100: Price at $1.45
+    ActiveBin100 --> ActiveBin101: Price increases to $1.55
+    ActiveBin101 --> ActiveBin102: Price increases to $1.65
+    ActiveBin102 --> ActiveBin101: Price decreases to $1.55
+    ActiveBin101 --> ActiveBin100: Price decreases to $1.45
+
+    note right of ActiveBin100
+        Current price: $1.45
+        Range: $1.35-$1.55
+        Liquidity: High concentration
+    end note
+
+    note right of ActiveBin101
+        Current price: $1.55
+        Range: $1.45-$1.65
+        Automatic bin transition
+    end note
+```
+
 ## 💰 Fee Structure & Economics
 
 ### Dynamic Fee System
 
 Fees adjust based on **volatility** and **liquidity concentration**:
+
+```mermaid
+graph TD
+    A[Trade Executed] --> B{Volatility Level?}
+    B -->|Low 0-1%| C[Base Fee: 0.01%]
+    B -->|Medium 1-5%| D[Base Fee: 0.05%]
+    B -->|High 5%+| E[Base Fee: 0.2%]
+
+    F[Liquidity Concentration] --> G{Concentration?}
+    G -->|High| H[Fee Multiplier: 0.8x]
+    G -->|Medium| I[Fee Multiplier: 1.0x]
+    G -->|Low| J[Fee Multiplier: 1.2x]
+
+    K[Final Fee] --> L[Base Fee × Multiplier]
+    C --> L
+    D --> L
+    E --> L
+    H --> L
+    I --> L
+    J --> L
+```
+
+### Fee Distribution Model
+
+```mermaid
+pie title Fee Distribution (0.3% total fee)
+    "Liquidity Providers" : 80
+    "Protocol Treasury" : 15
+    "Bin Rebalancing" : 5
+```
+
+### Fee Collection Flow
+
+```mermaid
+graph LR
+    A[Trade Executed] --> B[Fee Collected: 0.3%]
+    B --> C{Protocol Share: 15%}
+    B --> D{LP Share: 80%}
+    B --> E{Bin Share: 5%}
+
+    C --> F[Protocol Treasury<br/>Development & Operations]
+    D --> G[Position Rewards<br/>Claimable by LPs]
+    E --> H[Bin Rebalancing Pool<br/>Automatic redistribution]
+
+    G --> I[Claimable via SDK]
+    H --> J[Maintains efficient distribution]
+```
 
 | Volatility Level | Fee Rate | Best For |
 |------------------|----------|----------|

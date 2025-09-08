@@ -1,6 +1,40 @@
 # 💡 Code Examples
 
-**Copy-paste ready** examples for common Saros DLMM use cases.
+**Copy-paste ready** examples for common Saros DLMM use cases. Each example includes working TypeScript code you can use immediately.
+
+## 📋 Example Categories
+
+### Learning Path
+
+```mermaid
+graph LR
+    A[Start Here] --> B[Basic Swap<br/>Simple token exchange]
+    B --> C[Liquidity Management<br/>Add/remove positions]
+    C --> D[Position Tracking<br/>Monitor your LPs]
+    D --> E[Pool Analytics<br/>Market analysis]
+    E --> F[Batch Operations<br/>Multiple transactions]
+    F --> G[Error Handling<br/>Production patterns]
+
+    B --> H[Advanced Features]
+    C --> H
+    D --> H
+    E --> H
+    F --> H
+    G --> H
+```
+
+### Example Complexity
+
+```mermaid
+quadrantChart
+    title Example Difficulty vs Usefulness
+    x-axis Beginner --> Advanced
+    y-axis Basic --> Complex
+    quadrant-1 Basic Swap
+    quadrant-2 Pool Analytics
+    quadrant-3 Batch Operations
+    quadrant-4 Error Handling
+```
 
 ## 🚀 Basic Swap
 

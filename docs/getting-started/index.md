@@ -4,13 +4,46 @@ Welcome to the Saros DLMM SDK! This comprehensive guide will get you up and runn
 
 ## 📋 Prerequisites
 
-Before you begin, ensure you have:
-- **Node.js**: v16.0.0 or higher
-- **npm/yarn/pnpm**: Latest version
-- **TypeScript**: v4.5.0 or higher (recommended)
-- **Solana Wallet**: With some SOL for transaction fees
+### System Requirements
+
+```mermaid
+graph TD
+    A[Your Development Environment] --> B[Node.js ≥16.0.0]
+    A --> C[TypeScript ≥4.5.0]
+    A --> D[Package Manager<br/>npm/yarn/pnpm]
+    A --> E[Solana Wallet<br/>with SOL]
+
+    B --> F[✅ Ready to Code]
+    C --> F
+    D --> F
+    E --> F
+```
+
+### Quick Setup Checklist
+
+- ✅ **Node.js 16+** installed
+- ✅ **TypeScript** configured
+- ✅ **Package manager** ready
+- ✅ **Solana wallet** funded
 
 ## ⚡ Quick Installation
+
+### Choose Your Package Manager
+
+```mermaid
+graph TD
+    A[Select Package Manager] --> B[npm<br/>Most popular]
+    A --> C[pnpm<br/>Fast & efficient]
+    A --> D[yarn<br/>Reliable choice]
+
+    B --> E[npm install @saros-finance/dlmm-sdk]
+    C --> F[pnpm add @saros-finance/dlmm-sdk]
+    D --> G[yarn add @saros-finance/dlmm-sdk]
+
+    E --> H[SDK Installed ✅]
+    F --> H
+    G --> H
+```
 
 ```bash
 # Using npm
@@ -19,11 +52,25 @@ npm install @saros-finance/dlmm-sdk
 # Using yarn
 yarn add @saros-finance/dlmm-sdk
 
-# Using pnpm
+# Using pnpm (recommended for speed)
 pnpm add @saros-finance/dlmm-sdk
 ```
 
 ## 🔧 SDK Initialization
+
+### Network Selection Flow
+
+```mermaid
+graph TD
+    A[Choose Environment] --> B{Development Stage?}
+    B -->|Production| C[mainnet-beta<br/>Real trading]
+    B -->|Testing| D[devnet<br/>Test with real tokens]
+    B -->|Development| E[testnet<br/>Local testing]
+
+    C --> F[Initialize SDK]
+    D --> F
+    E --> F
+```
 
 ### Basic Setup
 

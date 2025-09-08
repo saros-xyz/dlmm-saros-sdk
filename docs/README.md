@@ -10,6 +10,60 @@
 
 The Saros DLMM SDK provides a complete, production-ready interface for building DeFi applications that interact with concentrated liquidity pools on Solana. Built with TypeScript, it offers type safety, comprehensive error handling, and seamless integration with the Solana ecosystem.
 
+## 🏗️ Architecture Overview
+
+### DLMM Ecosystem
+
+```mermaid
+graph TB
+    subgraph "User Applications"
+        A[Web dApps] --> SDK
+        B[Mobile Apps] --> SDK
+        C[Trading Bots] --> SDK
+        D[DeFi Protocols] --> SDK
+    end
+
+    subgraph "Saros DLMM SDK"
+        SDK[SDK Core] --> E[LiquidityBookServices]
+        E --> F[Swap Operations]
+        E --> G[Liquidity Management]
+        E --> H[Position Tracking]
+        E --> I[Analytics & Quotes]
+    end
+
+    subgraph "Solana Network"
+        J[DLMM Program] --> K[Bin Arrays]
+        J --> L[Position Accounts]
+        J --> M[Pool State]
+        J --> N[Fee Distribution]
+    end
+
+    SDK --> J
+    J --> O[Token Program]
+    J --> P[Associated Token Program]
+    J --> Q[System Program]
+```
+
+### Development Workflow
+
+```mermaid
+graph LR
+    A[Install SDK] --> B[Initialize Services]
+    B --> C[Choose Operation]
+    C --> D{What to do?}
+    D -->|Swap Tokens| E[Get Quote]
+    D -->|Add Liquidity| F[Create Position]
+    D -->|Monitor| G[Track Analytics]
+
+    E --> H[Execute Swap]
+    F --> I[Manage Position]
+    G --> J[View Dashboard]
+
+    H --> K[Transaction Complete]
+    I --> K
+    J --> K
+```
+
 ## ✨ Key Features
 
 - 🚀 **High Performance**: Optimized for Solana's high-throughput architecture
@@ -112,6 +166,50 @@ async function addLiquidity() {
     console.error("❌ Add liquidity failed:", error.message);
   }
 }
+```
+
+## 🎯 Why Choose DLMM?
+
+### Performance Comparison
+
+```mermaid
+graph TD
+    A[AMM Comparison] --> B[Traditional AMM]
+    A --> C[DLMM]
+
+    B --> D[Capital Efficiency: 1%]
+    B --> E[Slippage: High]
+    B --> F[IL Loss: Significant]
+    B --> G[Flexibility: Limited]
+
+    C --> H[Capital Efficiency: 80%]
+    C --> I[Slippage: Low]
+    C --> J[IL Loss: Reduced]
+    C --> K[Flexibility: High]
+
+    L[Result] --> M[DLMM: 1000x Better]
+```
+
+### Developer Benefits
+
+```mermaid
+mindmap
+  root((DLMM SDK Benefits))
+    Developer Experience
+      TypeScript Support
+      Comprehensive Docs
+      Working Examples
+      Error Handling
+    Production Ready
+      Security Audited
+      Multiple Networks
+      Batch Operations
+      Performance Optimized
+    Integration Friendly
+      React Hooks
+      Express APIs
+      Wallet Adapters
+      Cross Platform
 ```
 
 ## 📋 Documentation Overview
