@@ -48,6 +48,297 @@ Capital Utilization: ~80%
 
 **Bins** are discrete price buckets where liquidity providers deposit their tokens. Each bin represents a specific price range.
 
+```mermaid
+graph TD
+    A[Price Range] --> B[Bin 1: $1.00 - $1.01]
+    A --> C[Bin 2: $1.01 - $1.02]
+    A --> D[Bin 3: $1.02 - $1.03]
+    A --> E[Bin 4: $1.03 - $1.04]
+    A --> F[Bin 5: $1.04 - $1.05]
+
+    B --> G[Liquidity Provider A]
+    C --> H[Liquidity Provider B]
+    D --> I[Liquidity Provider C]
+    E --> J[Liquidity Provider D]
+    F --> K[Liquidity Provider E]
+
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#f3e5f5
+    style D fill:#f3e5f5
+    style E fill:#f3e5f5
+    style F fill:#f3e5f5
+```
+
+### How Bins Work
+
+1. **Price Discovery**: Each bin represents a 0.1% price increment
+2. **Liquidity Concentration**: LPs choose specific bins to deposit liquidity
+3. **Dynamic Adjustment**: Bins automatically adjust as prices move
+4. **Fee Collection**: Fees are collected per bin and distributed to LPs
+
+### Bin Structure
+
+```typescript
+interface Bin {
+  binId: number;           // Unique bin identifier
+  price: number;           // Price at this bin
+  liquidity: bigint;       // Total liquidity in this bin
+  tokenXAmount: bigint;    // Amount of token X
+  tokenYAmount: bigint;    // Amount of token Y
+  feeAmount: bigint;       // Accumulated fees
+}
+```
+
+## 📊 Liquidity Distribution Visualization
+
+### Traditional AMM vs DLMM
+
+```mermaid
+graph LR
+    subgraph "Traditional AMM"
+        A1[Price: $0] --> A2[Liquidity: 1000]
+        A2 --> A3[Price: $1] --> A4[Liquidity: 1000]
+        A4 --> A5[Price: $2] --> A6[Liquidity: 1000]
+        A6 --> A7[Price: ∞] --> A8[Liquidity: 1000]
+    end
+
+    subgraph "DLMM (Concentrated)"
+        B1[Price: $1.45] --> B2[Liquidity: 0]
+        B2 --> B3[Price: $1.50] --> B4[Liquidity: 8000]
+        B4 --> B5[Price: $1.55] --> B6[Liquidity: 0]
+        B6 --> B7[Price: $2.00] --> B8[Liquidity: 0]
+    end
+
+    style A1 fill:#ffcccc
+    style A2 fill:#ffcccc
+    style A3 fill:#ffcccc
+    style A4 fill:#ffcccc
+    style A5 fill:#ffcccc
+    style A6 fill:#ffcccc
+    style A7 fill:#ffcccc
+    style A8 fill:#ffcccc
+
+    style B1 fill:#ccffcc
+    style B2 fill:#ccffcc
+    style B3 fill:#ccffcc
+    style B4 fill:#ccffcc
+    style B5 fill:#ccffcc
+    style B6 fill:#ccffcc
+    style B7 fill:#ccffcc
+    style B8 fill:#ccffcc
+```
+
+## 🔄 How Trading Works
+
+### Swap Process Flow
+
+```mermaid
+sequenceDiagram
+    participant Trader
+    participant SDK
+    participant Pool
+    participant Bin
+
+    Trader->>SDK: swap(params)
+    SDK->>Pool: getQuote()
+    Pool->>Bin: find optimal bins
+    Bin-->>Pool: return bin data
+    Pool-->>SDK: quote response
+    SDK->>Pool: execute swap
+    Pool->>Bin: update liquidity
+    Bin-->>Pool: confirm transaction
+    Pool-->>SDK: transaction signature
+    SDK-->>Trader: success confirmation
+```
+
+### Price Impact Calculation
+
+```typescript
+// Price impact is minimized due to concentrated liquidity
+function calculatePriceImpact(
+  tradeSize: number,
+  binLiquidity: number,
+  currentPrice: number
+): number {
+  const impact = (tradeSize / binLiquidity) * 100;
+  return Math.min(impact, 100); // Max 100% impact
+}
+```
+
+## 💰 Fee Structure
+
+### Fee Collection Mechanism
+
+```mermaid
+graph TD
+    A[Trade Executed] --> B[Fee Calculated]
+    B --> C[Fee Split]
+    C --> D[LP Rewards]
+    C --> E[Protocol Fees]
+
+    D --> F[Bin-specific Distribution]
+    E --> G[Treasury]
+
+    style A fill:#e8f5e8
+    style B fill:#e8f5e8
+    style C fill:#fff3e0
+    style D fill:#e8f5e8
+    style E fill:#ffebee
+    style F fill:#e8f5e8
+    style G fill:#ffebee
+```
+
+### Fee Tiers
+
+| Fee Tier | Description | Use Case |
+|----------|-------------|----------|
+| **0.01%** | Ultra Low | Stable pairs (USDC/USDT) |
+| **0.05%** | Low | Blue-chip tokens |
+| **0.30%** | Standard | Most token pairs |
+| **1.00%** | High | Volatile pairs |
+
+## 🏗️ Architecture Overview
+
+### DLMM System Architecture
+
+```mermaid
+graph TB
+    subgraph "User Layer"
+        A[Web App]
+        B[Mobile App]
+        C[Trading Bot]
+    end
+
+    subgraph "SDK Layer"
+        D[DLMM SDK]
+        E[TypeScript Library]
+        F[Smart Contracts]
+    end
+
+    subgraph "Blockchain Layer"
+        G[Solana Network]
+        H[Token Program]
+        I[System Program]
+    end
+
+    A --> D
+    B --> D
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    F --> H
+    F --> I
+
+    style A fill:#e3f2fd
+    style B fill:#e3f2fd
+    style C fill:#e3f2fd
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+    style F fill:#fff3e0
+    style G fill:#f3e5f5
+    style H fill:#f3e5f5
+    style I fill:#f3e5f5
+```
+
+## 📈 Key Metrics
+
+### Performance Comparison
+
+| Metric | Traditional AMM | DLMM | Improvement |
+|--------|-----------------|------|-------------|
+| **Capital Efficiency** | 1% | 80% | 80x better |
+| **Slippage (1k trade)** | 5% | 0.1% | 50x better |
+| **LP APY** | 5-15% | 50-200% | 10x higher |
+| **Gas Usage** | High | Medium | 30% reduction |
+
+### Risk Metrics
+
+```typescript
+interface RiskMetrics {
+  impermanentLoss: number;    // IL protection through concentration
+  slippageTolerance: number;  // Max acceptable slippage
+  liquidityDepth: number;     // Available liquidity at current price
+  priceVolatility: number;    // Price movement tolerance
+}
+```
+
+## 🎯 Best Practices
+
+### For Liquidity Providers
+
+1. **Choose Price Ranges Wisely**
+   - Place liquidity ±10% around current price
+   - Monitor and rebalance positions regularly
+   - Use multiple positions for diversification
+
+2. **Fee Optimization**
+   - Higher fee tiers for volatile pairs
+   - Lower fee tiers for stable pairs
+   - Consider gas costs vs. fee rewards
+
+3. **Risk Management**
+   - Set appropriate slippage tolerances
+   - Monitor impermanent loss
+   - Use stop-loss mechanisms
+
+### For Traders
+
+1. **Slippage Management**
+   - Use appropriate slippage settings (0.5-2%)
+   - Split large orders to minimize impact
+   - Monitor price impact before execution
+
+2. **Gas Optimization**
+   - Use priority fees for faster execution
+   - Batch multiple operations
+   - Choose optimal timing for transactions
+
+## 🔍 Advanced Concepts
+
+### Bin Activation
+
+```mermaid
+stateDiagram-v2
+    [*] --> Empty: No liquidity
+    Empty --> Active: Liquidity added
+    Active --> Empty: Liquidity removed
+
+    Active --> Swapping: Trade executed
+    Swapping --> Active: Trade completed
+
+    note right of Active
+        Active bins participate
+        in price discovery and
+        fee generation
+    end note
+```
+
+### Price Oracle Integration
+
+```typescript
+// DLMM provides accurate price feeds
+interface PriceOracle {
+  getPrice(tokenPair: string): Promise<number>;
+  getTwap(tokenPair: string, interval: number): Promise<number>;
+  getVolatility(tokenPair: string): Promise<number>;
+}
+```
+
+## 🚀 Getting Started
+
+Ready to dive deeper? Here's your next steps:
+
+1. **[📖 Installation Guide](../getting-started/index.md)** - Set up your development environment
+2. **[💡 Basic Examples](../examples/basic-swap.md)** - Try your first swap
+3. **[🛠️ Advanced Guides](../guides/index.md)** - Master complex operations
+4. **[📊 Analytics](../examples/pool-analytics.md)** - Monitor pool performance
+
+---
+
+**🎉 Congratulations!** You now understand the core concepts of DLMM. The bin system, concentrated liquidity, and advanced fee mechanisms give DLMM its superior performance compared to traditional AMMs.
+
 ```typescript
 interface Bin {
   binId: number;           // Unique identifier (e.g., 100)

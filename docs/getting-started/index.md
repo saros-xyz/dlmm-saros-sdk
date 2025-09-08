@@ -10,6 +10,19 @@ Before you begin, ensure you have:
 - **TypeScript**: v4.5.0 or higher (recommended)
 - **Solana Wallet**: With some SOL for transaction fees
 
+### System Requirements
+
+```bash
+# Check Node.js version
+node --version  # Should be 16.0.0 or higher
+
+# Check npm version
+npm --version   # Should be 7.0.0 or higher
+
+# Check TypeScript (if installed)
+tsc --version   # Should be 4.5.0 or higher
+```
+
 ## ⚡ Quick Installation
 
 ```bash
@@ -23,7 +36,31 @@ yarn add @saros-finance/dlmm-sdk
 pnpm add @saros-finance/dlmm-sdk
 ```
 
+### Installation Verification
+
+```typescript
+// Verify installation
+import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
+console.log("✅ SDK installed successfully!");
+```
+
 ## 🔧 SDK Initialization
+
+### Basic Setup Flow
+
+```mermaid
+graph TD
+    A[Install SDK] --> B[Import Classes]
+    B --> C[Configure Network]
+    C --> D[Initialize SDK]
+    D --> E[Ready to Use]
+
+    style A fill:#e8f5e8
+    style B fill:#e8f5e8
+    style C fill:#fff3e0
+    style D fill:#e8f5e8
+    style E fill:#4caf50
+```
 
 ### Basic Setup
 
@@ -48,6 +85,320 @@ const lbServicesDev = new LiquidityBookServices({
 ```typescript
 const lbServices = new LiquidityBookServices({
   cluster: "mainnet-beta",
+  rpcUrl: "https://api.mainnet-beta.solana.com", // Custom RPC endpoint
+  commitment: "confirmed", // Transaction commitment level
+  preflightCommitment: "confirmed", // Preflight commitment
+  confirmTransactionInitialTimeout: 60000, // 60 second timeout
+});
+```
+
+## 💱 Your First Token Swap
+
+### Swap Process Overview
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant SDK
+    participant Pool
+    participant Solana
+
+    User->>SDK: swap(params)
+    SDK->>Pool: Get quote
+    Pool-->>SDK: Return quote
+    SDK->>User: Show quote details
+    User->>SDK: Confirm swap
+    SDK->>Solana: Submit transaction
+    Solana-->>SDK: Transaction confirmed
+    SDK-->>User: Success!
+```
+
+### Complete Swap Example
+
+```typescript
+import { LiquidityBookServices, PublicKey } from "@saros-finance/dlmm-sdk";
+import { Keypair } from "@solana/web3.js";
+
+// Initialize SDK
+const lbServices = new LiquidityBookServices({
+  cluster: "mainnet-beta"
+});
+
+// Your wallet (replace with actual wallet)
+const wallet = Keypair.generate(); // Use your actual wallet in production
+
+async function performSwap() {
+  try {
+    // Popular pool: C98-USDC
+    const C98_USDC_POOL = new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD");
+
+    console.log("🔄 Getting quote...");
+
+    // Get quote first (recommended)
+    const quote = await lbServices.getQuote({
+      pair: C98_USDC_POOL,
+      amount: BigInt(1000000), // 1 C98 (6 decimals)
+      isExactInput: true,
+      swapForY: true, // C98 -> USDC
+      slippage: 0.5 // 0.5% max slippage
+    });
+
+    console.log("📊 Quote received:");
+    console.log(`   Expected output: ${quote.amountOut} USDC`);
+    console.log(`   Price impact: ${quote.priceImpact}%`);
+    console.log(`   Fee: ${quote.fee}%`);
+
+    // Execute the swap
+    console.log("🚀 Executing swap...");
+    const result = await lbServices.swap({
+      pair: C98_USDC_POOL,
+      amount: BigInt(1000000),
+      slippage: 0.5,
+      payer: wallet.publicKey
+    });
+
+    console.log("✅ Swap successful!");
+    console.log(`   Transaction: ${result.signature}`);
+    console.log(`   Explorer: https://solscan.io/tx/${result.signature}`);
+
+  } catch (error) {
+    console.error("❌ Swap failed:", error.message);
+  }
+}
+
+// Run the swap
+performSwap();
+```
+
+## 💧 Adding Liquidity
+
+### Liquidity Provision Flow
+
+```mermaid
+graph TD
+    A[Choose Pool] --> B[Select Price Range]
+    B --> C[Calculate Amounts]
+    C --> D[Approve Tokens]
+    D --> E[Submit Transaction]
+    E --> F[Confirm Position]
+    F --> G[Earn Fees]
+
+    style A fill:#e3f2fd
+    style B fill:#e3f2fd
+    style C fill:#fff3e0
+    style D fill:#fff3e0
+    style E fill:#ffebee
+    style F fill:#e8f5e8
+    style G fill:#4caf50
+```
+
+### Add Liquidity Example
+
+```typescript
+async function addLiquidity() {
+  try {
+    const C98_USDC_POOL = new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD");
+
+    console.log("💧 Adding liquidity...");
+
+    // Add liquidity to the pool
+    const result = await lbServices.addLiquidity({
+      pair: C98_USDC_POOL,
+      amountX: BigInt(10000000), // 10 C98
+      amountY: BigInt(10000000), // 10 USDC
+      binId: 100, // Target price bin (around current price)
+      slippage: 0.5,
+      payer: wallet.publicKey
+    });
+
+    console.log("✅ Liquidity added!");
+    console.log(`   Position: ${result.positionAddress}`);
+    console.log(`   Transaction: ${result.signature}`);
+
+  } catch (error) {
+    console.error("❌ Add liquidity failed:", error.message);
+  }
+}
+```
+
+## 📊 Monitoring Positions
+
+### Position Tracking
+
+```typescript
+async function monitorPosition() {
+  try {
+    const positionAddress = new PublicKey("YOUR_POSITION_ADDRESS");
+
+    // Get position details
+    const position = await lbServices.getPosition(positionAddress);
+
+    console.log("📊 Position Details:");
+    console.log(`   Token X: ${position.amountX} C98`);
+    console.log(`   Token Y: ${position.amountY} USDC`);
+    console.log(`   Fees Earned: ${position.feesEarned} tokens`);
+    console.log(`   APR: ${position.apr}%`);
+
+  } catch (error) {
+    console.error("❌ Failed to get position:", error.message);
+  }
+}
+```
+
+## 🛠️ Development Environment Setup
+
+### Project Structure
+
+```
+your-project/
+├── src/
+│   ├── config.ts          # SDK configuration
+│   ├── services/
+│   │   ├── swap.ts        # Swap operations
+│   │   ├── liquidity.ts   # Liquidity management
+│   │   └── analytics.ts   # Pool analytics
+│   └── utils/
+│       └── constants.ts   # Token addresses
+├── package.json
+└── tsconfig.json
+```
+
+### Configuration File
+
+```typescript
+// src/config.ts
+import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
+
+export const NETWORKS = {
+  MAINNET: "mainnet-beta",
+  DEVNET: "devnet",
+  TESTNET: "testnet"
+} as const;
+
+export function createSDK(network: keyof typeof NETWORKS = "MAINNET") {
+  return new LiquidityBookServices({
+    cluster: NETWORKS[network],
+    commitment: "confirmed",
+    confirmTransactionInitialTimeout: 60000
+  });
+}
+```
+
+### Constants File
+
+```typescript
+// src/utils/constants.ts
+import { PublicKey } from "@solana/web3.js";
+
+export const TOKENS = {
+  USDC: new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
+  C98: new PublicKey("C98A4nkJXhpVZNAZdHUA95RpTF3T4whtQubL3YobiUX9"),
+  WSOL: new PublicKey("So11111111111111111111111111111111111111112")
+} as const;
+
+export const POOLS = {
+  C98_USDC: new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD"),
+  // Add more pools as needed
+} as const;
+```
+
+## 🧪 Testing Your Setup
+
+### Basic Test Script
+
+```typescript
+// test-setup.ts
+import { createSDK } from "./src/config";
+
+async function testSetup() {
+  try {
+    console.log("🧪 Testing SDK setup...");
+
+    const sdk = createSDK("DEVNET");
+
+    // Test basic connectivity
+    const isConnected = await sdk.testConnection();
+    console.log(`✅ Connection: ${isConnected ? "Success" : "Failed"}`);
+
+    // Test pool data retrieval
+    const poolAddress = POOLS.C98_USDC;
+    const poolInfo = await sdk.getPairAccount(poolAddress);
+    console.log(`✅ Pool data: ${poolInfo ? "Retrieved" : "Failed"}`);
+
+    console.log("🎉 Setup test completed successfully!");
+
+  } catch (error) {
+    console.error("❌ Setup test failed:", error.message);
+  }
+}
+
+testSetup();
+```
+
+## 🚨 Common Issues & Solutions
+
+### Connection Issues
+
+```typescript
+// If you get connection errors, try different RPC endpoints
+const lbServices = new LiquidityBookServices({
+  cluster: "mainnet-beta",
+  rpcUrl: "https://solana-api.projectserum.com" // Alternative RPC
+});
+```
+
+### Insufficient Funds
+
+```typescript
+// Check wallet balance before operations
+const balance = await connection.getBalance(wallet.publicKey);
+console.log(`Wallet balance: ${balance / 1e9} SOL`);
+
+// Minimum required: 0.001 SOL for transactions
+if (balance < 1000000) {
+  throw new Error("Insufficient SOL for transaction fees");
+}
+```
+
+## 📚 Next Steps
+
+Now that you're set up, explore these resources:
+
+### 🎯 **Learn More**
+- **[Core Concepts](../core-concepts/index.md)** - Understand DLMM mechanics
+- **[API Reference](../api-reference/index.md)** - Complete method documentation
+- **[Code Examples](../examples/index.md)** - Working code samples
+
+### 💡 **Try These Examples**
+- **[Basic Swap](../examples/basic-swap.md)** - Simple token exchange
+- **[Liquidity Management](../examples/liquidity-management.md)** - Add/remove liquidity
+- **[Pool Analytics](../examples/pool-analytics.md)** - Monitor pool performance
+
+### 🛠️ **Advanced Topics**
+- **[Batch Operations](../examples/batch-operations.md)** - Multiple operations
+- **[Error Handling](../examples/error-handling.md)** - Robust error management
+- **[Position Tracking](../examples/position-tracking.md)** - Monitor your positions
+
+## 🎉 You're Ready!
+
+**Congratulations!** You've successfully set up the Saros DLMM SDK and performed your first operations. The SDK is now ready for:
+
+- ✅ **Token Swapping** - Exchange tokens with minimal slippage
+- ✅ **Liquidity Provision** - Earn fees by providing liquidity
+- ✅ **Position Management** - Monitor and adjust your positions
+- ✅ **Advanced Trading** - Implement complex trading strategies
+
+### 🚀 **Ready for Production?**
+When you're ready to deploy to production:
+1. Replace test wallets with real user wallets
+2. Use mainnet-beta network
+3. Implement proper error handling
+4. Add transaction monitoring
+5. Set up proper logging
+
+---
+
+**Happy building with Saros DLMM! 🚀**
   rpcUrl: "https://api.mainnet-beta.solana.com",
   commitment: "confirmed", // Transaction commitment level
   timeout: 30000, // Request timeout in milliseconds

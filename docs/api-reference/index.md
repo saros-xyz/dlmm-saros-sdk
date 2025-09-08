@@ -12,16 +12,626 @@ const lbServices = new LiquidityBookServices({
 });
 ```
 
+## 📋 API Architecture
+
+```mermaid
+graph TB
+    subgraph "Core SDK"
+        A[LiquidityBookServices]
+    end
+
+    subgraph "Trading Operations"
+        B[swap()]
+        C[getQuote()]
+        D[batchSwap()]
+    end
+
+    subgraph "Liquidity Operations"
+        E[addLiquidity()]
+        F[removeLiquidity()]
+        G[getPosition()]
+    end
+
+    subgraph "Analytics Operations"
+        H[getPairAccount()]
+        I[getPositions()]
+        J[getUserPositions()]
+    end
+
+    A --> B
+    A --> C
+    A --> D
+    A --> E
+    A --> F
+    A --> G
+    A --> H
+    A --> I
+    A --> J
+
+    style A fill:#e3f2fd
+    style B fill:#e8f5e8
+    style C fill:#e8f5e8
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+    style F fill:#ffebee
+    style G fill:#e8f5e8
+    style H fill:#fff3e0
+    style I fill:#fff3e0
+    style J fill:#fff3e0
+```
+
 ## 📋 Table of Contents
 
-| Category | Description |
-|----------|-------------|
-| **[🔧 Core Methods](#-core-methods)** | Essential trading and liquidity operations |
-| **[💰 Liquidity Methods](#-liquidity-methods)** | Position management and liquidity provision |
-| **[📊 Analytics Methods](#-analytics-methods)** | Pool data, quotes, and market analysis |
-| **[⚙️ Configuration](#️-configuration)** | SDK setup and network configuration |
-| **[📝 Types](#-types)** | TypeScript interfaces and enums |
-| **[🛠️ Utilities](#️-utilities)** | Helper functions and utilities |
+| Category | Description | Key Methods |
+|----------|-------------|-------------|
+| **[🔧 Core Methods](#-core-methods)** | Essential trading and liquidity operations | `swap`, `addLiquidity`, `getQuote` |
+| **[💰 Liquidity Methods](#-liquidity-methods)** | Position management and liquidity provision | `removeLiquidity`, `getPosition`, `claimFees` |
+| **[📊 Analytics Methods](#-analytics-methods)** | Pool data, quotes, and market analysis | `getPairAccount`, `getPositions`, `getUserPositions` |
+| **[⚙️ Configuration](#️-configuration)** | SDK setup and network configuration | Constructor options, network settings |
+| **[📝 Types](#-types)** | TypeScript interfaces and enums | `SwapParams`, `LiquidityParams`, `Position` |
+| **[🛠️ Utilities](#️-utilities)** | Helper functions and utilities | Math helpers, address utilities |
+
+---
+
+## 🔧 Core Methods
+
+### `swap(params: SwapParams): Promise<SwapResult>`
+
+Execute a token swap through DLMM pools with optimal price execution.
+
+#### Parameters
+
+```typescript
+interface SwapParams {
+  pair: PublicKey;              // Pool address to swap in
+  amount: bigint;               // Amount to swap (in smallest units)
+  slippage: number;             // Max slippage tolerance (0.5 = 0.5%)
+  payer: PublicKey;             // Transaction payer public key
+  isExactInput?: boolean;       // true for exact input, false for exact output (default: true)
+  swapForY?: boolean;           // true for X→Y swap, false for Y→X swap
+  tokenBase?: PublicKey;        // Base token mint address (optional)
+  tokenQuote?: PublicKey;       // Quote token mint address (optional)
+  tokenBaseDecimal?: number;    // Base token decimals (optional)
+  tokenQuoteDecimal?: number;   // Quote token decimals (optional)
+  priorityFee?: number;         // Priority fee in microlamports (optional)
+  commitment?: Commitment;      // Transaction commitment level (default: "confirmed")
+}
+```
+
+#### Returns
+
+```typescript
+interface SwapResult {
+  signature: string;            // Transaction signature
+  success: boolean;             // Operation success status
+  amountIn: bigint;             // Actual amount swapped in
+  amountOut: bigint;            // Actual amount received
+  fee: number;                  // Fee paid (in basis points)
+  priceImpact: number;          // Price impact percentage
+  executionTime: number;        // Execution time in milliseconds
+}
+```
+
+#### Example
+
+```typescript
+const result = await lbServices.swap({
+  pair: new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD"),
+  amount: BigInt(1000000), // 1 C98
+  slippage: 0.5, // 0.5% max slippage
+  payer: wallet.publicKey
+});
+
+console.log(`✅ Swap successful: ${result.signature}`);
+console.log(`📊 Received: ${result.amountOut} tokens`);
+```
+
+#### Error Handling
+
+```typescript
+try {
+  const result = await lbServices.swap(swapParams);
+} catch (error) {
+  if (error.code === 'INSUFFICIENT_LIQUIDITY') {
+    console.error('Not enough liquidity in pool');
+  } else if (error.code === 'SLIPPAGE_TOLERANCE_EXCEEDED') {
+    console.error('Price slippage too high');
+  } else {
+    console.error('Swap failed:', error.message);
+  }
+}
+```
+
+### `getQuote(params: QuoteParams): Promise<QuoteResult>`
+
+Get a quote for a potential swap without executing the transaction.
+
+#### Parameters
+
+```typescript
+interface QuoteParams {
+  pair: PublicKey;              // Pool address
+  amount: bigint;               // Amount to quote (in smallest units)
+  isExactInput: boolean;        // true for exact input quote, false for exact output
+  swapForY: boolean;            // true for X→Y quote, false for Y→X
+  tokenBase?: PublicKey;        // Base token mint (optional)
+  tokenQuote?: PublicKey;       // Quote token mint (optional)
+  tokenBaseDecimal?: number;    // Base token decimals (optional)
+  tokenQuoteDecimal?: number;   // Quote token decimals (optional)
+  slippage?: number;            // Slippage tolerance for quote (optional)
+}
+```
+
+#### Returns
+
+```typescript
+interface QuoteResult {
+  amountIn: bigint;             // Expected input amount
+  amountOut: bigint;            // Expected output amount
+  fee: number;                  // Estimated fee (basis points)
+  priceImpact: number;          // Estimated price impact (%)
+  minimumOut: bigint;           // Minimum output with slippage
+  path: PublicKey[];            // Swap path (for multi-hop)
+  executionPrice: number;       // Execution price
+}
+```
+
+#### Example
+
+```typescript
+const quote = await lbServices.getQuote({
+  pair: C98_USDC_POOL,
+  amount: BigInt(1000000),
+  isExactInput: true,
+  swapForY: true,
+  slippage: 0.5
+});
+
+console.log(`Expected output: ${quote.amountOut} USDC`);
+console.log(`Price impact: ${quote.priceImpact}%`);
+console.log(`Minimum received: ${quote.minimumOut} USDC`);
+```
+
+---
+
+## 💰 Liquidity Methods
+
+### `addLiquidity(params: LiquidityParams): Promise<LiquidityResult>`
+
+Add liquidity to a DLMM pool and create a liquidity position.
+
+#### Parameters
+
+```typescript
+interface LiquidityParams {
+  pair: PublicKey;              // Pool address
+  amountX: bigint;              // Amount of token X to add
+  amountY: bigint;              // Amount of token Y to add
+  binId: number;                // Target bin ID for liquidity
+  slippage: number;             // Max slippage tolerance
+  payer: PublicKey;             // Transaction payer
+  positionOwner?: PublicKey;    // Position owner (default: payer)
+}
+```
+
+#### Returns
+
+```typescript
+interface LiquidityResult {
+  signature: string;            // Transaction signature
+  positionAddress: PublicKey;   // New position address
+  amountXAdded: bigint;         // Actual X amount added
+  amountYAdded: bigint;         // Actual Y amount added
+  binId: number;                // Bin where liquidity was added
+  liquidity: bigint;            // Liquidity tokens minted
+}
+```
+
+#### Example
+
+```typescript
+const result = await lbServices.addLiquidity({
+  pair: C98_USDC_POOL,
+  amountX: BigInt(10000000), // 10 C98
+  amountY: BigInt(10000000), // 10 USDC
+  binId: 100, // Target price bin
+  slippage: 0.5,
+  payer: wallet.publicKey
+});
+
+console.log(`✅ Liquidity added: ${result.signature}`);
+console.log(`📍 Position: ${result.positionAddress}`);
+```
+
+### `removeLiquidity(params: RemoveLiquidityParams): Promise<RemoveLiquidityResult>`
+
+Remove liquidity from a position and claim accumulated fees.
+
+#### Parameters
+
+```typescript
+interface RemoveLiquidityParams {
+  positionAddress: PublicKey;   // Position to remove from
+  amount: bigint;               // Amount of liquidity to remove
+  payer: PublicKey;             // Transaction payer
+  slippage?: number;            // Slippage tolerance (optional)
+}
+```
+
+#### Returns
+
+```typescript
+interface RemoveLiquidityResult {
+  signature: string;            // Transaction signature
+  amountXRemoved: bigint;       // X tokens received
+  amountYRemoved: bigint;       // Y tokens received
+  feesX: bigint;                // X token fees claimed
+  feesY: bigint;                // Y token fees claimed
+}
+```
+
+#### Example
+
+```typescript
+const result = await lbServices.removeLiquidity({
+  positionAddress: new PublicKey("POSITION_ADDRESS"),
+  amount: BigInt(5000000), // Remove 50% of position
+  payer: wallet.publicKey
+});
+
+console.log(`✅ Removed liquidity: ${result.signature}`);
+console.log(`💰 Fees claimed: ${result.feesX} X, ${result.feesY} Y`);
+```
+
+---
+
+## 📊 Analytics Methods
+
+### `getPairAccount(pairAddress: PublicKey): Promise<PairAccount>`
+
+Get detailed information about a DLMM pool.
+
+#### Parameters
+
+```typescript
+pairAddress: PublicKey  // Pool address to query
+```
+
+#### Returns
+
+```typescript
+interface PairAccount {
+  address: PublicKey;           // Pool address
+  tokenX: PublicKey;            // Token X mint
+  tokenY: PublicKey;            // Token Y mint
+  reserveX: bigint;             // Token X reserves
+  reserveY: bigint;             // Token Y reserves
+  activeBinId: number;          // Current active bin
+  binStep: number;              // Bin step size
+  totalLiquidity: bigint;       // Total liquidity in pool
+  price: number;                // Current price
+  fees: FeeInfo;                // Fee configuration
+  status: PoolStatus;           // Pool status
+}
+```
+
+#### Example
+
+```typescript
+const pool = await lbServices.getPairAccount(C98_USDC_POOL);
+
+console.log(`📊 Pool: ${pool.address}`);
+console.log(`💰 Reserves: ${pool.reserveX} X, ${pool.reserveY} Y`);
+console.log(`📈 Price: $${pool.price}`);
+console.log(`🎯 Active Bin: ${pool.activeBinId}`);
+```
+
+### `getPositions(userAddress: PublicKey): Promise<Position[]>`
+
+Get all liquidity positions for a user across all pools.
+
+#### Parameters
+
+```typescript
+userAddress: PublicKey  // User address to query positions for
+```
+
+#### Returns
+
+```typescript
+interface Position {
+  address: PublicKey;           // Position address
+  pair: PublicKey;              // Pool address
+  owner: PublicKey;             // Position owner
+  binId: number;                // Bin ID
+  amountX: bigint;              // Token X amount
+  amountY: bigint;              // Token Y amount
+  feesX: bigint;                // Accumulated X fees
+  feesY: bigint;                // Accumulated Y fees
+  apr: number;                  // Annual percentage rate
+  createdAt: Date;              // Position creation time
+  lastUpdated: Date;            // Last update time
+}
+```
+
+#### Example
+
+```typescript
+const positions = await lbServices.getPositions(wallet.publicKey);
+
+positions.forEach(pos => {
+  console.log(`📍 Position: ${pos.address}`);
+  console.log(`💰 Value: ${pos.amountX} X + ${pos.amountY} Y`);
+  console.log(`📈 APR: ${pos.apr}%`);
+  console.log(`💵 Fees: ${pos.feesX} X, ${pos.feesY} Y`);
+});
+```
+
+---
+
+## ⚙️ Configuration
+
+### SDK Constructor Options
+
+```typescript
+interface SDKConfig {
+  cluster: "mainnet-beta" | "devnet" | "testnet" | "localnet";
+  rpcUrl?: string;                    // Custom RPC endpoint
+  commitment?: Commitment;            // Default: "confirmed"
+  preflightCommitment?: Commitment;   // Default: "confirmed"
+  confirmTransactionInitialTimeout?: number; // Default: 60000ms
+  debug?: boolean;                    // Enable debug logging
+  logLevel?: "error" | "warn" | "info" | "debug";
+}
+```
+
+#### Example Configurations
+
+```typescript
+// Production configuration
+const prodSdk = new LiquidityBookServices({
+  cluster: "mainnet-beta",
+  commitment: "confirmed",
+  confirmTransactionInitialTimeout: 60000
+});
+
+// Development configuration
+const devSdk = new LiquidityBookServices({
+  cluster: "devnet",
+  debug: true,
+  logLevel: "debug"
+});
+
+// Custom RPC configuration
+const customSdk = new LiquidityBookServices({
+  cluster: "mainnet-beta",
+  rpcUrl: "https://your-custom-rpc.com",
+  commitment: "finalized"
+});
+```
+
+---
+
+## 📝 Type Definitions
+
+### Core Types
+
+```typescript
+// Commitment levels
+type Commitment = "processed" | "confirmed" | "finalized";
+
+// Pool status
+enum PoolStatus {
+  ACTIVE = "active",
+  PAUSED = "paused",
+  CLOSED = "closed"
+}
+
+// Fee information
+interface FeeInfo {
+  baseFee: number;      // Base fee in basis points
+  variableFee: number;  // Variable fee in basis points
+  protocolFee: number;  // Protocol fee share
+}
+```
+
+### Error Types
+
+```typescript
+class DLMMError extends Error {
+  code: string;
+  details?: any;
+
+  constructor(code: string, message: string, details?: any) {
+    super(message);
+    this.code = code;
+    this.details = details;
+  }
+}
+
+// Common error codes
+const ERROR_CODES = {
+  INSUFFICIENT_LIQUIDITY: "INSUFFICIENT_LIQUIDITY",
+  SLIPPAGE_TOLERANCE_EXCEEDED: "SLIPPAGE_TOLERANCE_EXCEEDED",
+  INSUFFICIENT_BALANCE: "INSUFFICIENT_BALANCE",
+  INVALID_PARAMETERS: "INVALID_PARAMETERS",
+  NETWORK_ERROR: "NETWORK_ERROR",
+  TIMEOUT: "TIMEOUT"
+} as const;
+```
+
+---
+
+## 🛠️ Utility Functions
+
+### Address Utilities
+
+```typescript
+// Validate pool address
+function isValidPoolAddress(address: PublicKey): boolean {
+  // Implementation to validate pool address format
+}
+
+// Get pool address from token pair
+function getPoolAddress(tokenA: PublicKey, tokenB: PublicKey): PublicKey {
+  // Implementation to derive pool address
+}
+
+// Validate token mint
+function isValidTokenMint(mint: PublicKey): boolean {
+  // Implementation to validate token mint
+}
+```
+
+### Math Utilities
+
+```typescript
+// Convert amount to smallest units
+function toSmallestUnit(amount: number, decimals: number): bigint {
+  return BigInt(Math.floor(amount * Math.pow(10, decimals)));
+}
+
+// Convert from smallest units
+function fromSmallestUnit(amount: bigint, decimals: number): number {
+  return Number(amount) / Math.pow(10, decimals);
+}
+
+// Calculate price impact
+function calculatePriceImpact(
+  amountIn: bigint,
+  amountOut: bigint,
+  reserveIn: bigint,
+  reserveOut: bigint
+): number {
+  // Implementation of price impact calculation
+}
+```
+
+### Network Utilities
+
+```typescript
+// Get network-specific constants
+function getNetworkConstants(network: string) {
+  const constants = {
+    "mainnet-beta": {
+      programId: new PublicKey("..."),
+      feeCollector: new PublicKey("...")
+    },
+    "devnet": {
+      programId: new PublicKey("..."),
+      feeCollector: new PublicKey("...")
+    }
+  };
+
+  return constants[network] || constants["mainnet-beta"];
+}
+```
+
+---
+
+## 🔄 Method Categories
+
+### Synchronous Methods
+- `getQuote()` - Fast quote calculation
+- `calculatePriceImpact()` - Price impact estimation
+- `validateParams()` - Parameter validation
+
+### Asynchronous Methods
+- `swap()` - Token swap execution
+- `addLiquidity()` - Liquidity provision
+- `removeLiquidity()` - Liquidity removal
+- `getPairAccount()` - Pool data retrieval
+- `getPositions()` - Position data retrieval
+
+### Batch Methods
+- `batchSwap()` - Multiple swaps in one transaction
+- `batchAddLiquidity()` - Multiple liquidity additions
+- `batchRemoveLiquidity()` - Multiple liquidity removals
+
+---
+
+## 📊 Performance Characteristics
+
+| Method | Avg Response Time | Rate Limit | Batch Support |
+|--------|------------------|------------|---------------|
+| `getQuote` | 50-200ms | 100 req/s | ✅ |
+| `swap` | 2-5s | 10 req/s | ✅ |
+| `addLiquidity` | 3-7s | 5 req/s | ✅ |
+| `getPairAccount` | 100-500ms | 50 req/s | ❌ |
+| `getPositions` | 200-1000ms | 20 req/s | ❌ |
+
+---
+
+## 🚨 Error Handling
+
+### Common Error Patterns
+
+```typescript
+// Network errors
+try {
+  await lbServices.swap(params);
+} catch (error) {
+  if (error.code === 'NETWORK_ERROR') {
+    // Retry with exponential backoff
+    await retryWithBackoff(() => lbServices.swap(params));
+  }
+}
+
+// Validation errors
+try {
+  await lbServices.addLiquidity(params);
+} catch (error) {
+  if (error.code === 'INVALID_PARAMETERS') {
+    console.error('Invalid parameters:', error.details);
+    // Fix parameters and retry
+  }
+}
+
+// Timeout errors
+try {
+  await lbServices.getPositions(userAddress);
+} catch (error) {
+  if (error.code === 'TIMEOUT') {
+    // Use cached data or reduce request scope
+    return getCachedPositions(userAddress);
+  }
+}
+```
+
+### Retry Logic
+
+```typescript
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+```
+
+---
+
+## 🔗 Related Documentation
+
+- **[Getting Started](../getting-started/index.md)** - SDK setup and basic usage
+- **[Core Concepts](../core-concepts/index.md)** - DLMM mechanics and theory
+- **[Code Examples](../examples/index.md)** - Working code samples
+- **[Troubleshooting](../troubleshooting/index.md)** - Common issues and solutions
+- **[Security Guide](../security/index.md)** - Best practices and audits
+
+---
+
+*For the most up-to-date API documentation, check the [GitHub repository](https://github.com/saros-xyz/dlmm-sdk).* 🚀
 
 ---
 
