@@ -17,25 +17,42 @@ const lbServices = new LiquidityBookServices({
 ```mermaid
 graph TB
     subgraph "Core SDK"
-        A[LiquidityBookServices]
+        A[LiquidityBookServices<br/>Main SDK Class]
+        style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
     end
 
     subgraph "Trading Operations"
-        B[swap()]
-        C[getQuote()]
-        D[batchSwap()]
+        B[swap()<br/>Token Exchange]
+        C[getQuote()<br/>Price Quotes]
+        D[batchSwap()<br/>Multi-Swap]
+        style B fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+        style C fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+        style D fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
     end
 
     subgraph "Liquidity Operations"
-        E[addLiquidity()]
-        F[removeLiquidity()]
-        G[getPosition()]
+        E[addLiquidity()<br/>Provide Liquidity]
+        F[removeLiquidity()<br/>Withdraw Liquidity]
+        G[claimFees()<br/>Harvest Fees]
+        style E fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+        style F fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+        style G fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     end
 
     subgraph "Analytics Operations"
-        H[getPairAccount()]
-        I[getPositions()]
-        J[getUserPositions()]
+        H[getPairAccount()<br/>Pool Data]
+        I[getPositions()<br/>Position List]
+        J[getUserPositions()<br/>User Positions]
+        style H fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+        style I fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+        style J fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    end
+
+    subgraph "Configuration"
+        K[SDK Config<br/>Network Settings]
+        L[Error Handling<br/>Retry Logic]
+        style K fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+        style L fill:#fce4ec,stroke:#c2185b,stroke-width:2px
     end
 
     A --> B
@@ -47,6 +64,15 @@ graph TB
     A --> H
     A --> I
     A --> J
+    K --> A
+    L --> A
+
+    classDef coreClass fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef tradingClass fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef liquidityClass fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef analyticsClass fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef configClass fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+```
 
     style A fill:#e3f2fd
     style B fill:#e8f5e8
