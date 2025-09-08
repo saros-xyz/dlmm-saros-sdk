@@ -10,9 +10,9 @@ export const getProgram = async (
   const owner = account.value?.owner.toBase58();
 
   const program =
-    owner === TOKEN_PROGRAM_ID.toBase58()
-      ? TOKEN_PROGRAM_ID
-      : TOKEN_2022_PROGRAM_ID;
+    owner === TOKEN_2022_PROGRAM_ID.toBase58()
+      ? TOKEN_2022_PROGRAM_ID
+      : TOKEN_PROGRAM_ID;
 
   return program;
 };
