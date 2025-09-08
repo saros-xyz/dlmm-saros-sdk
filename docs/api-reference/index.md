@@ -17,40 +17,40 @@ const lbServices = new LiquidityBookServices({
 ```mermaid
 graph TB
     subgraph "Core SDK"
-        A[LiquidityBookServices<br/>Main SDK Class]
+        A[LiquidityBookServices - Main SDK Class]
         style A fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
     end
 
     subgraph "Trading Operations"
-        B[swap()<br/>Token Exchange]
-        C[getQuote()<br/>Price Quotes]
-        D[batchSwap()<br/>Multi-Swap]
+        B[swap - Token Exchange]
+        C[getQuote - Price Quotes]
+        D[batchSwap - Multi-Swap]
         style B fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
         style C fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
         style D fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
     end
 
     subgraph "Liquidity Operations"
-        E[addLiquidity()<br/>Provide Liquidity]
-        F[removeLiquidity()<br/>Withdraw Liquidity]
-        G[claimFees()<br/>Harvest Fees]
+        E[addLiquidity - Provide Liquidity]
+        F[removeLiquidity - Withdraw Liquidity]
+        G[claimFees - Harvest Fees]
         style E fill:#fff3e0,stroke:#f57c00,stroke-width:2px
         style F fill:#fff3e0,stroke:#f57c00,stroke-width:2px
         style G fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     end
 
     subgraph "Analytics Operations"
-        H[getPairAccount()<br/>Pool Data]
-        I[getPositions()<br/>Position List]
-        J[getUserPositions()<br/>User Positions]
+        H[getPairAccount - Pool Data]
+        I[getPositions - Position List]
+        J[getUserPositions - User Positions]
         style H fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
         style I fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
         style J fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     end
 
     subgraph "Configuration"
-        K[SDK Config<br/>Network Settings]
-        L[Error Handling<br/>Retry Logic]
+        K[SDK Config - Network Settings]
+        L[Error Handling - Retry Logic]
         style K fill:#fce4ec,stroke:#c2185b,stroke-width:2px
         style L fill:#fce4ec,stroke:#c2185b,stroke-width:2px
     end

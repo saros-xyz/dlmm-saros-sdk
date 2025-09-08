@@ -131,85 +131,11 @@ async function addLiquidity() {
 
 ```mermaid
 graph TB
-    subgraph "🌐 User Interface Layer"
-        A1[Web dApp<br/>React/Vue/Angular]
-        A2[Mobile App<br/>React Native]
-        A3[CLI Tools<br/>Node.js Scripts]
-        A4[Trading Bots<br/>Automated Systems]
-        style A1 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-        style A2 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-        style A3 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-        style A4 fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    end
-
-    subgraph "🔧 Saros DLMM SDK"
-        B1[LiquidityBookServices<br/>Core SDK Class]
-        B2[Trading Engine<br/>swap(), getQuote()]
-        B3[Liquidity Manager<br/>addLiquidity(), removeLiquidity()]
-        B4[Analytics Engine<br/>getPairAccount(), getPositions()]
-        B5[Batch Processor<br/>batchSwap(), batchLiquidity()]
-        style B1 fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-        style B2 fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
-        style B3 fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
-        style B4 fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
-        style B5 fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
-    end
-
-    subgraph "⚡ Solana Network"
-        C1[DLMM Program<br/>Smart Contract]
-        C2[Token Programs<br/>SPL Tokens]
-        C3[RPC Nodes<br/>API Endpoints]
-        C4[Validators<br/>Network Consensus]
-        style C1 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-        style C2 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-        style C3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-        style C4 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    end
-
-    subgraph "💾 Data & Analytics"
-        D1[Pool Analytics<br/>Real-time Data]
-        D2[Position Tracking<br/>User Balances]
-        D3[Price Feeds<br/>Market Data]
-        D4[Transaction History<br/>Trade Records]
-        style D1 fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-        style D2 fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-        style D3 fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-        style D4 fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-    end
-
-    A1 --> B1
-    A2 --> B1
-    A3 --> B1
-    A4 --> B1
-
-    B1 --> B2
-    B1 --> B3
-    B1 --> B4
-    B1 --> B5
-
-    B2 --> C1
-    B3 --> C1
-    B4 --> C1
-    B5 --> C1
-
-    C1 --> C2
-    C1 --> C3
-    C1 --> C4
-
-    C3 --> D1
-    C3 --> D2
-    C3 --> D3
-    C3 --> D4
-
-    D1 --> B4
-    D2 --> B4
-    D3 --> B2
-    D4 --> B4
-
-    classDef uiClass fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    classDef sdkClass fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    classDef solanaClass fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef dataClass fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    A[User Applications] --> B[Saros DLMM SDK]
+    B --> C[Solana Network]
+    C --> D[DLMM Program]
+    D --> E[Token Swaps]
+    D --> F[Liquidity Management]
 ```
 
 ### 🔄 DLMM Trading Flow
@@ -240,7 +166,7 @@ sequenceDiagram
     RPC-->>SDK: Confirmation
     SDK-->>U: Success Response
 
-    Note over SDK,RPC: Real-time confirmation<br/>with timeout protection
+    Note over SDK,RPC: Real-time confirmation with timeout protection
 ```
 
 ## 🌐 Network Support
