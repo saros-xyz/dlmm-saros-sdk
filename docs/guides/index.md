@@ -437,33 +437,6 @@ app.get('/health/dlmm', async (req, res) => {
 
 *Built with ❤️ by the Saros team for the Solana ecosystem.* 🚀
 
-// Devnet
-const DEV_USDC_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
-const DEV_C98_MINT = new PublicKey("C98A4nkJXhpVZNAZdHUA95RpTF3T4whtQubL3YobiUX9");
-```
-
-### Error Handling Pattern
-
-```typescript
-async function safeExecute(operation: () => Promise<any>) {
-  try {
-    const result = await operation();
-    console.log("✅ Success:", result);
-    return result;
-  } catch (error) {
-    console.error("❌ Error:", error.message);
-
-    // Handle specific errors
-    if (error.message.includes("Slippage")) {
-      console.log("💡 Try increasing slippage tolerance");
-    } else if (error.message.includes("Insufficient")) {
-      console.log("💡 Check token balances");
-    }
-
-    throw error;
-  }
-}
-```
 
 ## Guide Index
 
