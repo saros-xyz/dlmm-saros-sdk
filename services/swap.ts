@@ -103,7 +103,7 @@ export class LBSwapService {
   public async calculateInOutAmount(params: GetTokenOutputParams) {
     const { amount, swapForY, pair, isExactInput } = params;
     try {
-       //@ts-ignore
+      //@ts-ignore
       const pairInfo: Pair = await this.lbProgram.account.pair.fetch(pair);
       if (!pairInfo) throw new Error("Pair not found");
 
@@ -125,7 +125,7 @@ export class LBSwapService {
       // Fetch bin arrays in batch, fallback to empty if not found
       const binArrays: BinArray[] = await Promise.all(
         binArrayAddresses.map((address, i) =>
-           //@ts-ignore
+          //@ts-ignore
           this.lbProgram.account.binArray.fetch(address).catch((error: any) => {
             return { index: binArrayIndexes[i], bins: [] } as BinArray;
           })
@@ -140,7 +140,7 @@ export class LBSwapService {
       );
       const totalSupply = binRange
         .getAllBins()
-        .reduce((acc, cur) => acc.add(cur.totalSupply), new BN(0));
+        .reduce((acc, cur) => acc.add(new BN(cur.totalSupply)), new BN(0));
       if (totalSupply.isZero()) {
         return {
           amountIn: BigInt(0),
@@ -220,8 +220,8 @@ export class LBSwapService {
           fee,
           protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
-          reserveX: activeBin.reserveX,
-          reserveY: activeBin.reserveY,
+          reserveX: new BN(activeBin.reserveX),
+          reserveY: new BN(activeBin.reserveY),
         });
 
         amountIn += amountInWithFees;
@@ -282,8 +282,8 @@ export class LBSwapService {
           fee,
           protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
-          reserveX: activeBin.reserveX,
-          reserveY: activeBin.reserveY,
+          reserveX: new BN(activeBin.reserveX),
+          reserveY: new BN(activeBin.reserveY),
         });
 
         amountOut += amountOutOfBin;
@@ -589,15 +589,15 @@ export class LBSwapService {
       // amountIn = (amountOut << scaleOffset) / priceScaled
       return rounding === "up"
         ? ((amountOut << BigInt(scaleOffset)) + priceScaled - BigInt(1)) /
-            priceScaled
+        priceScaled
         : (amountOut << BigInt(scaleOffset)) / priceScaled;
     } else {
       // amountIn = (amountOut * priceScaled) >> scaleOffset
       return rounding === "up"
         ? (amountOut * priceScaled +
-            (BigInt(1) << BigInt(scaleOffset)) -
-            BigInt(1)) >>
-            BigInt(scaleOffset)
+          (BigInt(1) << BigInt(scaleOffset)) -
+          BigInt(1)) >>
+        BigInt(scaleOffset)
         : (amountOut * priceScaled) >> BigInt(scaleOffset);
     }
   }
@@ -624,16 +624,16 @@ export class LBSwapService {
       // amountOut = (amountIn * priceScaled) >> scaleOffset
       return rounding === "up"
         ? (amountIn * priceScaled +
-            (BigInt(1) << BigInt(scaleOffset)) -
-            BigInt(1)) >>
-            BigInt(scaleOffset)
+          (BigInt(1) << BigInt(scaleOffset)) -
+          BigInt(1)) >>
+        BigInt(scaleOffset)
         : (amountIn * priceScaled) >> BigInt(scaleOffset);
     } else {
       // price = (X / Y) & !swapForY => amountOut = amountIn / price
       // amountOut = (amountIn << scaleOffset) / priceScaled
       return rounding === "up"
         ? ((amountIn << BigInt(scaleOffset)) + priceScaled - BigInt(1)) /
-            priceScaled
+        priceScaled
         : (amountIn << BigInt(scaleOffset)) / priceScaled;
     }
   }
