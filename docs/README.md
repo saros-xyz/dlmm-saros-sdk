@@ -86,20 +86,15 @@ The SDK provides a complete abstraction layer over Solana's DLMM protocol, handl
 
 ## 💡 Use Cases
 
-### 🏪 **Retail Trading Apps**
-Build user-friendly interfaces for token swapping with real-time quotes and price impact analysis.
+🏪 Retail Apps → Token swaps with real-time quotes
 
-### 🏢 **Institutional Trading**
-Create advanced trading systems with custom slippage controls, priority fees, and batch operations.
+🏢 Institutional Tools → Advanced trading systems
 
-### 🤖 **Automated Trading Bots**
-Develop MEV-resistant arbitrage bots, liquidity management systems, and algorithmic trading strategies.
+🤖 Trading Bots → Arbitrage, liquidity management, MEV-resistance
 
-### 📊 **Analytics Dashboards**
-Monitor pool performance, track positions, and analyze market data with comprehensive metrics.
+📊 Analytics Dashboards → Pool performance & market metrics
 
-### 🔄 **DEX Aggregators**
-Integrate multiple liquidity sources with optimal routing and price discovery.
+🔄 DEX Aggregators → Optimal routing & liquidity sourcing
 
 ---
 
