@@ -97,150 +97,181 @@ quickSwap();
 ## Production Flow Diagrams
 
 ### Swap Transaction Flow
-
-```mermaid
-graph TD
-    A[User Initiates Swap] --> B[Validate Input Parameters]
-    B --> C[Call getQuote()]
-    C --> D[Calculate Price Impact & Fees]
-    D --> E[Return Quote to User]
-    E --> F[User Approves Quote]
-    F --> G[Call swap() Method]
-    G --> H[Build Transaction]
-    H --> I[Sign Transaction]
-    I --> J[Send to Network]
-    J --> K[Confirm Transaction]
-    K --> L{Success?}
-    L -->|Yes| M[Emit Success Event]
-    L -->|No| N[Handle Error & Retry]
-    M --> O[Update UI]
-    N --> P[Show Error Message]
+```
+User Initiates Swap
+        ↓
+Validate Input Parameters
+        ↓
+Call getQuote()
+        ↓
+Calculate Price Impact & Fees
+        ↓
+Return Quote to User
+        ↓
+User Approves Quote
+        ↓
+Call swap() Method
+        ↓
+Build Transaction
+        ↓
+Sign Transaction
+        ↓
+Send to Network
+        ↓
+Confirm Transaction
+        ↓
+    Success? → Yes → Emit Success Event → Update UI
+        ↓
+        No
+        ↓
+Handle Error & Retry → Show Error Message
 ```
 
 ### Add Liquidity Flow
-
-```mermaid
-graph TD
-    A[User Initiates Add Liquidity] --> B[Validate Token Amounts]
-    B --> C[Get Pool Information]
-    C --> D[Calculate Active Bin & Range]
-    D --> E[Create Liquidity Distribution]
-    E --> F[Check Existing Positions]
-    F --> G{Position Exists?}
-    G -->|No| H[Create New Position]
-    G -->|Yes| I[Use Existing Position]
-    H --> J[Generate Position Mint]
-    I --> K[Get Bin Arrays]
-    J --> K
-    K --> L[Build Add Liquidity Transaction]
-    L --> M[Sign Transaction]
-    M --> N[Send to Network]
-    N --> O[Confirm Transaction]
-    O --> P{Success?}
-    P -->|Yes| Q[Update Position Info]
-    P -->|No| R[Handle Error]
-    Q --> S[Show Success Message]
-    R --> T[Show Error Details]
+```
+User Initiates Add Liquidity
+        ↓
+Validate Token Amounts
+        ↓
+Get Pool Information
+        ↓
+Calculate Active Bin & Range
+        ↓
+Create Liquidity Distribution
+        ↓
+Check Existing Positions
+        ↓
+    Position Exists? → No → Create New Position → Generate Position Mint
+        ↓                    ↓
+        Yes                 Get Bin Arrays
+        ↓                    ↓
+    Use Existing Position   ↓
+        ↓                    ↓
+        ↓                    ↓
+    Get Bin Arrays         ←
+        ↓
+Build Add Liquidity Transaction
+        ↓
+Sign Transaction
+        ↓
+Send to Network
+        ↓
+Confirm Transaction
+        ↓
+    Success? → Yes → Update Position Info → Show Success Message
+        ↓
+        No
+        ↓
+Handle Error → Show Error Details
 ```
 
 ### Create Pool Flow
-
-```mermaid
-graph TD
-    A[Admin Initiates Pool Creation] --> B[Validate Token Pair]
-    B --> C[Check Token Existence]
-    C --> D[Set Initial Parameters]
-    D --> E[Choose Bin Step Configuration]
-    E --> F[Calculate Initial Price]
-    F --> G[Call createPairWithConfig()]
-    G --> H[Build Creation Transaction]
-    H --> I[Sign Transaction]
-    I --> J[Send to Network]
-    J --> K[Wait for Confirmation]
-    K --> L{Success?}
-    L -->|Yes| M[Initialize Pool State]
-    L -->|No| N[Handle Creation Error]
-    M --> O[Return Pool Address]
-    N --> P[Show Error Message]
-    O --> Q[Pool Ready for Trading]
+```
+Admin Initiates Pool Creation
+        ↓
+Validate Token Pair
+        ↓
+Check Token Existence
+        ↓
+Set Initial Parameters
+        ↓
+Choose Bin Step Configuration
+        ↓
+Calculate Initial Price
+        ↓
+Call createPairWithConfig()
+        ↓
+Build Creation Transaction
+        ↓
+Sign Transaction
+        ↓
+Send to Network
+        ↓
+Wait for Confirmation
+        ↓
+    Success? → Yes → Initialize Pool State → Return Pool Address → Pool Ready for Trading
+        ↓
+        No
+        ↓
+Handle Creation Error → Show Error Message
 ```
 
 ### Complete SDK Integration Flow
-
-```mermaid
-graph TD
-    A[Initialize SDK] --> B{Choose Network}
-    B -->|Devnet| C[MODE.DEVNET]
-    B -->|Mainnet| D[MODE.MAINNET]
-    C --> E[Setup Connection]
-    D --> E
-    E --> F[Load Wallet]
-    F --> G{Operation Type}
-    G -->|Swap| H[Execute Swap Flow]
-    G -->|Liquidity| I[Execute Liquidity Flow]
-    G -->|Pool Creation| J[Execute Pool Creation Flow]
-    G -->|Query| K[Execute Query Operations]
-    H --> L[Handle Result]
-    I --> L
-    J --> L
-    K --> L
-    L --> M[Update Application State]
-    M --> N[Render UI Changes]
-    N --> O[Log Analytics]
-    O --> P[Ready for Next Operation]
+```
+Initialize SDK
+        ↓
+    Choose Network → Devnet → MODE.DEVNET
+        ↓                    ↓
+        ↓                Setup Connection
+    Mainnet → MODE.MAINNET   ↓
+        ↓                    ↓
+        ↓                Load Wallet
+        ↓                    ↓
+        ↓                Operation Type?
+        ↓                    ↓
+        ↓            Swap → Execute Swap Flow
+        ↓                    ↓
+        ↓        Liquidity → Execute Liquidity Flow
+        ↓                    ↓
+        ↓    Pool Creation → Execute Pool Creation Flow
+        ↓                    ↓
+        ↓           Query → Execute Query Operations
+        ↓                    ↓
+        ↓                    ↓
+    Handle Result ← ← ← ← ←
+        ↓
+Update Application State
+        ↓
+Render UI Changes
+        ↓
+Log Analytics
+        ↓
+Ready for Next Operation
 ```
 
 ### Error Handling Flow
-
-```mermaid
-graph TD
-    A[Operation Fails] --> B[Capture Error Details]
-    B --> C{Error Type}
-    C -->|Network Error| D[Retry with Exponential Backoff]
-    C -->|Validation Error| E[Show User-Friendly Message]
-    C -->|Insufficient Funds| F[Prompt User to Fund Wallet]
-    C -->|Slippage Error| G[Adjust Slippage Tolerance]
-    D --> H{Max Retries?}
-    H -->|No| D
-    H -->|Yes| I[Show Permanent Failure]
-    E --> J[Guide User to Fix]
-    F --> K[Redirect to Faucet/Wallet]
-    G --> L[Recalculate with New Tolerance]
-    I --> M[Log Error for Support]
-    J --> N[Return to Operation]
-    K --> N
-    L --> N
-    M --> O[End Operation]
-    N --> P[Retry Operation]
-    P --> A
+```
+Operation Fails
+        ↓
+Capture Error Details
+        ↓
+        Error Type?
+        ↓
+Network Error → Retry with Exponential Backoff
+        ↓
+        ↓
+    Max Retries? → No → Retry with Exponential Backoff
+        ↓
+        Yes
+        ↓
+Show Permanent Failure → Log Error for Support → End Operation
+        ↓
+Validation Error → Show User-Friendly Message → Guide User to Fix → Return to Operation
+        ↓
+Insufficient Funds → Prompt User to Fund Wallet → Redirect to Faucet/Wallet → Return to Operation
+        ↓
+Slippage Error → Adjust Slippage Tolerance → Recalculate with New Tolerance → Return to Operation
 ```
 
 ### Sequence Diagram: Complete Swap Process
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant FE as Frontend
-    participant SDK as Saros DLMM SDK
-    participant SOL as Solana Network
-
-    U->>FE: Initiate Swap Request
-    FE->>SDK: getQuote(params)
-    SDK->>SOL: Query Pool State
-    SOL-->>SDK: Return Pool Data
-    SDK-->>FE: Quote Response
-    FE->>U: Display Quote & Confirm
-    U->>FE: Approve Swap
-    FE->>SDK: swap(params)
-    SDK->>SDK: Build Transaction
-    SDK-->>FE: Unsigned Transaction
-    FE->>FE: Sign Transaction
-    FE->>SOL: Send Transaction
-    SOL-->>FE: Transaction Signature
-    FE->>SOL: Confirm Transaction
-    SOL-->>FE: Confirmation
-    FE->>U: Show Success
-    FE->>SDK: Optional: Listen for Events
+```
+User → Frontend: Initiate Swap Request
+Frontend → SDK: getQuote(params)
+SDK → Solana Network: Query Pool State
+Solana Network → SDK: Return Pool Data
+SDK → Frontend: Quote Response
+Frontend → User: Display Quote & Confirm
+User → Frontend: Approve Swap
+Frontend → SDK: swap(params)
+SDK → SDK: Build Transaction
+SDK → Frontend: Unsigned Transaction
+Frontend → Frontend: Sign Transaction
+Frontend → Solana Network: Send Transaction
+Solana Network → Frontend: Transaction Signature
+Frontend → Solana Network: Confirm Transaction
+Solana Network → Frontend: Confirmation
+Frontend → User: Show Success
+Frontend → SDK: Optional: Listen for Events
 ```
 
 ---
@@ -248,143 +279,195 @@ sequenceDiagram
 ## SDK Function Flow Diagrams
 
 ### getQuote() Function Flow
-
-```mermaid
-graph TD
-    A[getQuote(params)] --> B[Validate Input Parameters]
-    B --> C[Extract Pool Address]
-    C --> D[Query Pool State from Blockchain]
-    D --> E[Get Active Bin ID]
-    E --> F[Calculate Price Based on Bin]
-    F --> G[Compute Price Impact]
-    G --> H[Calculate Trading Fees]
-    H --> I[Apply Slippage Tolerance]
-    I --> J[Return Quote Object]
-    J --> K[{amountIn, amountOut, priceImpact, fee, otherAmountOffset}]
+```
+getQuote(params)
+    ↓
+Validate Input Parameters
+    ↓
+Extract Pool Address
+    ↓
+Query Pool State from Blockchain
+    ↓
+Get Active Bin ID
+    ↓
+Calculate Price Based on Bin
+    ↓
+Compute Price Impact
+    ↓
+Calculate Trading Fees
+    ↓
+Apply Slippage Tolerance
+    ↓
+Return Quote Object
+    ↓
+{amountIn, amountOut, priceImpact, fee, otherAmountOffset}
 ```
 
 ### swap() Function Flow
-
-```mermaid
-graph TD
-    A[swap(params)] --> B[Validate Swap Parameters]
-    B --> C[Verify Token Pair]
-    C --> D[Check User Token Balance]
-    D --> E[Build Swap Instruction]
-    E --> F[Set Minimum Output Amount]
-    F --> G[Add Reward Hook if Provided]
-    G --> H[Create Transaction Object]
-    H --> I[Set Transaction Fee Payer]
-    I --> J[Return Unsigned Transaction]
-    J --> K[Transaction Ready for Signing]
+```
+swap(params)
+    ↓
+Validate Swap Parameters
+    ↓
+Verify Token Pair
+    ↓
+Check User Token Balance
+    ↓
+Build Swap Instruction
+    ↓
+Set Minimum Output Amount
+    ↓
+Add Reward Hook if Provided
+    ↓
+Create Transaction Object
+    ↓
+Set Transaction Fee Payer
+    ↓
+Return Unsigned Transaction
+    ↓
+Transaction Ready for Signing
 ```
 
 ### createPairWithConfig() Function Flow
-
-```mermaid
-graph TD
-    A[createPairWithConfig(params)] --> B[Validate Token Mint Addresses]
-    B --> C[Check Token Decimals]
-    C --> D[Select Bin Step Configuration]
-    D --> E[Calculate Initial Price Ratio]
-    E --> F[Generate Pool PDA Address]
-    F --> G[Build Pool Creation Instructions]
-    G --> H[Set Pool Parameters]
-    H --> I[Create Transaction with Instructions]
-    I --> J[Return Transaction & Pool Address]
-    J --> K[{tx: Transaction, pairAddress: PublicKey}]
+```
+createPairWithConfig(params)
+    ↓
+Validate Token Mint Addresses
+    ↓
+Check Token Decimals
+    ↓
+Select Bin Step Configuration
+    ↓
+Calculate Initial Price Ratio
+    ↓
+Generate Pool PDA Address
+    ↓
+Build Pool Creation Instructions
+    ↓
+Set Pool Parameters
+    ↓
+Create Transaction with Instructions
+    ↓
+Return Transaction & Pool Address
+    ↓
+{tx: Transaction, pairAddress: PublicKey}
 ```
 
 ### addLiquidityIntoPosition() Function Flow
-
-```mermaid
-graph TD
-    A[addLiquidityIntoPosition(params)] --> B[Validate Amount Parameters]
-    B --> C[Get Position Information]
-    C --> D[Verify Bin Array Bounds]
-    D --> E[Calculate Token Ratios]
-    E --> F[Build Liquidity Instructions]
-    F --> G[Set Distribution Parameters]
-    G --> H[Create Position Instructions if New]
-    H --> I[Combine All Instructions]
-    I --> J[Return Complete Transaction]
-    J --> K[Transaction Ready for Execution]
+```
+addLiquidityIntoPosition(params)
+    ↓
+Validate Amount Parameters
+    ↓
+Get Position Information
+    ↓
+Verify Bin Array Bounds
+    ↓
+Calculate Token Ratios
+    ↓
+Build Liquidity Instructions
+    ↓
+Set Distribution Parameters
+    ↓
+Create Position Instructions if New
+    ↓
+Combine All Instructions
+    ↓
+Return Complete Transaction
+    ↓
+Transaction Ready for Execution
 ```
 
 ### removeMultipleLiquidity() Function Flow
-
-```mermaid
-graph TD
-    A[removeMultipleLiquidity(params)] --> B[Validate Position List]
-    B --> C[Get Current Active Bin]
-    C --> D[Calculate Withdrawal Amounts]
-    D --> E[Build Removal Instructions]
-    E --> F[Set Fee Collection]
-    F --> G[Handle Position Closure]
-    G --> H[Create Account Close Instructions]
-    H --> I[Return Transaction Array]
-    I --> J[{txs: Transaction[], txCreateAccount?, txCloseAccount?}]
+```
+removeMultipleLiquidity(params)
+    ↓
+Validate Position List
+    ↓
+Get Current Active Bin
+    ↓
+Calculate Withdrawal Amounts
+    ↓
+Build Removal Instructions
+    ↓
+Set Fee Collection
+    ↓
+Handle Position Closure
+    ↓
+Create Account Close Instructions
+    ↓
+Return Transaction Array
+    ↓
+{txs: Transaction[], txCreateAccount?, txCloseAccount?}
 ```
 
 ### getPairAccount() Function Flow
-
-```mermaid
-graph TD
-    A[getPairAccount(pair)] --> B[Validate Pool Address]
-    B --> C[Query Pool Account from Blockchain]
-    C --> D[Parse Pool State Data]
-    D --> E[Extract Active Bin Information]
-    E --> F[Get Token Mint Addresses]
-    F --> G[Calculate Pool Statistics]
-    G --> H[Return Formatted Pair Info]
-    H --> I[{activeId, baseToken, quoteToken, ...}]
+```
+getPairAccount(pair)
+    ↓
+Validate Pool Address
+    ↓
+Query Pool Account from Blockchain
+    ↓
+Parse Pool State Data
+    ↓
+Extract Active Bin Information
+    ↓
+Get Token Mint Addresses
+    ↓
+Calculate Pool Statistics
+    ↓
+Return Formatted Pair Info
+    ↓
+{activeId, baseToken, quoteToken, ...}
 ```
 
 ### getUserPositions() Function Flow
-
-```mermaid
-graph TD
-    A[getUserPositions(params)] --> B[Validate User Wallet]
-    B --> C[Query All User Positions]
-    C --> D[Filter by Pool Address]
-    D --> E[Parse Position Data]
-    E --> F[Calculate Position Values]
-    F --> G[Sort by Bin Range]
-    G --> H[Return Position Array]
-    H --> I[PositionInfo[]]
+```
+getUserPositions(params)
+    ↓
+Validate User Wallet
+    ↓
+Query All User Positions
+    ↓
+Filter by Pool Address
+    ↓
+Parse Position Data
+    ↓
+Calculate Position Values
+    ↓
+Sort by Bin Range
+    ↓
+Return Position Array
+    ↓
+PositionInfo[]
 ```
 
 ### fetchPoolAddresses() Function Flow
-
-```mermaid
-graph TD
-    A[fetchPoolAddresses()] --> B[Query DEX Program Accounts]
-    B --> C[Filter Pool Accounts]
-    C --> D[Extract Pool Addresses]
-    D --> E[Validate Address Format]
-    E --> F[Return Address Array]
-    F --> G[string[]]
+```
+fetchPoolAddresses()
+    ↓
+Query DEX Program Accounts
+    ↓
+Filter Pool Accounts
+    ↓
+Extract Pool Addresses
+    ↓
+Validate Address Format
+    ↓
+Return Address Array
+    ↓
+string[]
 ```
 
 ### Utility Functions Flow
-
-```mermaid
-graph TD
-    A[Utility Functions] --> B[getDexName()]
-    A --> C[getDexProgramId()]
-    A --> D[getBinArray()]
-    A --> E[fetchPoolMetadata()]
-    A --> F[listenNewPoolAddress()]
-    
-    B --> G["Return 'Saros DLMM'"]
-    C --> H[Return Program ID]
-    D --> I[Query Bin Array Data]
-    E --> J[Fetch Pool Metadata]
-    F --> K[Setup Event Listener]
-    
-    I --> L[Return Bin Array Info]
-    J --> M[Return Pool Details]
-    K --> N[Callback on New Pools]
+```
+Utility Functions:
+├── getDexName() → "Saros DLMM"
+├── getDexProgramId() → Program ID
+├── getBinArray() → Query Bin Array Data → Return Bin Array Info
+├── fetchPoolMetadata() → Fetch Pool Metadata → Return Pool Details
+└── listenNewPoolAddress() → Setup Event Listener → Callback on New Pools
 ```
 
 ---
