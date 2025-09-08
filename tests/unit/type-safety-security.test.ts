@@ -61,7 +61,7 @@ describe('Type Safety Security Tests', () => {
 
             (service as any).lbProgram = mockProgram;
 
-            const positionAddress = new PublicKey('22222222222222222222222222222222');
+            const positionAddress = new PublicKey('11111111111111111111111111111112');
 
             // Simulate invalid return type
             mockProgram.account.position.fetch.mockResolvedValueOnce('invalid-string');
@@ -106,7 +106,7 @@ describe('Type Safety Security Tests', () => {
             const params = {
                 binArrayIndex: 100,
                 pair: new PublicKey('11111111111111111111111111111112'),
-                payer: new PublicKey('22222222222222222222222222222222'),
+                payer: new PublicKey('11111111111111111111111111111112'),
             };
 
             try {
