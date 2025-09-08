@@ -1,4 +1,4 @@
-﻿# 📚 Saros DLMM SDK Documentation
+﻿# 🚀 Saros DLMM SDK
 
 [![npm version](https://badge.fury.io/js/%40saros-finance%2Fdlmm-sdk.svg)](https://badge.fury.io/js/%40saros-finance%2Fdlmm-sdk)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -6,21 +6,106 @@
 [![Solana](https://img.shields.io/badge/Solana-9945FF?logo=solana&logoColor=white)](https://solana.com/)
 [![Security Audit](https://img.shields.io/badge/Security-Audited-green.svg)](./security/index.md)
 
-**Official TypeScript SDK for Saros Dynamic Liquidity Market Maker (DLMM) on Solana**
+**The most advanced TypeScript SDK for building DeFi applications on Solana's Dynamic Liquidity Market Maker (DLMM)**
 
-The Saros DLMM SDK provides a complete, production-ready interface for building DeFi applications that interact with concentrated liquidity pools on Solana. Built with TypeScript, it offers type safety, comprehensive error handling, and seamless integration with the Solana ecosystem.
+> Build powerful trading applications, liquidity management systems, and DeFi protocols with production-ready tools, comprehensive analytics, and enterprise-grade security.
 
-## ✨ Key Features
+---
 
-- 🚀 **High Performance**: Optimized for Solana's high-throughput architecture
-- 🔒 **Production Ready**: Multiple security audits completed with critical issues resolved
-- 📊 **Advanced Analytics**: Real-time pool analytics and position tracking
-- 🛡️ **Type Safe**: Full TypeScript support with comprehensive type definitions
-- ⚡ **Batch Operations**: Efficient multi-transaction processing
-- 🔄 **Cross-Platform**: Works with web, mobile, and server environments
+## ⚡ Quick Start
 
-## 📦 Installation
+```bash
+npm install @saros-finance/dlmm-sdk
+```
 
+```typescript
+import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
+
+const lbServices = new LiquidityBookServices({
+  cluster: "mainnet-beta"
+});
+
+// Swap tokens in 3 lines
+const result = await lbServices.swap({
+  pair: new PublicKey("POOL_ADDRESS"),
+  amount: BigInt(1000000),
+  slippage: 0.5,
+  payer: wallet.publicKey
+});
+```
+
+**[📖 Complete Documentation](./api-reference/index.md)** • **[🎯 Getting Started](./getting-started/index.md)** • **[💡 Examples](./examples/index.md)**
+
+---
+
+## 🌟 Why Saros DLMM SDK?
+
+### 🚀 **High Performance**
+- Optimized for Solana's 65,000 TPS architecture
+- Sub-second transaction execution
+- Minimal latency for real-time trading
+
+### 🔒 **Enterprise Security**
+- Multiple independent security audits completed
+- SOC 2 Type II compliant
+- $2M bug bounty program
+- Smart contract insurance coverage
+
+### 📊 **Advanced Analytics**
+- Real-time pool analytics and position tracking
+- Price impact calculations
+- Fee optimization algorithms
+- Historical data and performance metrics
+
+### 🛠️ **Developer Experience**
+- Full TypeScript support with comprehensive type definitions
+- Comprehensive error handling and validation
+- Batch operations for efficiency
+- Cross-platform compatibility (web, mobile, server)
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+graph TB
+    A[User Applications] --> B[Saros DLMM SDK]
+    B --> C[Solana Network]
+    C --> D[DLMM Program]
+    D --> E[Token Swaps]
+    D --> F[Liquidity Management]
+```
+
+The SDK provides a complete abstraction layer over Solana's DLMM protocol, handling:
+- Transaction building and optimization
+- Network communication and error recovery
+- Position management and analytics
+- Multi-signature and batch operations
+
+---
+
+## 💡 Use Cases
+
+### 🏪 **Retail Trading Apps**
+Build user-friendly interfaces for token swapping with real-time quotes and price impact analysis.
+
+### 🏢 **Institutional Trading**
+Create advanced trading systems with custom slippage controls, priority fees, and batch operations.
+
+### 🤖 **Automated Trading Bots**
+Develop MEV-resistant arbitrage bots, liquidity management systems, and algorithmic trading strategies.
+
+### 📊 **Analytics Dashboards**
+Monitor pool performance, track positions, and analyze market data with comprehensive metrics.
+
+### 🔄 **DEX Aggregators**
+Integrate multiple liquidity sources with optimal routing and price discovery.
+
+---
+
+## 📦 Installation & Setup
+
+### Install Package
 ```bash
 # npm
 npm install @saros-finance/dlmm-sdk
@@ -32,89 +117,45 @@ yarn add @saros-finance/dlmm-sdk
 pnpm add @saros-finance/dlmm-sdk
 ```
 
-## 🚀 Quick Start (3 minutes)
-
-### 1. Initialize the SDK
-
+### Basic Usage
 ```typescript
-import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
+import { LiquidityBookServices, PublicKey } from "@saros-finance/dlmm-sdk";
 
-// Initialize for mainnet
+// Initialize SDK
 const lbServices = new LiquidityBookServices({
-  cluster: "mainnet-beta"
+  cluster: "mainnet-beta" // or "devnet", "testnet"
 });
 
-// Initialize for devnet (testing)
-const lbServicesDev = new LiquidityBookServices({
-  cluster: "devnet"
+// Get a quote
+const quote = await lbServices.getQuote({
+  pair: new PublicKey("POOL_ADDRESS"),
+  amount: BigInt(1000000),
+  slippage: 0.5
+});
+
+// Execute swap
+const result = await lbServices.swap({
+  pair: new PublicKey("POOL_ADDRESS"),
+  amount: BigInt(1000000),
+  slippage: 0.5,
+  payer: wallet.publicKey
 });
 ```
 
-### 2. Your First Swap
+---
 
-```typescript
-import { PublicKey } from "@solana/web3.js";
+## 🌐 Network Support
 
-// C98-USDC pool on mainnet
-const C98_USDC_POOL = new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD");
+| Network | Status | RPC Endpoint | Purpose |
+|---------|--------|--------------|---------|
+| **Mainnet Beta** | ✅ Production | `https://api.mainnet-beta.solana.com` | Live trading |
+| **Devnet** | ✅ Testing | `https://api.devnet.solana.com` | Development |
+| **Testnet** | ✅ Testing | `https://api.testnet.solana.com` | Advanced testing |
+| **Localnet** | ✅ Development | `http://localhost:8899` | Local development |
 
-async function swapTokens() {
-  try {
-    // Get a quote first (recommended)
-    const quote = await lbServices.getQuote({
-      amount: BigInt(1000000), // 1 C98 (6 decimals)
-      isExactInput: true,
-      swapForY: true,
-      pair: C98_USDC_POOL,
-      tokenBase: new PublicKey("C98A4nkJXhpVZNAZdHUA95RpTF3T4whtQubL3YobiUX9"),
-      tokenQuote: new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
-      tokenBaseDecimal: 6,
-      tokenQuoteDecimal: 6,
-      slippage: 0.5 // 0.5% max slippage
-    });
+---
 
-    console.log(`Expected output: ${quote.amountOut} USDC`);
-    console.log(`Price impact: ${quote.priceImpact}%`);
-
-    // Execute the swap
-    const result = await lbServices.swap({
-      pair: C98_USDC_POOL,
-      amount: BigInt(1000000),
-      slippage: 0.5,
-      payer: wallet.publicKey
-    });
-
-    console.log("✅ Swap successful!", result.signature);
-
-  } catch (error) {
-    console.error("❌ Swap failed:", error.message);
-  }
-}
-```
-
-### 3. Add Liquidity
-
-```typescript
-async function addLiquidity() {
-  try {
-    const result = await lbServices.addLiquidity({
-      pair: C98_USDC_POOL,
-      amountX: BigInt(10000000), // 10 C98
-      amountY: BigInt(10000000), // 10 USDC
-      binId: 100, // Target price bin
-      slippage: 0.5,
-      payer: wallet.publicKey
-    });
-
-    console.log("✅ Liquidity added!", result.signature);
-
-  } catch (error) {
-    console.error("❌ Add liquidity failed:", error.message);
-  }
-}
-```
-
-## 📋 Documentation Overview
+## 📚 Documentation
 
 | Section | Description |
 |---------|-------------|
@@ -125,173 +166,12 @@ async function addLiquidity() {
 | **[🛠️ Guides](./guides/index.md)** | Advanced tutorials and use cases |
 | **[🛡️ Security](./security/index.md)** | Audit reports and best practices |
 | **[🔧 Troubleshooting](./troubleshooting/index.md)** | Debug common issues |
-| **[❓ FAQ](./faq.md)** | Frequently asked questions |
 
-## 🏗️ Architecture Overview
-
-```mermaid
-graph TB
-    A[User Applications] --> B[Saros DLMM SDK]
-    B --> C[Solana Network]
-    C --> D[DLMM Program]
-    D --> E[Token Swaps]
-    D --> F[Liquidity Management]
-```
-
-### 🔄 DLMM Trading Flow
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant SDK as Saros DLMM SDK
-    participant RPC as Solana RPC
-    participant PROG as DLMM Program
-
-    U->>SDK: Request Quote
-    SDK->>RPC: Query Pool State
-    RPC-->>SDK: Pool Data
-    SDK->>SDK: Calculate Quote
-    SDK-->>U: Quote Response
-
-    U->>SDK: Execute Swap
-    SDK->>SDK: Validate Parameters
-    SDK->>RPC: Get Recent Blockhash
-    RPC-->>SDK: Blockhash
-    SDK->>SDK: Build Transaction
-    SDK->>RPC: Simulate Transaction
-    RPC-->>SDK: Simulation Result
-    SDK->>RPC: Submit Transaction
-    RPC-->>SDK: Transaction Signature
-    SDK->>RPC: Confirm Transaction
-    RPC-->>SDK: Confirmation
-    SDK-->>U: Success Response
-
-    Note over SDK,RPC: Real-time confirmation with timeout protection
-```
-
-## 🌐 Network Support
-
-| Network | Status | RPC Endpoint | Purpose |
-|---------|--------|--------------|---------|
-| **Mainnet Beta** | ✅ Production | `https://api.mainnet-beta.solana.com` | Live trading |
-| **Devnet** | ✅ Testing | `https://api.devnet.solana.com` | Development testing |
-| **Testnet** | ✅ Testing | `https://api.testnet.solana.com` | Advanced testing |
-| **Localnet** | ✅ Development | `http://localhost:8899` | Local development |
-
-## 📦 Package Information
-
-```json
-{
-  "name": "@saros-finance/dlmm-sdk",
-  "version": "1.4.1",
-  "description": "Official TypeScript SDK for Saros DLMM on Solana",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": ["dist", "README.md", "LICENSE"],
-  "scripts": {
-    "build": "tsc",
-    "test": "jest",
-    "lint": "eslint src/**/*.ts",
-    "docs": "typedoc"
-  },
-  "dependencies": {
-    "@solana/web3.js": "^1.87.6",
-    "@solana/spl-token": "^0.3.8",
-    "bn.js": "^5.2.1"
-  }
-}
-```
-
-## 🎯 Use Cases
-
-### 🏪 Retail Trading Applications
-```typescript
-// Simple token swap interface
-const swapInterface = {
-  async executeSwap(fromToken: string, toToken: string, amount: number) {
-    const quote = await lbServices.getQuote({
-      pair: getPoolAddress(fromToken, toToken),
-      amount: BigInt(amount * 10**decimals),
-      slippage: 0.5
-    });
-
-    return await lbServices.swap({
-      ...quote,
-      payer: userWallet.publicKey
-    });
-  }
-};
-```
-
-### 🏢 Institutional Trading Systems
-```typescript
-// Advanced trading with custom parameters
-const institutionalTrader = {
-  async executeLargeSwap(params: LargeSwapParams) {
-    // Split large orders to minimize price impact
-    const chunks = splitOrder(params.amount, params.maxChunkSize);
-
-    for (const chunk of chunks) {
-      await lbServices.swap({
-        ...params,
-        amount: chunk,
-        priorityFee: 10000, // Higher priority for large trades
-        commitment: "finalized"
-      });
-
-      // Rate limiting to avoid congestion
-      await delay(1000);
-    }
-  }
-};
-```
-
-### 🤖 Automated Trading Bots
-```typescript
-// MEV-resistant arbitrage bot
-class ArbitrageBot {
-  private lbServices: LiquidityBookServices;
-
-  async monitorAndArbitrage() {
-    const opportunities = await this.findArbitrageOpportunities();
-
-    for (const opp of opportunities) {
-      await this.executeArbitrage(opp, {
-        maxSlippage: 0.3,
-        deadline: Date.now() + 30000,
-        priorityFee: 5000
-      });
-    }
-  }
-
-  private async findArbitrageOpportunities() {
-    // Implementation for finding arbitrage opportunities
-    return [];
-  }
-}
-```
-
-### 📊 Analytics Dashboards
-```typescript
-// Real-time pool analytics
-const analyticsDashboard = {
-  async getPoolMetrics(poolAddress: PublicKey) {
-    const pool = await lbServices.getPairAccount(poolAddress);
-
-    return {
-      price: pool.price,
-      liquidity: pool.totalLiquidity,
-      volume24h: pool.volume24h,
-      feeApr: calculateFeeAPR(pool),
-      utilization: calculateUtilization(pool)
-    };
-  }
-};
-```
+---
 
 ## 🔗 Ecosystem Integration
 
-### Official Integrations
+### Official Partners
 - **Phantom Wallet**: Native DLMM support
 - **Solflare**: Integrated swap interface
 - **Jupiter**: Multi-DEX aggregation
@@ -303,39 +183,22 @@ const analyticsDashboard = {
 - **dlmm-analytics**: Analytics dashboard
 - **dlmm-widget**: React components
 
-## 🤝 Contributing
+---
 
-We welcome contributions! Please see our [contributing guide](./CONTRIBUTING.md) for:
-- Development setup instructions
-- Coding standards and guidelines
-- Testing procedures
-- Pull request process
-
-```bash
-# Fork and clone
-git clone https://github.com/your-username/dlmm-sdk.git
-cd dlmm-sdk
-
-# Install dependencies
-pnpm install
-
-# Start development
-pnpm dev
-```
-
-## 📞 Support & Community
+## 🤝 Community & Support
 
 ### Get Help
-- **📚 Documentation**: You're reading it! 🔍
+- **📚 Documentation**: Comprehensive guides and API reference
 - **💬 Discord**: [discord.gg/saros](https://discord.gg/saros)
 - **🐛 GitHub Issues**: [Report bugs](https://github.com/saros-xyz/dlmm-sdk/issues)
 - **📧 Email**: support@saros.finance
 
-### Community
+### Stay Connected
 - **Twitter**: [@SarosFinance](https://twitter.com/SarosFinance)
 - **Medium**: [Saros Blog](https://medium.com/saros-finance)
 - **YouTube**: [Saros Channel](https://youtube.com/@SarosFinance)
-- **Reddit**: [r/SarosFinance](https://reddit.com/r/SarosFinance)
+
+---
 
 ## 🏆 Security & Compliance
 
@@ -349,6 +212,8 @@ pnpm dev
 - **SOC 2 Type II**: Compliant
 - **Bug Bounty Program**: $2M reward pool
 - **Insurance Coverage**: Smart contract insurance
+
+---
 
 ## 📈 Roadmap
 
@@ -370,167 +235,24 @@ pnpm dev
 - Multi-chain expansion
 - Governance integration
 
+---
+
 ## 📜 License
 
 This project is licensed under the **MIT License** - see the [LICENSE](../LICENSE) file for details.
 
-```
-MIT License
-
-Copyright (c) 2024 Saros Finance
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-```
+---
 
 ## 🙏 Acknowledgments
 
-### Core Team
+**Built with ❤️ by the Saros team for the Solana ecosystem**
+
 - **Lead Developer**: [Rahul Prasad](https://github.com/Rahul-Prasad-07)
 - **Security Lead**: [Security Team](mailto:security@saros.finance)
 - **Community Manager**: [Community Team](https://discord.gg/saros)
 
-### Contributors
-We thank all our contributors for making this project possible! See [CONTRIBUTORS.md](../CONTRIBUTORS.md) for the full list.
-
-### Partners
-- **Solana Foundation**: Protocol support
-- **Phantom**: Wallet integration
-- **Jupiter**: DEX aggregation
-- **Security Firms**: Audit partners
-
 ---
 
-## 🎯 Ready to Build?
+**Ready to build the future of DeFi?** 🚀
 
-**Start your journey with Saros DLMM:**
-
-1. **[📖 Read the Getting Started Guide](./getting-started/index.md)**
-2. **[⚡ Try the Basic Swap Example](./examples/basic-swap.md)**
-3. **[🔧 Explore the API Reference](./api-reference/index.md)**
-4. **[🚀 Build your first dApp!](./guides/swapping.md)**
-
-### Example: Complete Trading Application
-
-```typescript
-import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
-import { Keypair, PublicKey } from "@solana/web3.js";
-
-class DLMMTradingApp {
-  private lbServices: LiquidityBookServices;
-  private wallet: Keypair;
-
-  constructor() {
-    this.lbServices = new LiquidityBookServices({
-      cluster: "mainnet-beta"
-    });
-
-    // In production, use wallet adapter
-    this.wallet = Keypair.generate();
-  }
-
-  async executeTrade(pairAddress: string, amount: number) {
-    try {
-      const pool = new PublicKey(pairAddress);
-
-      // Get fresh quote
-      const quote = await this.lbServices.getQuote({
-        pair: pool,
-        amount: BigInt(amount),
-        isExactInput: true,
-        swapForY: true,
-        tokenBase: new PublicKey("TOKEN_X_MINT"),
-        tokenQuote: new PublicKey("TOKEN_Y_MINT"),
-        tokenBaseDecimal: 6,
-        tokenQuoteDecimal: 6,
-        slippage: 0.5
-      });
-
-      // Execute swap with optimized parameters
-      const result = await this.lbServices.swap({
-        pair: pool,
-        amount: BigInt(amount),
-        slippage: 0.5,
-        payer: this.wallet.publicKey,
-        priorityFee: 1000 // For faster processing
-      });
-
-      console.log("✅ Trade executed successfully:", result.signature);
-      return result;
-
-    } catch (error) {
-      console.error("❌ Trade execution failed:", error.message);
-      throw error;
-    }
-  }
-
-  async addLiquidityPosition(pairAddress: string, amountX: number, amountY: number) {
-    try {
-      const pool = new PublicKey(pairAddress);
-
-      const result = await this.lbServices.addLiquidity({
-        pair: pool,
-        amountX: BigInt(amountX),
-        amountY: BigInt(amountY),
-        binId: 100, // Target price bin
-        slippage: 0.5,
-        payer: this.wallet.publicKey
-      });
-
-      console.log("✅ Liquidity added successfully:", result.signature);
-      return result;
-
-    } catch (error) {
-      console.error("❌ Add liquidity failed:", error.message);
-      throw error;
-    }
-  }
-
-  async monitorPool(poolAddress: string) {
-    const pool = new PublicKey(poolAddress);
-
-    // Monitor pool for opportunities
-    setInterval(async () => {
-      try {
-        const poolInfo = await this.lbServices.getPairAccount(pool);
-
-        console.log("📊 Pool Status:");
-        console.log(`  Price: $${poolInfo.price}`);
-        console.log(`  Liquidity: ${poolInfo.totalLiquidity}`);
-        console.log(`  Active Bin: ${poolInfo.activeBinId}`);
-
-        // Implement your trading strategy here
-        // e.g., rebalance positions, execute arbitrage, etc.
-
-      } catch (error) {
-        console.error("❌ Pool monitoring error:", error.message);
-      }
-    }, 30000); // Check every 30 seconds
-  }
-}
-
-// Usage
-const tradingApp = new DLMMTradingApp();
-
-// Start monitoring a pool
-tradingApp.monitorPool("YOUR_POOL_ADDRESS");
-
-// Execute a trade
-await tradingApp.executeTrade("POOL_ADDRESS", 1000000);
-
-// Add liquidity
-await tradingApp.addLiquidityPosition("POOL_ADDRESS", 10000000, 10000000);
-```
-
----
-
-**Happy building with Saros DLMM! 🚀**
-
-*Built with ❤️ by the Saros team for the Solana ecosystem.*
+**[📖 Read the Docs](./getting-started/index.md)** • **[💡 View Examples](./examples/index.md)** • **[🔧 API Reference](./api-reference/index.md)**
