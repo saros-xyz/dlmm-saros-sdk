@@ -74,17 +74,6 @@ graph TB
     classDef configClass fill:#fce4ec,stroke:#c2185b,stroke-width:2px
 ```
 
-    style A fill:#e3f2fd
-    style B fill:#e8f5e8
-    style C fill:#e8f5e8
-    style D fill:#fff3e0
-    style E fill:#e8f5e8
-    style F fill:#ffebee
-    style G fill:#e8f5e8
-    style H fill:#fff3e0
-    style I fill:#fff3e0
-    style J fill:#fff3e0
-```
 
 ## 📋 Table of Contents
 
