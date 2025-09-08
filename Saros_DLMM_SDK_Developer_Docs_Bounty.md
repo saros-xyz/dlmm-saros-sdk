@@ -46,15 +46,17 @@ npm install -D typescript @types/node
 ```typescript
 import { LiquidityBookServices, MODE } from "@saros-finance/dlmm-sdk";
 
-// Initialize the SDK
+// Initialize the main SDK service class
 const liquidityBookServices = new LiquidityBookServices({
-  mode: MODE.DEVNET  // Use DEVNET for testing, MAINNET for production
+  mode: MODE.DEVNET  // MODE.DEVNET for testing, MODE.MAINNET for production
 });
 
-// Your wallet (replace with your keypair)
+// Placeholder for your wallet's public key (replace with actual key)
 const YOUR_WALLET_PUBLIC_KEY = "YourPublicKeyHere";
 
+// Verify SDK initialization
 console.log("SDK initialized successfully!");
+// Get and display the DEX name (returns "Saros DLMM")
 console.log("DEX Name:", liquidityBookServices.getDexName());
 ```
 
@@ -63,30 +65,34 @@ console.log("DEX Name:", liquidityBookServices.getDexName());
 ```typescript
 import { PublicKey } from "@solana/web3.js";
 
+// Main function to perform a quick swap
 async function quickSwap() {
   try {
-    // Example pool: SAROS/WSOL on devnet
+    // Pool address for SAROS/WSOL trading pair on devnet
     const poolAddress = "C8xWcMpzqetpxwLj7tJfSQ6J8Juh1wHFdT5KrkwdYPQB";
     
-    // Get a quote for swapping 1 SAROS
+    // Get a price quote before executing the swap
     const quote = await liquidityBookServices.getQuote({
-      amount: BigInt(1e6), // 1 SAROS (6 decimals)
-      isExactInput: true,
-      swapForY: true,
-      pair: new PublicKey(poolAddress),
-      tokenBase: new PublicKey("mntCAkd76nKSVTYxwu8qwQnhPcEE9JyEbgW6eEpwr1N"), // SAROS
-      tokenQuote: new PublicKey("So11111111111111111111111111111111111111112"), // WSOL
-      tokenBaseDecimal: 6,
-      tokenQuoteDecimal: 9,
-      slippage: 0.5
+      amount: BigInt(1e6), // Amount to swap: 1 SAROS (6 decimal places = 1e6)
+      isExactInput: true, // True = fixed input amount, False = fixed output amount
+      swapForY: true, // True = swap from X to Y (SAROS to WSOL), False = Y to X
+      pair: new PublicKey(poolAddress), // Pool address as PublicKey
+      tokenBase: new PublicKey("mntCAkd76nKSVTYxwu8qwQnhPcEE9JyEbgW6eEpwr1N"), // SAROS token mint
+      tokenQuote: new PublicKey("So11111111111111111111111111111111111111112"), // WSOL token mint
+      tokenBaseDecimal: 6, // SAROS has 6 decimal places
+      tokenQuoteDecimal: 9, // WSOL has 9 decimal places
+      slippage: 0.5 // Maximum slippage tolerance: 0.5%
     });
     
+    // Display the expected output amount from the quote
     console.log("Expected output:", quote.amountOut);
   } catch (error) {
+    // Handle any errors that occur during the swap process
     console.error("Error:", error.message);
   }
 }
 
+// Execute the swap function
 quickSwap();
 ```
 
@@ -100,6 +106,14 @@ quickSwap();
 
 **Goal:** Create a complete swap function for your dApp.
 
+#### Swap Process Flow
+```
+User Input ──→ Get Quote ──→ Build Transaction ──→ Sign & Send ──→ Confirm
+     │              │                │                    │            │
+     └─ Amount      └─ Price, Fee    └─ Instructions      └─ Wallet    └─ Success
+        Tokens          Impact           Swap Data           Signature    Receipt
+```
+
 #### Step 1: Set Up Environment
 
 ```typescript
@@ -107,7 +121,10 @@ import { LiquidityBookServices, MODE } from "@saros-finance/dlmm-sdk";
 import { PublicKey, Keypair, Transaction } from "@solana/web3.js";
 import fs from "fs";
 
+// Initialize the main SDK service with devnet configuration
 const liquidityBookServices = new LiquidityBookServices({ mode: MODE.DEVNET });
+
+// Load wallet keypair from devnet.json file (contains secret key)
 const keypair = Keypair.fromSecretKey(
   new Uint8Array(JSON.parse(fs.readFileSync("devnet.json", "utf-8")))
 );
@@ -116,76 +133,94 @@ const keypair = Keypair.fromSecretKey(
 #### Step 2: Get Swap Quote
 
 ```typescript
+// Function to get a price quote for a token swap
 async function getSwapQuote(amount: number, fromToken: string, toToken: string, poolAddress: string) {
+  // Call getQuote to calculate expected output and fees
   const quote = await liquidityBookServices.getQuote({
-    amount: BigInt(amount * Math.pow(10, 6)), // Assuming 6 decimals
-    isExactInput: true,
-    swapForY: true,
-    pair: new PublicKey(poolAddress),
-    tokenBase: new PublicKey(fromToken),
-    tokenQuote: new PublicKey(toToken),
-    tokenBaseDecimal: 6,
-    tokenQuoteDecimal: 9,
-    slippage: 0.5
+    amount: BigInt(amount * Math.pow(10, 6)), // Convert amount to smallest unit (assuming 6 decimals)
+    isExactInput: true, // Fixed input amount, variable output
+    swapForY: true, // Swap from token X to token Y
+    pair: new PublicKey(poolAddress), // Pool address
+    tokenBase: new PublicKey(fromToken), // Input token mint address
+    tokenQuote: new PublicKey(toToken), // Output token mint address
+    tokenBaseDecimal: 6, // Input token decimal places
+    tokenQuoteDecimal: 9, // Output token decimal places
+    slippage: 0.5 // Maximum allowed slippage (0.5%)
   });
-  return quote;
+  return quote; // Returns quote with amountIn, amountOut, priceImpact, fee, etc.
 }
 ```
 
 #### Step 3: Execute Swap
 
 ```typescript
+// Function to execute the actual swap transaction
 async function executeSwap(quote: any) {
+  // Build the swap transaction using the quote data
   const transaction = await liquidityBookServices.swap({
-    amount: quote.amount,
-    tokenMintX: new PublicKey(fromToken),
-    tokenMintY: new PublicKey(toToken),
-    otherAmountOffset: quote.otherAmountOffset,
-    hook: null, // No hook for basic swap
-    isExactInput: true,
-    swapForY: true,
-    pair: new PublicKey(poolAddress),
-    payer: keypair.publicKey
+    amount: quote.amount, // Amount from the quote
+    tokenMintX: new PublicKey(fromToken), // Input token mint
+    tokenMintY: new PublicKey(toToken), // Output token mint
+    otherAmountOffset: quote.otherAmountOffset, // Minimum output amount (slippage protection)
+    hook: null, // Optional reward hook (null for basic swap)
+    isExactInput: true, // Fixed input amount
+    swapForY: true, // Swap direction
+    pair: new PublicKey(poolAddress), // Pool address
+    payer: keypair.publicKey // Transaction fee payer
   });
 
+  // Sign the transaction with the wallet keypair
   transaction.sign(keypair);
   
+  // Send the signed transaction to the Solana network
   const signature = await liquidityBookServices.connection.sendRawTransaction(
     transaction.serialize(),
     { skipPreflight: true, preflightCommitment: "confirmed" }
   );
 
+  // Get latest blockhash for transaction confirmation
   const { blockhash, lastValidBlockHeight } = await liquidityBookServices.connection.getLatestBlockhash();
+  
+  // Wait for transaction confirmation
   await liquidityBookServices.connection.confirmTransaction({
     signature,
     blockhash,
     lastValidBlockHeight
   });
 
-  return signature;
+  return signature; // Return transaction signature
 }
 ```
 
 #### Step 4: Complete Swap Function
 
 ```typescript
+// Main function that combines quote and execution
 async function swapTokens(amount: number, fromToken: string, toToken: string, poolAddress: string) {
   try {
+    // Step 1: Get price quote
     const quote = await getSwapQuote(amount, fromToken, toToken, poolAddress);
     console.log(`Swapping ${amount} tokens. Expected output: ${quote.amountOut}`);
     
+    // Step 2: Execute the swap
     const signature = await executeSwap(quote);
     console.log("Swap successful! Signature:", signature);
     
-    return signature;
+    return signature; // Return transaction signature
   } catch (error) {
+    // Handle any errors during the swap process
     console.error("Swap failed:", error.message);
-    throw error;
+    throw error; // Re-throw for caller to handle
   }
 }
 
-// Usage
-swapTokens(1, "mntCAkd76nKSVTYxwu8qwQnhPcEE9JyEbgW6eEpwr1N", "So11111111111111111111111111111111111111112", "C8xWcMpzqetpxwLj7tJfSQ6J8Juh1wHFdT5KrkwdYPQB");
+// Example usage: Swap 1 SAROS for WSOL
+swapTokens(
+  1, // Amount to swap
+  "mntCAkd76nKSVTYxwu8qwQnhPcEE9JyEbgW6eEpwr1N", // SAROS token mint
+  "So11111111111111111111111111111111111111112", // WSOL token mint
+  "C8xWcMpzqetpxwLj7tJfSQ6J8Juh1wHFdT5KrkwdYPQB" // Pool address
+);
 ```
 
 **Tested on:** Devnet, September 9, 2025
@@ -200,115 +235,136 @@ swapTokens(1, "mntCAkd76nKSVTYxwu8qwQnhPcEE9JyEbgW6eEpwr1N", "So1111111111111111
 import { LiquidityShape } from "@saros-finance/dlmm-sdk";
 import { createUniformDistribution } from "@saros-finance/dlmm-sdk/utils";
 
+// Pool address for SAROS/WSOL trading pair on devnet
 const poolAddress = "C8xWcMpzqetpxwLj7tJfSQ6J8Juh1wHFdT5KrkwdYPQB";
+// Token X (base token) - SAROS mint address
 const tokenX = "mntCAkd76nKSVTYxwu8qwQnhPcEE9JyEbgW6eEpwr1N"; // SAROS
+// Token Y (quote token) - WSOL mint address
 const tokenY = "So11111111111111111111111111111111111111112"; // WSOL
-const amountX = 10; // 10 SAROS
-const amountY = 10; // 10 WSOL
+// Amounts to add as liquidity (in human-readable format)
+const amountX = 10; // 10 SAROS tokens
+const amountY = 10; // 10 WSOL tokens
 ```
 
 #### Step 2: Get Pool Information
 
 ```typescript
+// Function to retrieve current pool state and calculate optimal bin range
 async function getPoolInfo() {
+  // Fetch detailed pool account information from the blockchain
   const pairInfo = await liquidityBookServices.getPairAccount(new PublicKey(poolAddress));
+  // Extract the current active bin ID (where the current price is located)
   const activeBin = pairInfo.activeId;
+  // Define bin range around active bin (±5 bins for balanced liquidity distribution)
   const binRange: [number, number] = [activeBin - 5, activeBin + 5];
   
-  return { activeBin, binRange };
+  return { activeBin, binRange }; // Return data needed for liquidity distribution
 }
 ```
 
 #### Step 3: Create Liquidity Distribution
 
 ```typescript
+// Function to create uniform liquidity distribution across the specified bin range
 async function createLiquidityDistribution(binRange: [number, number]) {
+  // Use SDK utility to create uniform distribution across bins
   const distribution = createUniformDistribution({
-    shape: LiquidityShape.Spot,
-    binRange
+    shape: LiquidityShape.Spot, // Standard liquidity shape for spot trading
+    binRange // Range of bins to distribute liquidity across
   });
   
-  return distribution;
+  return distribution; // Returns array defining how much liquidity goes to each bin
 }
 ```
 
 #### Step 4: Add Liquidity
 
 ```typescript
+// Main function to add liquidity to the pool
 async function addLiquidity() {
   try {
+    // Get current pool state and bin range
     const { activeBin, binRange } = await getPoolInfo();
+    // Create liquidity distribution across bins
     const distribution = await createLiquidityDistribution(binRange);
     
-    // Get or create bin arrays
+    // Get or create bin arrays (required for liquidity operations)
+    // Bin arrays store liquidity data for ranges of 256 bins each
     const binArrayLower = await liquidityBookServices.getBinArray({
-      binArrayIndex: Math.floor(binRange[0] / 256),
-      pair: new PublicKey(poolAddress),
-      payer: keypair.publicKey
+      binArrayIndex: Math.floor(binRange[0] / 256), // Calculate which bin array contains our lower bin
+      pair: new PublicKey(poolAddress), // Pool address
+      payer: keypair.publicKey // Fee payer for potential bin array creation
     });
     
     const binArrayUpper = await liquidityBookServices.getBinArray({
-      binArrayIndex: Math.floor(binRange[1] / 256),
+      binArrayIndex: Math.floor(binRange[1] / 256), // Calculate which bin array contains our upper bin
       pair: new PublicKey(poolAddress),
       payer: keypair.publicKey
     });
     
-    // Create position if needed
+    // Check if user already has liquidity positions in this pool
     const positions = await liquidityBookServices.getUserPositions({
-      payer: keypair.publicKey,
-      pair: new PublicKey(poolAddress)
+      payer: keypair.publicKey, // User's wallet address
+      pair: new PublicKey(poolAddress) // Pool to check
     });
     
-    let positionMint: PublicKey;
+    let positionMint: PublicKey; // Will store the position NFT mint address
     if (positions.length === 0) {
-      // Create new position
-      const positionKeypair = Keypair.generate();
+      // No existing position - create a new liquidity position
+      const positionKeypair = Keypair.generate(); // Generate new keypair for position NFT
       const { position } = await liquidityBookServices.createPosition({
-        pair: new PublicKey(poolAddress),
-        payer: keypair.publicKey,
-        relativeBinIdLeft: binRange[0] - activeBin,
-        relativeBinIdRight: binRange[1] - activeBin,
-        binArrayIndex: Math.floor(binRange[0] / 256),
-        positionMint: positionKeypair.publicKey
+        pair: new PublicKey(poolAddress), // Pool address
+        payer: keypair.publicKey, // Transaction fee payer
+        relativeBinIdLeft: binRange[0] - activeBin, // Left boundary relative to active bin
+        relativeBinIdRight: binRange[1] - activeBin, // Right boundary relative to active bin
+        binArrayIndex: Math.floor(binRange[0] / 256), // Bin array index for position
+        positionMint: positionKeypair.publicKey // Mint address for the position NFT
       });
-      positionMint = positionKeypair.publicKey;
+      positionMint = positionKeypair.publicKey; // Store the position mint address
     } else {
+      // Use existing position
       positionMint = new PublicKey(positions[0].positionMint);
     }
     
-    // Add liquidity
+    // Execute the liquidity addition transaction
     const transaction = await liquidityBookServices.addLiquidityIntoPosition({
-      amountX: amountX * Math.pow(10, 6), // Convert to smallest units
-      amountY: amountY * Math.pow(10, 9),
-      binArrayLower,
-      binArrayUpper,
-      liquidityDistribution: distribution,
-      pair: new PublicKey(poolAddress),
-      positionMint,
-      payer: keypair.publicKey
+      amountX: amountX * Math.pow(10, 6), // Convert SAROS amount to smallest units (6 decimals)
+      amountY: amountY * Math.pow(10, 9), // Convert WSOL amount to smallest units (9 decimals)
+      binArrayLower, // Lower bin array address
+      binArrayUpper, // Upper bin array address
+      liquidityDistribution: distribution, // How liquidity is distributed across bins
+      pair: new PublicKey(poolAddress), // Pool address
+      positionMint, // Position NFT mint address
+      payer: keypair.publicKey // Transaction fee payer
     });
     
+    // Sign the transaction with user's wallet
     transaction.sign(keypair);
+    // Send transaction to Solana network
     const signature = await liquidityBookServices.connection.sendRawTransaction(
       transaction.serialize(),
       { skipPreflight: true, preflightCommitment: "confirmed" }
     );
     
+    // Get latest blockhash for transaction confirmation
     const { blockhash, lastValidBlockHeight } = await liquidityBookServices.connection.getLatestBlockhash();
+    // Wait for transaction confirmation
     await liquidityBookServices.connection.confirmTransaction({
       signature,
       blockhash,
       lastValidBlockHeight
     });
     
-    console.log("Liquidity added! Signature:", signature);
-    return signature;
+    console.log("Liquidity added successfully! Transaction signature:", signature);
+    return signature; // Return transaction signature for reference
   } catch (error) {
+    // Handle any errors during the liquidity addition process
     console.error("Failed to add liquidity:", error.message);
-    throw error;
+    throw error; // Re-throw error for caller to handle
   }
 }
 
+// Execute the liquidity addition function
 addLiquidity();
 ```
 
@@ -323,28 +379,31 @@ addLiquidity();
 ```typescript
 import { LiquidityBookServices, MODE } from "@saros-finance/dlmm-sdk";
 
+// Initialize SDK in mainnet mode for production data
 const liquidityBookServices = new LiquidityBookServices({ mode: MODE.MAINNET });
 
+// Function to fetch comprehensive pool information
 async function getPoolInfo(poolAddress: string) {
   try {
-    // Get basic pool metadata
+    // Fetch basic pool metadata (name, tokens, stats)
     const metadata = await liquidityBookServices.fetchPoolMetadata(poolAddress);
     console.log("Pool Metadata:", metadata);
     
-    // Get detailed pair account
+    // Get detailed pair account information from blockchain
     const pairAccount = await liquidityBookServices.getPairAccount(new PublicKey(poolAddress));
-    console.log("Active Bin ID:", pairAccount.activeId);
-    console.log("Base Token:", pairAccount.baseToken);
-    console.log("Quote Token:", pairAccount.quoteToken);
+    console.log("Active Bin ID:", pairAccount.activeId); // Current price bin
+    console.log("Base Token:", pairAccount.baseToken); // Token X information
+    console.log("Quote Token:", pairAccount.quoteToken); // Token Y information
     
-    return { metadata, pairAccount };
+    return { metadata, pairAccount }; // Return both metadata and account info
   } catch (error) {
+    // Handle network errors or invalid pool addresses
     console.error("Error fetching pool info:", error.message);
   }
 }
 
-// Usage
-getPoolInfo("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD"); // C98/USDC on mainnet
+// Example usage with C98/USDC pool on mainnet
+getPoolInfo("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD");
 ```
 
 **Output:** Pool metadata and active bin information.
@@ -352,32 +411,36 @@ getPoolInfo("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD"); // C98/USDC on main
 ### Example 2: Price Quote Calculator
 
 ```typescript
+// Function to calculate detailed price quote with impact analysis
 async function calculatePriceImpact(amount: number, poolAddress: string) {
   try {
+    // Get comprehensive quote including fees and price impact
     const quote = await liquidityBookServices.getQuote({
-      amount: BigInt(amount * Math.pow(10, 6)),
-      isExactInput: true,
-      swapForY: true,
-      pair: new PublicKey(poolAddress),
-      tokenBase: new PublicKey("C98A4nkJXhpVZNAZdHUA95RpTF3T4whtQubL3YobiUX9"), // C98
-      tokenQuote: new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"), // USDC
-      tokenBaseDecimal: 6,
-      tokenQuoteDecimal: 6,
-      slippage: 0.5
+      amount: BigInt(amount * Math.pow(10, 6)), // Convert amount to smallest units (6 decimals for C98)
+      isExactInput: true, // Fixed input amount, variable output
+      swapForY: true, // Swap from token X (C98) to token Y (USDC)
+      pair: new PublicKey(poolAddress), // Pool address
+      tokenBase: new PublicKey("C98A4nkJXhpVZNAZdHUA95RpTF3T4whtQubL3YobiUX9"), // C98 mint
+      tokenQuote: new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"), // USDC mint
+      tokenBaseDecimal: 6, // C98 has 6 decimal places
+      tokenQuoteDecimal: 6, // USDC has 6 decimal places
+      slippage: 0.5 // Maximum allowed slippage: 0.5%
     });
     
-    console.log(`Input: ${amount} C98`);
-    console.log(`Expected Output: ${Number(quote.amountOut) / Math.pow(10, 6)} USDC`);
-    console.log(`Price Impact: ${quote.priceImpact}%`);
-    console.log(`Fee: ${Number(quote.fee) / Math.pow(10, 6)} C98`);
+    // Display human-readable quote information
+    console.log(`Input: ${amount} C98`); // Original input amount
+    console.log(`Expected Output: ${Number(quote.amountOut) / Math.pow(10, 6)} USDC`); // Convert back to human-readable
+    console.log(`Price Impact: ${quote.priceImpact}%`); // How much the swap affects the price
+    console.log(`Fee: ${Number(quote.fee) / Math.pow(10, 6)} C98`); // Trading fee amount
     
-    return quote;
+    return quote; // Return complete quote object for further processing
   } catch (error) {
+    // Handle quote calculation errors (insufficient liquidity, invalid pool, etc.)
     console.error("Error calculating quote:", error.message);
   }
 }
 
-// Usage
+// Example usage: Calculate quote for swapping 100 C98
 calculatePriceImpact(100, "EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD");
 ```
 
@@ -388,31 +451,36 @@ calculatePriceImpact(100, "EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD");
 ```typescript
 import { BIN_STEP_CONFIGS } from "@saros-finance/dlmm-sdk";
 
+// Function to create a new liquidity pool between two tokens
 async function createNewPool(baseToken: string, quoteToken: string, initialPrice: number) {
   try {
+    // Create pool with specified token pair and initial price
     const { tx } = await liquidityBookServices.createPairWithConfig({
       tokenBase: {
-        mintAddress: baseToken,
-        decimal: 6
+        mintAddress: baseToken, // Token X (base token) mint address
+        decimal: 6 // Number of decimal places for base token
       },
       tokenQuote: {
-        mintAddress: quoteToken,
-        decimal: 6
+        mintAddress: quoteToken, // Token Y (quote token) mint address
+        decimal: 6 // Number of decimal places for quote token
       },
-      ratePrice: initialPrice,
-      binStep: BIN_STEP_CONFIGS[3].binStep, // Medium fee tier
-      payer: keypair.publicKey
+      ratePrice: initialPrice, // Initial price ratio between tokens
+      binStep: BIN_STEP_CONFIGS[3].binStep, // Fee tier (3 = medium fee, 0.3%)
+      payer: keypair.publicKey // Account paying for pool creation fees
     });
     
+    // Set transaction parameters for execution
     tx.recentBlockhash = (await liquidityBookServices.connection.getLatestBlockhash()).blockhash;
-    tx.feePayer = keypair.publicKey;
-    tx.sign(keypair);
+    tx.feePayer = keypair.publicKey; // Set fee payer
+    tx.sign(keypair); // Sign transaction with wallet
     
+    // Send transaction to Solana network
     const signature = await liquidityBookServices.connection.sendRawTransaction(
       tx.serialize(),
       { skipPreflight: true, preflightCommitment: "confirmed" }
     );
     
+    // Confirm transaction was processed successfully
     const { blockhash, lastValidBlockHeight } = await liquidityBookServices.connection.getLatestBlockhash();
     await liquidityBookServices.connection.confirmTransaction({
       signature,
@@ -420,15 +488,17 @@ async function createNewPool(baseToken: string, quoteToken: string, initialPrice
       lastValidBlockHeight
     });
     
-    console.log("Pool created! Signature:", signature);
-    return signature;
+    console.log("Pool created successfully! Transaction signature:", signature);
+    return signature; // Return transaction signature
   } catch (error) {
+    // Handle pool creation errors (insufficient funds, invalid tokens, etc.)
     console.error("Error creating pool:", error.message);
   }
 }
 
-// Usage (replace with actual token mints)
-// createNewPool("YourTokenMint", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", 1.0);
+// Example usage: Create a pool with custom token and USDC
+// Replace "YourTokenMint" with actual token mint address
+createNewPool("YourTokenMint", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", 1.0);
 ```
 
 **Output:** Pool creation transaction signature.
@@ -436,6 +506,70 @@ async function createNewPool(baseToken: string, quoteToken: string, initialPrice
 ---
 
 ## API Reference
+
+### API Methods Workflow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Saros DLMM SDK API Flow                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐           │
+│  │  Discovery  │───▶│   Quotes    │───▶│   Trading   │           │
+│  │             │    │             │    │             │           │
+│  │ fetchPoolAd-│    │ getQuote()  │    │ swap()      │           │
+│  │ dresses()   │    │             │    │             │           │
+│  │ fetchPoolMe-│    └─────────────┘    └─────────────┘           │
+│  │ tadata()    │                    │                            │
+│  └─────────────┘                    ▼                            │
+│           │                        ┌─────────────┐              │
+│           ▼                        │  Liquidity  │              │
+│  ┌─────────────┐                    │ Management  │              │
+│  │ Pool Info   │                    │             │              │
+│  │             │                    │ addLiquidity│              │
+│  │ getPairAc-  │                    │ IntoPosition│              │
+│  │ count()     │                    │ ()          │              │
+│  │ getUserPosi-│                    │ removeMulti-│              │
+│  │ tions()     │                    │ pleLiquidity│              │
+│  └─────────────┘                    │ ()          │              │
+│           │                        └─────────────┘              │
+│           ▼                        │                            │
+│  ┌─────────────┐                    ▼                            │
+│  │ Pool        │           ┌─────────────┐                       │
+│  │ Creation    │           │ Position    │                       │
+│  │             │           │ Management  │                       │
+│  │ createPair- │           │             │                       │
+│  │ WithConfig()│           │ createPosi- │                       │
+│  │             │           │ tion()      │                       │
+│  └─────────────┘           │ getUserPosi-│                       │
+│                            │ tions()     │                       │
+│                            └─────────────┘                       │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │                    Utility Methods                          │ │
+│  ├─────────────────────────────────────────────────────────────┤ │
+│  │ getDexName() │ getDexProgramId() │ getBinArray() │ listenNew-│ │
+│  │               │                   │                │ PoolAddress│ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Usage Flow Examples
+
+**For Traders:**
+```
+Discovery → Quotes → Trading
+```
+
+**For Liquidity Providers:**
+```
+Discovery → Pool Info → Position Management → Liquidity Management
+```
+
+**For Pool Creators:**
+```
+Pool Creation → Position Management → Liquidity Management
+```
 
 ### Core Methods
 
@@ -628,6 +762,68 @@ A: Varies by pool, but typically small amounts work for testing.
 
 ## Visual Aids
 
+### Complete SDK Workflow Diagram
+
+```
+┌─────────────────┐
+│   Initialize    │
+│ SDK Service     │
+│ (DEVNET/MAINNET)│
+└─────────┬───────┘
+          │
+          ▼
+┌─────────────────┐     ┌─────────────────┐
+│   Pool Discovery│────▶│  Pool Creation  │
+│ • fetchPoolAddresses │ • createPairWithConfig
+│ • fetchPoolMetadata  │ • Set initial price
+│ • getPairAccount     │ • Choose bin step
+└─────────┬───────┘     └─────────┬───────┘
+          │                      │
+          ▼                      ▼
+┌─────────────────┐     ┌─────────────────┐
+│   Price Quotes   │     │   Position      │
+│ • getQuote       │     │ Management      │
+│ • Calculate impact│     │ • createPosition│
+│ • Check slippage  │     │ • getUserPositions
+└─────────┬───────┘     └─────────┬───────┘
+          │                      │
+          ▼                      ▼
+┌─────────────────┐     ┌─────────────────┐
+│     Swaps       │     │   Liquidity     │
+│ • swap()        │     │ Management      │
+│ • Sign & Send   │     │ • addLiquidityIntoPosition
+│ • Confirm TX    │     │ • removeMultipleLiquidity
+└─────────┬───────┘     └─────────┬───────┘
+          │                      │
+          └──────────────────────┼──────────────────────┘
+                                 │
+                                 ▼
+                    ┌─────────────────┐
+                    │   Monitoring    │
+                    │ • Transaction   │
+                    │   Status        │
+                    │ • Position P&L  │
+                    │ • Pool Stats    │
+                    └─────────────────┘
+```
+
+### Key Workflow Paths
+
+**Trading Path:**
+```
+Initialize → Pool Discovery → Price Quotes → Swaps → Monitoring
+```
+
+**Liquidity Provider Path:**
+```
+Initialize → Pool Discovery → Position Management → Liquidity Management → Monitoring
+```
+
+**Pool Creator Path:**
+```
+Initialize → Pool Creation → Position Management → Liquidity Management → Monitoring
+```
+
 ### Liquidity Pool Structure
 ```
 [Bin Array Lower] <--- [Active Bin] ---> [Bin Array Upper]
@@ -700,5 +896,3 @@ Found an issue or want to improve the docs?
 **Last Updated:** September 9, 2025
 **SDK Version:** 1.4.0
 **Tested Networks:** Solana Mainnet & Devnet
-
-Happy building! 🚀
