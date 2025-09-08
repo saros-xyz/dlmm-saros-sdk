@@ -1,53 +1,201 @@
-# Code Examples
+# 💡 Code Examples
 
-Working, tested code examples for common Saros DLMM operations.
+**Copy-paste ready** examples for common Saros DLMM use cases.
 
-## Table of Contents
-
-- [Basic Swap](./basic-swap.md) - Simple token swap
-- [Liquidity Management](./liquidity-management.md) - Add/remove liquidity
-- [Position Tracking](./position-tracking.md) - Monitor positions
-- [Pool Analytics](./pool-analytics.md) - Pool data analysis
-- [Batch Operations](./batch-operations.md) - Multiple operations
-- [Error Handling](./error-handling.md) - Robust error management
-
-## Quick Examples
-
-### Simple Swap
+## 🚀 Basic Swap
 
 ```typescript
-import { LiquidityBookServices, MODE } from "@saros-finance/dlmm-sdk";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
 
-const lbServices = new LiquidityBookServices({ mode: MODE.MAINNET });
-const userWallet = Keypair.generate(); // Replace with real wallet
+const lbServices = new LiquidityBookServices({
+  cluster: "mainnet-beta"
+});
 
-// Swap 1 C98 for USDC
+// Swap 1 C98 to USDC
+const result = await lbServices.swap({
+  pair: new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD"),
+  amount: 1000000, // 1 C98
+  slippage: 0.5,
+  payer: wallet.publicKey
+});
+```
+
+## 📊 Get Quote First
+
+```typescript
+// Always get quote before swapping
 const quote = await lbServices.getQuote({
   amount: BigInt(1000000),
   isExactInput: true,
   swapForY: true,
-  pair: new PublicKey("POOL_ADDRESS"),
-  tokenBase: new PublicKey("C98_MINT"),
-  tokenQuote: new PublicKey("USDC_MINT"),
+  pair: poolAddress,
+  tokenBase: tokenX,
+  tokenQuote: tokenY,
   tokenBaseDecimal: 6,
   tokenQuoteDecimal: 6,
   slippage: 0.5
 });
 
-const swapTx = await lbServices.swap({
-  amount: quote.amount,
-  tokenMintX: new PublicKey("C98_MINT"),
-  tokenMintY: new PublicKey("USDC_MINT"),
-  otherAmountOffset: quote.otherAmountOffset,
-  swapForY: true,
-  isExactInput: true,
-  pair: new PublicKey("POOL_ADDRESS"),
-  payer: userWallet.publicKey
-});
+console.log("Expected output:", quote.amountOut);
+console.log("Price impact:", quote.priceImpact + "%");
+console.log("Fee:", quote.fee / 1000000, "tokens");
 ```
 
-### Add Liquidity
+## 🔄 Batch Swaps
+
+```typescript
+// Swap multiple tokens in sequence
+const swaps = [
+  { pair: pool1, amount: 1000000 },
+  { pair: pool2, amount: 500000 },
+  { pair: pool3, amount: 2000000 }
+];
+
+for (const swap of swaps) {
+  const result = await lbServices.swap({
+    ...swap,
+    slippage: 0.5,
+    payer: wallet.publicKey
+  });
+  console.log("Swap completed:", result.signature);
+}
+```
+
+## 📈 Price Monitoring
+
+```typescript
+// Monitor price changes
+async function monitorPrice(poolAddress: PublicKey) {
+  const pool = await lbServices.getPairAccount(poolAddress);
+
+  setInterval(async () => {
+    const updatedPool = await lbServices.getPairAccount(poolAddress);
+    const priceChange = calculatePriceChange(pool, updatedPool);
+
+    if (Math.abs(priceChange) > 1) { // 1% change
+      console.log("⚠️ Price changed:", priceChange + "%");
+    }
+  }, 30000); // Check every 30 seconds
+}
+```
+
+## 💰 Fee Calculator
+
+```typescript
+// Calculate potential fees
+function calculateFees(amount: number, feeRate: number) {
+  const fee = (amount * feeRate) / 100;
+  const netAmount = amount - fee;
+
+  return {
+    original: amount,
+    fee: fee,
+    net: netAmount,
+    rate: feeRate + "%"
+  };
+}
+
+// Example: 1000 USDC swap at 0.05% fee
+const fees = calculateFees(1000, 0.05);
+console.log("Fee:", fees.fee, "USDC");
+console.log("Net received:", fees.net, "USDC");
+```
+
+## 🛡️ Error Handling
+
+```typescript
+async function safeSwap(params: SwapParams) {
+  try {
+    // Check balance first
+    const balance = await getTokenBalance(params.tokenMint, params.payer);
+    if (balance < params.amount) {
+      throw new Error("Insufficient balance");
+    }
+
+    // Get fresh quote
+    const quote = await lbServices.getQuote(params);
+
+    // Check slippage
+    if (quote.priceImpact > params.maxSlippage) {
+      throw new Error("Price impact too high");
+    }
+
+    // Execute swap
+    const result = await lbServices.swap(params);
+    return result;
+
+  } catch (error) {
+    console.error("Swap failed:", error.message);
+
+    // Handle specific errors
+    if (error.message.includes("insufficient")) {
+      console.log("💰 Add more tokens to your wallet");
+    } else if (error.message.includes("slippage")) {
+      console.log("📈 Try lower amount or higher slippage");
+    }
+
+    throw error;
+  }
+}
+```
+
+## 🔧 React Hook Example
+
+```typescript
+// useSarosSwap.ts
+import { useState, useCallback } from "react";
+import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
+
+export function useSarosSwap() {
+  const [loading, setLoading] = useState(false);
+  const [quote, setQuote] = useState(null);
+
+  const getQuote = useCallback(async (params) => {
+    setLoading(true);
+    try {
+      const result = await lbServices.getQuote(params);
+      setQuote(result);
+      return result;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const executeSwap = useCallback(async (params) => {
+    setLoading(true);
+    try {
+      const result = await lbServices.swap(params);
+      return result;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { loading, quote, getQuote, executeSwap };
+}
+```
+
+## 📱 Mobile/React Native
+
+```typescript
+// React Native example
+import { LiquidityBookServices } from "@saros-finance/dlmm-sdk/mobile";
+
+const lbServices = new LiquidityBookServices({
+  cluster: "mainnet-beta",
+  // Mobile-optimized settings
+  commitment: "confirmed",
+  timeout: 30000
+});
+
+// Same API as web version
+const result = await lbServices.swap({
+  pair: poolAddress,
+  amount: 1000000,
+  slippage: 0.5,
+  payer: wallet.publicKey
+});
+```
 
 ```typescript
 import { LiquidityShape } from "@saros-finance/dlmm-sdk";
@@ -87,24 +235,22 @@ positions.forEach(pos => {
 ## Example Categories
 
 ### 🔄 **Swapping Examples**
-- [Basic Token Swap](./basic-swap.md) - Simple swap implementation
-- [Advanced Swap](./advanced-swap.md) - Multi-hop and batch swaps
-- [Price Impact Analysis](./price-impact.md) - Analyze swap efficiency
+- [Basic Token Swap](./basic-swap.md) - Simple swap implementation with step-by-step guide
+- [Batch Operations](./batch-operations.md) - Multiple operations in single transactions
+- [Error Handling](./error-handling.md) - Robust error management and recovery
 
 ### 💧 **Liquidity Examples**
-- [Add Liquidity](./add-liquidity.md) - Single and multi-bin positions
-- [Remove Liquidity](./remove-liquidity.md) - Partial and full withdrawals
-- [Rebalance Positions](./rebalance.md) - Optimize position ranges
+- [Liquidity Management](./liquidity-management.md) - Add, remove, and manage liquidity positions
+- [Position Tracking](./position-tracking.md) - Monitor and analyze your positions
 
 ### 📊 **Analytics Examples**
-- [Pool Monitoring](./pool-monitoring.md) - Track pool health
-- [Position Analytics](./position-analytics.md) - Performance tracking
-- [Fee Analysis](./fee-analysis.md) - Revenue optimization
+- [Pool Analytics](./pool-analytics.md) - Analyze pool performance, volume, and health metrics
 
-### 🔧 **Utility Examples**
-- [Batch Operations](./batch-operations.md) - Multiple operations
-- [Error Handling](./error-handling.md) - Robust error management
-- [Transaction Monitoring](./transaction-monitoring.md) - Track transactions
+### 🔧 **Advanced Examples**
+- Batch operations with retry logic
+- Cross-pool transactions
+- Position management automation
+- Real-time monitoring and alerts
 
 ## Running Examples
 
@@ -399,12 +545,12 @@ Links to related examples or documentation.
 
 ## Support
 
-- 📚 **[API Reference](../api-reference/)** - Complete method documentation
+- 📚 **[API Reference](../api-reference/index.md)** - Complete method documentation
 - 🐛 **[GitHub Issues](https://github.com/saros-xyz/dlmm-sdk/issues)** - Report bugs
 - 💬 **[Discord](https://discord.gg/saros)** - Community support
 - 📧 **[Security](../security/security-disclosure.md)** - Security issues
 
 ---
 
-**Ready to explore? Start with our [Basic Swap](./basic-swap.md) example!**</content>
+**Ready to explore? Start with our [Basic Token Swap](./basic-swap.md) example!**</content>
 <parameter name="filePath">h:\Rahul Prasad 01\earn\Saros\docs\examples\index.md

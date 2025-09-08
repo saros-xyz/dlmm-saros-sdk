@@ -396,8 +396,8 @@ We take security seriously. If you discover a security vulnerability, please:
 
 - **[Audit Reports](./audit-reports/)** - Complete security audit documentation
 - **[Best Practices](./best-practices.md)** - Security implementation guides
-- **[Troubleshooting](../troubleshooting/)** - Common security-related issues
-- **[API Reference](../api-reference/)** - Secure usage patterns
+- **[Troubleshooting](../troubleshooting/index.md)** - Common security-related issues
+- **[API Reference](../api-reference/index.md)** - Secure usage patterns
 
 ## ⚠️ Disclaimer
 

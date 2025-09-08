@@ -1,102 +1,54 @@
-# Frequently Asked Questions
+# ❓ FAQ
 
-Common questions and answers about the Saros DLMM SDK.
+**Quick answers** to common Saros DLMM questions.
 
-## 🤔 General Questions
-
-### What is Saros DLMM?
-
-**Saros DLMM (Dynamic Liquidity Market Maker)** is a next-generation AMM (Automated Market Maker) protocol on Solana that uses a bin-based liquidity system instead of traditional curve-based approaches. This allows for:
-
-- **Better capital efficiency**: Liquidity is concentrated in specific price ranges
-- **Reduced slippage**: More predictable prices for larger trades
-- **Flexible fee structures**: Different fee tiers based on bin configurations
-- **Advanced strategies**: Support for various curve types (constant product, constant price, stable, offset)
-
-### How does it differ from Uniswap V3?
-
-| Feature | Saros DLMM | Uniswap V3 |
-|---------|------------|------------|
-| **Architecture** | Bin-based | Tick-based |
-| **Precision** | 23-decimal precision | 18-decimal precision |
-| **Curve Types** | Multiple (CP, CPrice, Stable, Offset) | Single (constant product) |
-| **Gas Efficiency** | Optimized for Solana | Ethereum gas costs |
-| **Liquidity Distribution** | Discrete bins | Continuous ticks |
-| **Position Management** | Simpler bin ranges | Complex tick math |
-
-### What are the main benefits?
-
-- **🎯 Precise Liquidity**: Concentrate liquidity exactly where needed
-- **⚡ Fast Trades**: Optimized for Solana's high throughput
-- **💰 Lower Fees**: Competitive fee structure with multiple tiers
-- **🔧 Flexible**: Support for various trading strategies
-- **🛡️ Secure**: Comprehensive security audits and formal verification
-
-## 🚀 Getting Started
+##  Getting Started
 
 ### How do I install the SDK?
-
 ```bash
-# Using npm
 npm install @saros-finance/dlmm-sdk
-
-# Using yarn
-yarn add @saros-finance/dlmm-sdk
-
-# Using pnpm
-pnpm add @saros-finance/dlmm-sdk
 ```
 
 ### Which networks are supported?
+- ✅ **Mainnet Beta** - Production
+- ✅ **Devnet** - Testing
+- ✅ **Testnet** - Advanced testing
+- ✅ **Localnet** - Development
 
-| Network | Status | RPC Endpoint |
-|---------|--------|--------------|
-| **Mainnet** | ✅ Production | `https://api.mainnet-beta.solana.com` |
-| **Devnet** | ✅ Testing | `https://api.devnet.solana.com` |
-| **Testnet** | ✅ Testing | `https://api.testnet.solana.com` |
-| **Localnet** | ✅ Development | `http://localhost:8899` |
+### Do I need SOL to use it?
+**Yes, for:**
+- Transaction fees (~0.000005 SOL)
+- Token account creation (~0.002 SOL)
+- Priority fees (optional, for faster processing)
 
-### Do I need SOL to use the SDK?
-
-**Yes, you need SOL for:**
-- **Transaction fees**: ~0.000005 SOL per basic transaction
-- **Account creation**: ~0.002 SOL for new token accounts
-- **Priority fees**: Optional, for faster processing during congestion
-
-**Recommended minimum balance**: 0.01 SOL for active trading
+**Minimum recommended:** 0.01 SOL
 
 ## 💱 Swapping
 
-### How do I perform a basic swap?
-
+### How do I swap tokens?
 ```typescript
-import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
-
-const lbServices = new LiquidityBookServices({
-  cluster: "mainnet-beta"
-});
-
-// Basic swap
 const result = await lbServices.swap({
-  pair: new PublicKey("POOL_ADDRESS"),
-  tokenMintX: new PublicKey("TOKEN_X_MINT"),
-  tokenMintY: new PublicKey("TOKEN_Y_MINT"),
-  amount: 1000000, // 1 TOKEN_X (6 decimals)
-  slippage: 0.5, // 0.5%
+  pair: poolAddress,
+  amount: 1000000, // 1 token (6 decimals)
+  slippage: 0.5,   // 0.5% max slippage
   payer: wallet.publicKey
 });
 ```
 
-### What is slippage and how do I set it?
+### What is slippage?
+**Slippage** = Maximum price change you're willing to accept.
 
-**Slippage** is the maximum price change you're willing to accept. It's protection against price manipulation.
+- `0.1` = 0.1% (very strict)
+- `0.5` = 0.5% (balanced)
+- `2.0` = 2.0% (tolerant)
 
+### Should I get a quote first?
+**Yes! Always get quote before swapping:**
 ```typescript
-// Conservative (recommended for large trades)
-const result = await lbServices.swap({
-  // ... other params
-  slippage: 0.1 // 0.1% - very tight
-});
+const quote = await lbServices.getQuote(params);
+console.log("Expected output:", quote.amountOut);
+console.log("Price impact:", quote.priceImpact);
+```
 
 // Moderate
 const result = await lbServices.swap({

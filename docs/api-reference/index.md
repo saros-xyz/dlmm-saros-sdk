@@ -1,53 +1,77 @@
-# API Reference
+# 📖 API Reference
 
-Complete API documentation for the Saros DLMM SDK.
+Complete API documentation for the Saros DLMM SDK. All methods, parameters, and examples.
 
-## Table of Contents
+## 🚀 Quick Reference
 
-- [LiquidityBookServices](#liquiditybookservices)
-- [Types](#types)
-- [Utilities](#utilities)
-- [Constants](#constants)
-
-## LiquidityBookServices
-
-The main service class for interacting with Saros DLMM.
-
-### Constructor
-
+### Most Used Methods
 ```typescript
-new LiquidityBookServices(config: ILiquidityBookConfig)
-```
-
-**Parameters:**
-- `config.mode` - Network mode (`MODE.MAINNET`, `MODE.DEVNET`, `MODE.TESTNET`)
-
-**Example:**
-```typescript
+// Initialize SDK
 const lbServices = new LiquidityBookServices({
-  mode: MODE.MAINNET
+  cluster: "mainnet-beta"
 });
+
+// Get swap quote
+const quote = await lbServices.getQuote(params);
+
+// Execute swap
+const result = await lbServices.swap(params);
+
+// Get pool info
+const pool = await lbServices.getPairAccount(poolAddress);
 ```
 
-### Core Methods
+## 📋 Table of Contents
 
-#### `getQuote(params: GetTokenOutputParams): Promise<GetTokenOutputResponse>`
+- [🔧 Core Methods](#-core-methods) - Most used functions
+- [💰 Liquidity Methods](#-liquidity-methods) - Add/remove liquidity
+- [📊 Analytics Methods](#-analytics-methods) - Pool data and analytics
+- [⚙️ Configuration](#️-configuration) - Setup and options
+- [📝 Types](#-types) - TypeScript interfaces
+- [🛠️ Utilities](#️-utilities) - Helper functions
 
-Gets a quote for a token swap operation.
+## 🔧 Core Methods
+
+### `swap(params)` - Execute Token Swap
+
+**Most important method** - Swap tokens through DLMM pools.
+
+```typescript
+const result = await lbServices.swap({
+  pair: new PublicKey("POOL_ADDRESS"),
+  amount: 1000000,        // Amount to swap (in smallest unit)
+  slippage: 0.5,          // Max slippage % (0.5 = 0.5%)
+  payer: wallet.publicKey  // Your wallet
+});
+
+console.log("Swap result:", result);
+```
 
 **Parameters:**
+- `pair`: Pool address (PublicKey)
+- `amount`: Swap amount in smallest units
+- `slippage`: Max price slippage (0-100)
+- `payer`: Your wallet public key
+
+### `getQuote(params)` - Get Swap Quote
+
+Get exact quote before executing swap (recommended).
+
 ```typescript
-interface GetTokenOutputParams {
-  amount: bigint;              // Amount to swap
-  isExactInput: boolean;       // Whether amount is input (true) or output (false)
-  swapForY: boolean;           // Swap direction (X->Y or Y->X)
-  pair: PublicKey;             // Pool address
-  tokenBase: PublicKey;        // Base token mint
-  tokenQuote: PublicKey;       // Quote token mint
-  tokenBaseDecimal: number;    // Base token decimals
-  tokenQuoteDecimal: number;   // Quote token decimals
-  slippage: number;            // Slippage tolerance (percentage)
-}
+const quote = await lbServices.getQuote({
+  amount: BigInt(1000000),
+  isExactInput: true,     // true = input amount, false = output amount
+  swapForY: true,         // Direction: X->Y or Y->X
+  pair: poolAddress,
+  tokenBase: tokenX,
+  tokenQuote: tokenY,
+  slippage: 0.5
+});
+
+console.log("Expected output:", quote.amountOut);
+console.log("Price impact:", quote.priceImpact);
+console.log("Fee:", quote.fee);
+```
 ```
 
 **Returns:**
@@ -601,5 +625,5 @@ Common error types:
 
 ---
 
-**Need help? Check our [Examples](../examples/) or [Guides](../guides/) for detailed usage patterns.**</content>
+**Need help? Check our [Examples](../examples/index.md) or [Guides](../guides/index.md) for detailed usage patterns.**</content>
 <parameter name="filePath">h:\Rahul Prasad 01\earn\Saros\docs\api-reference\index.md

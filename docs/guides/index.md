@@ -212,10 +212,10 @@ async function monitorPrice(poolAddress: PublicKey) {
 
 ## Support & Resources
 
-- 📚 **[API Reference](../api-reference/)** - Complete method documentation
-- 💡 **[Examples](../examples/)** - Working code samples
-- 🔒 **[Security](../security/)** - Security best practices
-- ❓ **[Troubleshooting](../troubleshooting/)** - Common issues and solutions
+- 📚 **[API Reference](../api-reference/index.md)** - Complete method documentation
+- 💡 **[Examples](../examples/index.md)** - Working code samples
+- 🔒 **[Security](../security/index.md)** - Security best practices
+- ❓ **[Troubleshooting](../troubleshooting/index.md)** - Common issues and solutions
 
 ## Contributing
 
@@ -227,5 +227,5 @@ Found an issue or want to improve a guide?
 
 ---
 
-**Ready to start building? Choose a guide above or check our [Getting Started](../getting-started/) section!**</content>
+**Ready to start building? Choose a guide above or check our [Getting Started](../getting-started/index.md) section!**</content>
 <parameter name="filePath">h:\Rahul Prasad 01\earn\Saros\docs\guides\index.md

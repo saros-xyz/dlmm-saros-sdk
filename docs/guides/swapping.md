@@ -1,53 +1,75 @@
-# Token Swapping Guide
+# 💱 Token Swapping Guide
 
-Complete guide to performing token swaps on Saros DLMM with optimal routing, slippage protection, and error handling.
+Learn to swap tokens on Saros DLMM in **3 simple steps**.
 
-## Overview
+## ⚡ Quick Swap (2 minutes)
 
-Token swapping is the core functionality of any DEX. Saros DLMM provides efficient, capital-efficient swaps with advanced features like dynamic fees and concentrated liquidity.
-
-## Prerequisites
-
-- ✅ Saros DLMM SDK installed
-- ✅ Solana wallet with SOL and tokens
-- ✅ Basic understanding of token addresses and decimals
-
-## Quick Swap Example
-
+### Step 1: Setup
 ```typescript
-import {
-  LiquidityBookServices,
-  MODE
-} from "@saros-finance/dlmm-sdk";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
 
-async function quickSwap() {
-  // Initialize SDK
-  const lbServices = new LiquidityBookServices({
-    mode: MODE.MAINNET
-  });
+const lbServices = new LiquidityBookServices({
+  cluster: "mainnet-beta"
+});
+```
 
-  // Pool configuration
-  const C98_USDC_POOL = new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD");
-  const C98_MINT = new PublicKey("C98A4nkJXhpVZNAZdHUA95RpTF3T4whtQubL3YobiUX9");
-  const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+### Step 2: Get Quote
+```typescript
+// Get quote first (recommended)
+const quote = await lbServices.getQuote({
+  amount: BigInt(1000000), // 1 C98
+  isExactInput: true,
+  swapForY: true, // C98 -> USDC
+  pair: new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD"),
+  tokenBase: C98_MINT,
+  tokenQuote: USDC_MINT,
+  tokenBaseDecimal: 6,
+  tokenQuoteDecimal: 6,
+  slippage: 0.5
+});
 
-  // User wallet (replace with actual wallet)
-  const userWallet = Keypair.generate();
+console.log("You'll receive:", quote.amountOut, "USDC");
+```
 
-  try {
-    // Step 1: Get quote
-    console.log("🔍 Getting swap quote...");
-    const quote = await lbServices.getQuote({
-      amount: BigInt(1000000), // 1 C98
-      isExactInput: true,
-      swapForY: true, // C98 -> USDC
-      pair: C98_USDC_POOL,
-      tokenBase: C98_MINT,
-      tokenQuote: USDC_MINT,
-      tokenBaseDecimal: 6,
-      tokenQuoteDecimal: 6,
-      slippage: 0.5 // 0.5% slippage
+### Step 3: Execute Swap
+```typescript
+// Execute the swap
+const result = await lbServices.swap({
+  pair: new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD"),
+  amount: 1000000,
+  slippage: 0.5,
+  payer: wallet.publicKey
+});
+
+console.log("✅ Swap successful!", result.signature);
+```
+
+## 🎯 Understanding Parameters
+
+### Amount
+```typescript
+// For 1 C98 (6 decimals)
+amount: 1000000  // 1 * 10^6
+
+// For 0.5 SOL (9 decimals)
+amount: 500000000  // 0.5 * 10^9
+```
+
+### Slippage
+```typescript
+slippage: 0.5   // 0.5% max price change
+slippage: 1.0   // 1.0% max price change (more tolerant)
+slippage: 0.1   // 0.1% max price change (very strict)
+```
+
+### Direction (swapForY)
+```typescript
+// C98 -> USDC
+swapForY: true   // Swapping to token Y (USDC)
+
+// USDC -> C98
+swapForY: false  // Swapping to token X (C98)
+```
     });
 
     console.log(`📊 Expected output: ${quote.amountOut} USDC`);
@@ -653,5 +675,5 @@ completeSwapWorkflow();
 
 ---
 
-**Need help? Check our [Troubleshooting](../troubleshooting/) section or join our [Discord](https://discord.gg/saros)!**</content>
+**Need help? Check our [Troubleshooting](../troubleshooting/index.md) section or join our [Discord](https://discord.gg/saros)!**</content>
 <parameter name="filePath">h:\Rahul Prasad 01\earn\Saros\docs\guides\swapping.md

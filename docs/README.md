@@ -9,7 +9,7 @@ Welcome to the official documentation for the **Saros DLMM SDK** - a powerful Ty
 
 ## 🚀 Quick Start
 
-Get up and running in minutes:
+Get up and running in **3 minutes**:
 
 ```bash
 npm install @saros-finance/dlmm-sdk
@@ -18,86 +18,50 @@ npm install @saros-finance/dlmm-sdk
 ```typescript
 import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
 
+// Initialize SDK
 const lbServices = new LiquidityBookServices({
   cluster: "mainnet-beta"
 });
 
-// Perform a swap
+// Swap tokens
 const result = await lbServices.swap({
-  pair: new PublicKey("POOL_ADDRESS"),
-  amount: 1000000, // 1 TOKEN_X
-  slippage: 0.5    // 0.5%
+  pair: new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD"), // C98-USDC pool
+  amount: 1000000, // 1 C98
+  slippage: 0.5,   // 0.5% max slippage
+  payer: wallet.publicKey
 });
+
+console.log("✅ Swap successful!", result.signature);
 ```
+
+## 📋 Quick Navigation
+
+| I want to... | Go to... |
+|-------------|----------|
+| **Get started** | [Installation](./getting-started/index.md) |
+| **Learn concepts** | [Core Concepts](./core-concepts/index.md) |
+| **Swap tokens** | [Swapping Guide](./guides/swapping.md) |
+| **See examples** | [Code Examples](./examples/index.md) |
+| **API details** | [API Reference](./api-reference/index.md) |
+| **Troubleshoot** | [Debug Guide](./troubleshooting/index.md) |
+| **Security info** | [Security](./security/index.md) |
 
 ## 📚 Documentation Overview
 
-### 🏁 Getting Started
+### 🏁 Getting Started (5 min)
 - **[Installation & Setup](./getting-started/index.md)** - Quick setup guide
 - **[Core Concepts](./core-concepts/index.md)** - Understand DLMM mechanics
-- **[Basic Usage](./guides/swapping.md)** - Your first swap implementation
+- **[First Swap](./guides/swapping.md)** - Your first token swap
 
 ### 🛠️ Developer Guides
-- **[Swapping](./guides/swapping.md)** - Complete swap tutorial
-- **[Liquidity Provision](./guides/liquidity-provision.md)** - Add/remove liquidity
-- **[Position Management](./guides/position-management.md)** - Manage your positions
-- **[Pool Creation](./guides/pool-creation.md)** - Create custom pools
-- **[Fee Management](./guides/fee-management.md)** - Optimize fee strategies
-- **[Advanced Strategies](./guides/advanced-strategies.md)** - Pro strategies
+- **[Token Swapping](./guides/swapping.md)** - Complete swap tutorial with examples
+- **[API Reference](./api-reference/index.md)** - All methods and parameters
+- **[Examples](./examples/index.md)** - Working code samples
 
-### 📖 API Reference
-- **[Complete API](./api-reference/index.md)** - All methods and types
-- **[LiquidityBookServices](./api-reference/services.md)** - Core service class
-- **[Types](./api-reference/types.md)** - TypeScript definitions
-- **[Utilities](./api-reference/utils.md)** - Helper functions
-
-### 🔧 Development
-- **[Contributing](./CONTRIBUTING.md)** - How to contribute
-- **[Changelog](./changelog.md)** - Version history
-- **[Troubleshooting](./troubleshooting/index.md)** - Debug and fix issues
-- **[FAQ](./faq.md)** - Common questions
-
-### 🛡️ Security & Best Practices
-- **[Security](./security/index.md)** - Security overview and best practices
-- **[Audit Reports](./security/audit-reports/)** - Security audit results
-
-### 💡 Examples
-- **[Basic Swap](./examples/basic-swap.md)** - Simple swap example
-- **[Add Liquidity](./examples/add-liquidity.md)** - Liquidity provision
-- **[Position Tracking](./examples/position-tracking.md)** - Monitor positions
-- **[Advanced Trading](./examples/advanced-trading.md)** - Complex strategies
-
-## 🌟 Key Features
-
-### ⚡ High Performance
-- **Optimized for Solana**: Minimal compute units, fast execution
-- **Batch Operations**: Multiple operations in single transaction
-- **Priority Fees**: Faster processing with priority fees
-
-### 🎯 Advanced Liquidity
-- **Bin-Based System**: Concentrate liquidity precisely
-- **Multiple Curves**: Constant Product, Constant Price, Stable, Offset
-- **Flexible Fees**: Custom fee structures per bin
-
-### 🛡️ Enterprise Security
-- **Comprehensive Audits**: Multiple security audit phases completed
-- **Input Validation**: Robust parameter validation
-- **Error Handling**: Secure error handling patterns
-
-### 🔧 Developer Experience
-- **TypeScript First**: Full TypeScript support with intellisense
-- **Rich Documentation**: Complete guides and examples
-- **Testing Suite**: Comprehensive test coverage
-
-## 📊 Protocol Statistics
-
-| Metric | Value |
-|--------|-------|
-| **TVL** | $50M+ |
-| **Daily Volume** | $2M+ |
-| **Active Pairs** | 150+ |
-| **Total Transactions** | 1M+ |
-| **Security Audits** | 4 Phases ✅ |
+### 🛡️ Security & Support
+- **[Security](./security/index.md)** - Audit reports and best practices
+- **[Troubleshooting](./troubleshooting/index.md)** - Debug common issues
+- **[FAQ](./faq.md)** - Frequently asked questions
 
 ## 🏛️ Architecture
 
@@ -293,7 +257,7 @@ copies or substantial portions of the Software.
 ## 🙏 Acknowledgments
 
 ### Core Team
-- **Lead Developer**: [Rahul Prasad](https://github.com/rahulprasad)
+- **Lead Developer**: [Rahul Prasad](https://github.com/Rahul-Prasad-07)
 - **Security Lead**: [Security Team](mailto:security@saros.finance)
 - **Community Manager**: [Community Team](https://discord.gg/saros)
 

@@ -1,53 +1,37 @@
-# Getting Started with Saros DLMM SDK
+# 🚀 Getting Started (5 minutes)
 
-Welcome to the Saros DLMM SDK! This guide will help you get up and running with the most powerful liquidity management system on Solana.
+Get up and running with Saros DLMM SDK in just 5 minutes! This guide covers everything you need to make your first token swap.
 
-## Prerequisites
+## ⚡ Quick Setup
 
-Before you begin, ensure you have:
-
-- **Node.js**: Version 16.0 or higher
-- **npm** or **yarn**: Latest stable version
-- **TypeScript**: Version 4.5 or higher (recommended)
-- **Solana CLI**: For development and testing
-- **A Solana wallet**: With some SOL for transactions
-
-## Installation
-
-### Using npm
+### 1. Install the SDK
 ```bash
 npm install @saros-finance/dlmm-sdk
 ```
 
-### Using yarn
-```bash
-yarn add @saros-finance/dlmm-sdk
-```
-
-### Using pnpm
-```bash
-pnpm add @saros-finance/dlmm-sdk
-```
-
-## Basic Setup
-
-### 1. Import the SDK
-
+### 2. Import and Initialize
 ```typescript
-import {
-  LiquidityBookServices,
-  MODE,
-  BIN_STEP_CONFIGS
-} from "@saros-finance/dlmm-sdk";
-import { PublicKey } from "@solana/web3.js";
-```
+import { LiquidityBookServices } from "@saros-finance/dlmm-sdk";
 
-### 2. Initialize the Service
-
-```typescript
-// For production (mainnet)
 const lbServices = new LiquidityBookServices({
-  mode: MODE.MAINNET
+  cluster: "mainnet-beta"  // or "devnet" for testing
+});
+```
+
+### 3. Your First Swap
+```typescript
+// Example: Swap C98 to USDC
+const result = await lbServices.swap({
+  pair: new PublicKey("EwsqJeioGAXE5EdZHj1QvcuvqgVhJDp9729H5wjh28DD"),
+  amount: 1000000, // 1 C98
+  slippage: 0.5,   // 0.5% max slippage
+  payer: wallet.publicKey
+});
+
+console.log("✅ Swap successful!", result.signature);
+```
+
+That's it! 🎉 You're now ready to build with Saros DLMM.
 });
 
 // For development (devnet)
@@ -201,10 +185,10 @@ try {
 
 Now that you have the basics, explore:
 
-1. **[Core Concepts](../core-concepts/)** - Understand DLMM mechanics
-2. **[API Reference](../api-reference/)** - Complete method documentation
-3. **[Guides](../guides/)** - Advanced tutorials
-4. **[Examples](../examples/)** - More code samples
+1. **[Core Concepts](../core-concepts/index.md)** - Understand DLMM mechanics
+2. **[API Reference](../api-reference/index.md)** - Complete method documentation
+3. **[Guides](../guides/index.md)** - Advanced tutorials
+4. **[Examples](../examples/index.md)** - More code samples
 
 ## Need Help?
 

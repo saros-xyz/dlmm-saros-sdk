@@ -1,53 +1,79 @@
-# Core Concepts
+# 🎯 Core Concepts
 
-Understanding the fundamental concepts behind Saros Dynamic Liquidity Market Maker (DLMM) is essential for building effective applications.
+Understand DLMM in **2 minutes** with simple explanations and visual examples.
 
 ## What is DLMM?
 
-Dynamic Liquidity Market Maker (DLMM) is an advanced automated market maker (AMM) that uses a **bin-based liquidity system** instead of the traditional constant product formula (x * y = k).
+**DLMM = Dynamic Liquidity Market Maker**
 
-### Key Advantages
+Unlike traditional AMMs that spread liquidity across all prices, DLMM concentrates liquidity in specific price ranges for **better efficiency**.
 
-- **🎯 Concentrated Liquidity** - LPs can focus their capital on specific price ranges
-- **⚡ Better Capital Efficiency** - Up to 1000x more efficient than traditional AMMs
-- **📊 Dynamic Fees** - Fees adjust based on market volatility
-- **🔄 Flexible Ranges** - Liquidity can be positioned anywhere on the price curve
+### Traditional AMM vs DLMM
 
-## Bin-Based Architecture
+```
+Traditional AMM:           DLMM (Saros):
+███████████████           ░░░░░░░░░░░░░░░░░░░░░░░░
+██░                    ░██  ██████████░░          ░
+██░░   Liquidity      ░░██  ██░░░░░░░░██░░        ░
+██░░   Spread         ░░██  ██░░      ██░░        ░
+██░░   Everywhere     ░░██  ██░░      ██░░        ░
+██░░                  ░░██  ██░░      ██░░        ░
+██░░░░░░░░░░░░░░░░░░░░░██  ██░░      ██░░        ░
+███████████████████████    ██████████░░          ░
+Price Range: $0.01 - $100   Price Range: $1.50 - $1.60
+Efficiency: 1x              Efficiency: 1000x ⚡
+```
 
-### Understanding Bins
+## 🗂️ Bin System Explained
 
-Bins are discrete price ranges where liquidity is concentrated. Each bin represents a specific price level.
+### What are Bins?
+
+**Bins = Price buckets** where you place your liquidity.
 
 ```typescript
-// Example bin structure
-interface Bin {
-  totalSupply: string;    // Total liquidity in this bin
-  reserveX: string;       // Token X reserve
-  reserveY: string;       // Token Y reserve
+// Simple bin example
+const bin = {
+  price: "$1.50 - $1.51",    // Price range
+  liquidity: "1000 USDC",    // Your tokens here
+  fee: "0.01%"              // Trading fee
 }
 ```
 
-### Bin Step
-
-The bin step determines the price granularity between bins:
+### Bin Step = Price Precision
 
 ```typescript
-// Available bin steps (basis points)
-const BIN_STEP_CONFIGS = [
-  { binStep: 1,   fee: 0.001% },  // 0.001% fee
-  { binStep: 2,   fee: 0.002% },  // 0.002% fee
-  { binStep: 5,   fee: 0.005% },  // 0.005% fee
-  { binStep: 10,  fee: 0.01%  },  // 0.01% fee
-  { binStep: 20,  fee: 0.02%  },  // 0.02% fee
+const BIN_STEPS = [
+  { step: 1,   precision: "0.01%", fee: "0.001%" },  // Very precise
+  { step: 10,  precision: "0.1%",  fee: "0.01%"  },  // Balanced
+  { step: 100, precision: "1%",    fee: "0.1%"   }   // Wide range
 ];
 ```
 
-## Liquidity Shapes
+## 💰 Fee Structure
 
-Saros DLMM supports different liquidity distribution shapes:
+### Dynamic Fees
 
-### 1. Spot Shape
+Fees adjust based on **volatility** and **liquidity depth**:
+
+| Volatility | Fee Rate | Use Case |
+|------------|----------|----------|
+| 🟢 Low | 0.01% | Stable pairs (USDC/USDT) |
+| 🟡 Medium | 0.05% | Normal pairs (SOL/USDC) |
+| 🔴 High | 0.2% | Volatile pairs (MEME/SOL) |
+
+### Fee Earnings
+
+**You earn fees** when traders use your liquidity:
+
+```typescript
+// Your position
+const position = {
+  liquidity: "1000 USDC",
+  feeTier: "0.05%",
+  dailyVolume: "10000 USDC",
+  yourEarnings: "5 USDC/day"  // 0.05% of volume
+};
+```
 Concentrates liquidity around the current price.
 
 ```typescript
@@ -299,9 +325,9 @@ const binArrays = await lbServices.getBinArrayInfo({
 
 ## Next Steps
 
-- **[API Reference](../api-reference/)** - Complete method documentation
-- **[Guides](../guides/)** - Step-by-step tutorials
-- **[Examples](../examples/)** - Working code samples
+- **[API Reference](../api-reference/index.md)** - Complete method documentation
+- **[Guides](../guides/index.md)** - Step-by-step tutorials
+- **[Examples](../examples/index.md)** - Working code samples
 
 ---
 
