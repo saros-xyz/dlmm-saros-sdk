@@ -245,6 +245,150 @@ sequenceDiagram
 
 ---
 
+## SDK Function Flow Diagrams
+
+### getQuote() Function Flow
+
+```mermaid
+graph TD
+    A[getQuote(params)] --> B[Validate Input Parameters]
+    B --> C[Extract Pool Address]
+    C --> D[Query Pool State from Blockchain]
+    D --> E[Get Active Bin ID]
+    E --> F[Calculate Price Based on Bin]
+    F --> G[Compute Price Impact]
+    G --> H[Calculate Trading Fees]
+    H --> I[Apply Slippage Tolerance]
+    I --> J[Return Quote Object]
+    J --> K[{amountIn, amountOut, priceImpact, fee, otherAmountOffset}]
+```
+
+### swap() Function Flow
+
+```mermaid
+graph TD
+    A[swap(params)] --> B[Validate Swap Parameters]
+    B --> C[Verify Token Pair]
+    C --> D[Check User Token Balance]
+    D --> E[Build Swap Instruction]
+    E --> F[Set Minimum Output Amount]
+    F --> G[Add Reward Hook if Provided]
+    G --> H[Create Transaction Object]
+    H --> I[Set Transaction Fee Payer]
+    I --> J[Return Unsigned Transaction]
+    J --> K[Transaction Ready for Signing]
+```
+
+### createPairWithConfig() Function Flow
+
+```mermaid
+graph TD
+    A[createPairWithConfig(params)] --> B[Validate Token Mint Addresses]
+    B --> C[Check Token Decimals]
+    C --> D[Select Bin Step Configuration]
+    D --> E[Calculate Initial Price Ratio]
+    E --> F[Generate Pool PDA Address]
+    F --> G[Build Pool Creation Instructions]
+    G --> H[Set Pool Parameters]
+    H --> I[Create Transaction with Instructions]
+    I --> J[Return Transaction & Pool Address]
+    J --> K[{tx: Transaction, pairAddress: PublicKey}]
+```
+
+### addLiquidityIntoPosition() Function Flow
+
+```mermaid
+graph TD
+    A[addLiquidityIntoPosition(params)] --> B[Validate Amount Parameters]
+    B --> C[Get Position Information]
+    C --> D[Verify Bin Array Bounds]
+    D --> E[Calculate Token Ratios]
+    E --> F[Build Liquidity Instructions]
+    F --> G[Set Distribution Parameters]
+    G --> H[Create Position Instructions if New]
+    H --> I[Combine All Instructions]
+    I --> J[Return Complete Transaction]
+    J --> K[Transaction Ready for Execution]
+```
+
+### removeMultipleLiquidity() Function Flow
+
+```mermaid
+graph TD
+    A[removeMultipleLiquidity(params)] --> B[Validate Position List]
+    B --> C[Get Current Active Bin]
+    C --> D[Calculate Withdrawal Amounts]
+    D --> E[Build Removal Instructions]
+    E --> F[Set Fee Collection]
+    F --> G[Handle Position Closure]
+    G --> H[Create Account Close Instructions]
+    H --> I[Return Transaction Array]
+    I --> J[{txs: Transaction[], txCreateAccount?, txCloseAccount?}]
+```
+
+### getPairAccount() Function Flow
+
+```mermaid
+graph TD
+    A[getPairAccount(pair)] --> B[Validate Pool Address]
+    B --> C[Query Pool Account from Blockchain]
+    C --> D[Parse Pool State Data]
+    D --> E[Extract Active Bin Information]
+    E --> F[Get Token Mint Addresses]
+    F --> G[Calculate Pool Statistics]
+    G --> H[Return Formatted Pair Info]
+    H --> I[{activeId, baseToken, quoteToken, ...}]
+```
+
+### getUserPositions() Function Flow
+
+```mermaid
+graph TD
+    A[getUserPositions(params)] --> B[Validate User Wallet]
+    B --> C[Query All User Positions]
+    C --> D[Filter by Pool Address]
+    D --> E[Parse Position Data]
+    E --> F[Calculate Position Values]
+    F --> G[Sort by Bin Range]
+    G --> H[Return Position Array]
+    H --> I[PositionInfo[]]
+```
+
+### fetchPoolAddresses() Function Flow
+
+```mermaid
+graph TD
+    A[fetchPoolAddresses()] --> B[Query DEX Program Accounts]
+    B --> C[Filter Pool Accounts]
+    C --> D[Extract Pool Addresses]
+    D --> E[Validate Address Format]
+    E --> F[Return Address Array]
+    F --> G[string[]]
+```
+
+### Utility Functions Flow
+
+```mermaid
+graph TD
+    A[Utility Functions] --> B[getDexName()]
+    A --> C[getDexProgramId()]
+    A --> D[getBinArray()]
+    A --> E[fetchPoolMetadata()]
+    A --> F[listenNewPoolAddress()]
+    
+    B --> G["Return 'Saros DLMM'"]
+    C --> H[Return Program ID]
+    D --> I[Query Bin Array Data]
+    E --> J[Fetch Pool Metadata]
+    F --> K[Setup Event Listener]
+    
+    I --> L[Return Bin Array Info]
+    J --> M[Return Pool Details]
+    K --> N[Callback on New Pools]
+```
+
+---
+
 ## Integration Tutorials
 
 ### Tutorial 1: Building a Swap Feature
