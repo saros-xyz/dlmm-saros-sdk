@@ -34,7 +34,7 @@ const result = await lbServices.swap({
 });
 ```
 
-**[📖 Complete Documentation](./api-reference/index.md)** • **[🎯 Getting Started](./getting-started/index.md)** • **[💡 Examples](./examples/index.md)**
+**[📖 Complete Documentation](./api-reference/index.md)** • **[🎯 Getting Started](./getting-started/index.md)** • **[💡 Examples](./examples/index.md)** • **[🎯 Core Concepts](./core-concepts/index.md)**  •  **[📖 API Reference](./api-reference/index.md)**
 
 ---
 

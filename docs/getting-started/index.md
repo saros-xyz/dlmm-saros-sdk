@@ -399,12 +399,7 @@ When you're ready to deploy to production:
 ---
 
 **Happy building with Saros DLMM! 🚀**
-  rpcUrl: "https://api.mainnet-beta.solana.com",
-  commitment: "confirmed", // Transaction commitment level
-  timeout: 30000, // Request timeout in milliseconds
-  priorityFee: 1000 // Priority fee in microlamports
-});
-```
+ 
 
 ## 💱 Your First Token Swap
 
