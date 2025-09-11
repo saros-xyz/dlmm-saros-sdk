@@ -17,7 +17,6 @@ export interface PositionInfo {
   pair: string;
   positionMint: string;
   position: string;
-
   liquidityShares: string[];
   lowerBinId: number;
   upperBinId: number;
@@ -30,6 +29,7 @@ export interface GetBinArrayParams {
   payer?: PublicKey;
   transaction?: Transaction;
 }
+
 export interface SwapParams {
   tokenMintX: PublicKey;
   tokenMintY: PublicKey;
@@ -203,20 +203,13 @@ export interface GetBinsReserveParams {
   payer: PublicKey;
 }
 
-export interface GetBinsReserveResponse {
+export interface BinReserveInfo {
   reserveX: number;
   reserveY: number;
   totalSupply: BN;
   liquidityShare: BN;
   binId: number;
   binPosistion: number;
-}
-
-export interface ReserveParams {
-  binId: number;
-  reserveX: string | number;
-  reserveY: string | number;
-  liquidityShare: string | number;
 }
 
 export interface UserPositionsParams {

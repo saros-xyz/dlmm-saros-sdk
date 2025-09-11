@@ -6,7 +6,7 @@ import MdmaIDL from "../constants/idl/mdma_hook.json";
 import LiquidityBookIDLDevnet from "../constants/idl_devnet/liquidity_book.json";
 import MdmaIDLDevnet from "../constants/idl_devnet/mdma_hook.json";
 import { ILiquidityBookConfig, MODE } from "../types";
-import { LiquidityBookProgram } from "../types/anchor";
+import { LiquidityBookProgram } from "../types/index";
 
 export abstract class LiquidityBookAbstract {
   connection: Connection;

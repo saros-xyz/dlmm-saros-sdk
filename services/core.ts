@@ -27,19 +27,18 @@ import { LiquidityBookAbstract } from "../interface/liquidityBookAbstract";
 import { ILiquidityBookConfig, MODE, PoolMetadata } from "../types";
 import {
   AddLiquidityIntoPositionParams,
+  BinReserveInfo,
   CreatePairWithConfigParams,
   CreatePositionParams,
   GetBinArrayParams,
   GetBinsArrayInfoParams,
   GetBinsReserveParams,
-  GetBinsReserveResponse,
   GetTokenOutputParams,
   GetTokenOutputResponse,
   GetUserVaultInfoParams,
   Pair,
   RemoveMultipleLiquidityParams,
   RemoveMultipleLiquidityResponse,
-  ReserveParams,
   SwapParams,
   UserPositionsParams,
 } from "../types/services";
@@ -142,7 +141,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
   public async getBinsReserveInformation(
     params: GetBinsReserveParams
-  ): Promise<GetBinsReserveResponse[]> {
+  ): Promise<BinReserveInfo[]> {
     const { position, pair, payer } = params;
     const positionInfo = await this.getPositionAccount(position);
     const firstBinId = positionInfo.lowerBinId;
@@ -685,7 +684,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         let removedShares: BN[] = [];
 
         if (type === "removeBoth") {
-          removedShares = reserveXY.map((reserve: ReserveParams) => {
+          removedShares = reserveXY.map((reserve: BinReserveInfo) => {
             const binId = reserve.binId;
             if (binId >= Number(start) && binId <= Number(end)) {
               return reserve.liquidityShare;
@@ -696,7 +695,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         }
 
         if (type === "removeBaseToken") {
-          removedShares = reserveXY.map((reserve: ReserveParams) => {
+          removedShares = reserveXY.map((reserve: BinReserveInfo) => {
             if (reserve.reserveX && reserve.reserveY === 0) {
               return reserve.liquidityShare;
             }
@@ -706,7 +705,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         }
 
         if (type === "removeQuoteToken") {
-          removedShares = reserveXY.map((reserve: ReserveParams) => {
+          removedShares = reserveXY.map((reserve: BinReserveInfo) => {
             if (reserve.reserveY && reserve.reserveX === 0) {
               return reserve.liquidityShare;
             }
@@ -715,9 +714,9 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           });
         }
 
-        const availableShares = reserveXY.filter((item: ReserveParams) =>
+        const availableShares = reserveXY.filter((item: BinReserveInfo) =>
           type === "removeBoth"
-            ? !new BN(item.liquidityShare).eq(new BN(0))
+            ? !item.liquidityShare.isZero()
             : type === "removeQuoteToken"
             ? !item.reserveX
             : !item.reserveY
@@ -1276,7 +1275,6 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
   public async fetchPoolMetadata(pair: string): Promise<PoolMetadata> {
     const connection = this.connection;
-    //@ts-ignore
     const pairInfo: Pair = await this.lbProgram.account.pair.fetch(
       new PublicKey(pair)
     );
