@@ -13,6 +13,13 @@ export enum RemoveLiquidityType {
   QuoteToken = "removeQuoteToken",
 }
 
+export interface PositionAccount {
+  pair: PublicKey;
+  liquidityShares: BN[];
+  lowerBinId: number;
+  upperBinId: number;
+}
+
 export interface PositionInfo {
   pair: string;
   positionMint: string;
@@ -64,11 +71,11 @@ export interface GetTokenOutputResponse {
 
 export interface Pair {
   bump: number[];
-  liquidityBookConfig: string; // PublicKey as string
+  liquidityBookConfig: PublicKey; // Change from string
   binStep: number;
   binStepSeed: number[];
-  tokenMintX: string; // PublicKey as string
-  tokenMintY: string; // PublicKey as string
+  tokenMintX: PublicKey; // Change from string
+  tokenMintY: PublicKey; // Change from string
   staticFeeParameters: {
     baseFactor: number;
     filterPeriod: number;
@@ -81,21 +88,15 @@ export interface Pair {
   };
   activeId: number;
   dynamicFeeParameters: {
-    timeLastUpdated: BN; // hex string, likely timestamp
+    timeLastUpdated: BN;
     volatilityAccumulator: number;
     volatilityReference: number;
     idReference: number;
     space: [number, number, number, number];
   };
-  protocolFeesX: string; // likely bytes/hex
-  protocolFeesY: string; // likely bytes/hex
-  hook: null | string; // hook could be nullable
-}
-
-interface Bin {
-  totalSupply: string;
-  reserveX: string;
-  reserveY: string;
+  protocolFeesX: BN; // Change from string
+  protocolFeesY: BN; // Change from string
+  hook: PublicKey | null; // Change from string
 }
 
 export interface CreatePairWithConfigParams {

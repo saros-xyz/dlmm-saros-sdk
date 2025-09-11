@@ -69,10 +69,12 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
   }
 
   public async getPairAccount(pair: PublicKey) {
+    //@ts-ignore
     return await this.lbProgram.account.pair.fetch(pair);
   }
 
   public async getPositionAccount(position: PublicKey) {
+    //@ts-ignore
     return await this.lbProgram.account.position.fetch(position);
   }
 
@@ -113,6 +115,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       pair,
       payer,
     });
+
     //@ts-ignore
     const { bins } = await this.lbProgram.account.binArray.fetch(binArray);
     try {
@@ -131,6 +134,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         pair,
         payer,
       });
+      //@ts-ignore
       const res = await this.lbProgram.account.binArray.fetch(binArrayOther);
       result = [...res.bins, ...bins];
       resultIndex -= 1;
@@ -1227,7 +1231,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     const positions = await Promise.all(
       positionMints.map(async (mint) => {
         // Derive PDA for Position account
-        const [positionPda] = await PublicKey.findProgramAddressSync(
+        const [positionPda] = PublicKey.findProgramAddressSync(
           [Buffer.from(utils.bytes.utf8.encode("position")), mint.toBuffer()],
           this.lbProgram.programId
         );
@@ -1275,19 +1279,21 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
   public async fetchPoolMetadata(pair: string): Promise<PoolMetadata> {
     const connection = this.connection;
+    // @ts-ignore
     const pairInfo: Pair = await this.lbProgram.account.pair.fetch(
       new PublicKey(pair)
     );
+    console.log(pairInfo);
     if (!pairInfo) {
       throw new Error("Pair not found");
     }
 
     const basePairVault = await this.getPairVaultInfo({
-      tokenAddress: new PublicKey(pairInfo.tokenMintX),
+      tokenAddress: pairInfo.tokenMintX,
       pair: new PublicKey(pair),
     });
     const quotePairVault = await this.getPairVaultInfo({
-      tokenAddress: new PublicKey(pairInfo.tokenMintY),
+      tokenAddress: pairInfo.tokenMintY,
       pair: new PublicKey(pair),
     });
 

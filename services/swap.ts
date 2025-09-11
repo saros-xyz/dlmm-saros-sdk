@@ -1,5 +1,5 @@
 import { BN, Idl, Program, utils } from "@coral-xyz/anchor";
-import { Bin, BinArray } from "../types";
+import { BinAccount, BinArrayAccount } from "../types";
 
 import { Connection, PublicKey } from "@solana/web3.js";
 import {
@@ -27,11 +27,11 @@ class LBError extends Error {
 }
 
 class BinArrayRange {
-  private readonly bins: { [binId: number]: Bin };
+  private readonly bins: { [binId: number]: BinAccount };
   constructor(
-    binArrayPrevious: BinArray,
-    binArrayCurrent: BinArray,
-    binArrayNext: BinArray
+    binArrayPrevious: BinArrayAccount,
+    binArrayCurrent: BinArrayAccount,
+    binArrayNext: BinArrayAccount
   ) {
     if (
       binArrayCurrent.index !== binArrayPrevious.index + 1 ||
@@ -42,7 +42,7 @@ class BinArrayRange {
 
     this.bins = {};
 
-    const addBins = (binArray: BinArray) => {
+    const addBins = (binArray: BinArrayAccount) => {
       binArray.bins.forEach((bin, index) => {
         const binId = binArray.index * BIN_ARRAY_SIZE + index;
         this.bins[binId] = bin;
@@ -123,11 +123,11 @@ export class LBSwapService {
       );
 
       // Fetch bin arrays in batch, fallback to empty if not found
-      const binArrays: BinArray[] = await Promise.all(
+      const binArrays: BinArrayAccount[] = await Promise.all(
         binArrayAddresses.map((address, i) =>
           //@ts-ignore
           this.lbProgram.account.binArray.fetch(address).catch((error: any) => {
-            return { index: binArrayIndexes[i], bins: [] } as BinArray;
+            return { index: binArrayIndexes[i], bins: [] } as BinArrayAccount;
           })
         )
       );

@@ -1,30 +1,11 @@
-import { Idl, Program } from "@coral-xyz/anchor";
-import { Commitment, ConnectionConfig, PublicKey } from "@solana/web3.js";
-import { Pair, PositionInfo } from "./services";
+import { BN } from "@coral-xyz/anchor";
+import { Commitment, ConnectionConfig } from "@solana/web3.js";
 
 export enum MODE {
   TESTNET = "testnet",
   DEVNET = "devnet",
   MAINNET = "mainnet",
 }
-
-export type LiquidityBookConfig = {
-  baseFactor: number;
-  binStep: number;
-  activeId: number;
-  binArraySize: number;
-  binArrayIndex: number;
-  maxBasisPoints: number;
-  filterPeriod: number;
-  decayPeriod: number;
-  reductionFactor: number;
-  variableFeeControl: number;
-  maxVolatilityAccumulator: number;
-  protocolShare: number;
-  startTime: number;
-  rewardsDuration: number;
-  rewardsPerSecond: number;
-};
 
 export interface ILiquidityBookConfig {
   mode: MODE;
@@ -34,13 +15,14 @@ export interface ILiquidityBookConfig {
   };
 }
 
-export type Bin = {
-  reserveX: number;
-  reserveY: number;
-  totalSupply: number;
+export type BinAccount = {
+  reserveX: BN;
+  reserveY: BN;
+  totalSupply: BN;
 };
-export type BinArray = {
-  bins: Bin[];
+
+export type BinArrayAccount = {
+  bins: BinAccount[];
   index: number;
 };
 
@@ -55,20 +37,5 @@ export interface PoolMetadata {
     hook?: string;
     tokenQuoteDecimal: number;
     tokenBaseDecimal: number;
-  };
-}
-
-// Add a typed program interface
-export interface LiquidityBookProgram extends Program<Idl> {
-  account: {
-    pair: {
-      fetch(address: PublicKey): Promise<Pair>;
-    };
-    position: {
-      fetch(address: PublicKey): Promise<PositionInfo>; // Keep if this was also original
-    };
-    binArray: {
-      fetch(address: PublicKey): Promise<BinArray>; // Keep if this was also original
-    };
   };
 }

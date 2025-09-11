@@ -6,11 +6,10 @@ import MdmaIDL from "../constants/idl/mdma_hook.json";
 import LiquidityBookIDLDevnet from "../constants/idl_devnet/liquidity_book.json";
 import MdmaIDLDevnet from "../constants/idl_devnet/mdma_hook.json";
 import { ILiquidityBookConfig, MODE } from "../types";
-import { LiquidityBookProgram } from "../types/index";
 
 export abstract class LiquidityBookAbstract {
   connection: Connection;
-  lbProgram!: LiquidityBookProgram;
+  lbProgram!: Program<Idl>;
   hooksProgram!: Program<Idl>;
   mode!: MODE;
 
@@ -29,16 +28,10 @@ export abstract class LiquidityBookAbstract {
     this.mode = config.mode;
 
     if (config.mode === MODE.DEVNET) {
-      this.lbProgram = new Program(
-        LiquidityBookIDLDevnet as Idl,
-        provider
-      ) as LiquidityBookProgram;
+      this.lbProgram = new Program(LiquidityBookIDLDevnet as Idl, provider);
       this.hooksProgram = new Program(MdmaIDLDevnet as Idl, provider);
     } else {
-      this.lbProgram = new Program(
-        LiquidityBookIDL as Idl,
-        provider
-      ) as LiquidityBookProgram;
+      this.lbProgram = new Program(LiquidityBookIDL as Idl, provider);
       this.hooksProgram = new Program(MdmaIDL as Idl, provider);
     }
   }
