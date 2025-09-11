@@ -14,7 +14,7 @@ export abstract class LiquidityBookAbstract {
   mode!: MODE;
 
   constructor(config: ILiquidityBookConfig) {
-    // Initialize the services heref
+    // Initialize RPC Connection
     this.connection = new Connection(
       config.options?.rpcUrl || CONFIG[config.mode].rpc,
       config.options?.commitmentOrConfig || "confirmed"

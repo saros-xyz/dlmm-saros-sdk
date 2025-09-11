@@ -7,14 +7,14 @@ import {
   BIN_ARRAY_SIZE,
   PRECISION,
   SCALE_OFFSET,
-  VARIABLE_FEE_PRECISION
+  VARIABLE_FEE_PRECISION,
 } from "../constants/config";
-import { getPriceFromId } from "../utils/price";
 import {
   GetBinArrayParams,
   GetTokenOutputParams,
-  Pair
+  Pair,
 } from "../types/services";
+import { getPriceFromId } from "../utils/price";
 
 class LBError extends Error {
   static BinNotFound = new LBError("Bin not found");
@@ -92,7 +92,7 @@ export class LBSwapService {
       [
         Buffer.from(utils.bytes.utf8.encode("bin_array")),
         pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, "le", 4)
+        new BN(binArrayIndex).toArrayLike(Buffer, "le", 4),
       ],
       this.lbProgram.programId
     )[0];
@@ -113,12 +113,12 @@ export class LBSwapService {
       const binArrayIndexes = [
         currentBinArrayIndex - 1,
         currentBinArrayIndex,
-        currentBinArrayIndex + 1
+        currentBinArrayIndex + 1,
       ];
-      const binArrayAddresses = binArrayIndexes.map(idx =>
+      const binArrayAddresses = binArrayIndexes.map((idx) =>
         this.getBinArray({
           binArrayIndex: idx,
-          pair
+          pair,
         })
       );
 
@@ -144,7 +144,7 @@ export class LBSwapService {
       if (totalSupply.isZero()) {
         return {
           amountIn: BigInt(0),
-          amountOut: BigInt(0)
+          amountOut: BigInt(0),
         };
       }
 
@@ -160,7 +160,7 @@ export class LBSwapService {
 
         return {
           amountIn: amount,
-          amountOut
+          amountOut,
         };
       } else {
         const amountIn = await this.calculateAmountIn(
@@ -172,7 +172,7 @@ export class LBSwapService {
 
         return {
           amountIn,
-          amountOut: amountAfterTransferFee
+          amountOut: amountAfterTransferFee,
         };
       }
     } catch (error) {
@@ -212,7 +212,7 @@ export class LBSwapService {
         const {
           amountInWithFees,
           amountOut: amountOutOfBin,
-          protocolFeeAmount
+          protocolFeeAmount,
         } = this.swapExactOutput({
           binStep: pairInfo.binStep,
           activeId,
@@ -221,7 +221,7 @@ export class LBSwapService {
           protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
           reserveX: activeBin.reserveX,
-          reserveY: activeBin.reserveY
+          reserveY: activeBin.reserveY,
         });
 
         amountIn += amountInWithFees;
@@ -274,7 +274,7 @@ export class LBSwapService {
         const {
           amountInWithFees,
           amountOut: amountOutOfBin,
-          protocolFeeAmount
+          protocolFeeAmount,
         } = this.swapExactInput({
           binStep: pairInfo.binStep,
           activeId,
@@ -283,7 +283,7 @@ export class LBSwapService {
           protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
           reserveX: activeBin.reserveX,
-          reserveY: activeBin.reserveY
+          reserveY: activeBin.reserveY,
         });
 
         amountOut += amountOutOfBin;
@@ -321,7 +321,7 @@ export class LBSwapService {
       swapForY,
       reserveX,
       reserveY,
-      fee
+      fee,
     } = params;
     const protocolShareBigInt = BigInt(protocolShare);
     const binReserveOut = swapForY ? reserveY : reserveX;
@@ -331,7 +331,7 @@ export class LBSwapService {
         amountInWithFees: BigInt(0),
         amountOut: BigInt(0),
         feeAmount: BigInt(0),
-        protocolFeeAmount: BigInt(0)
+        protocolFeeAmount: BigInt(0),
       };
     }
 
@@ -365,7 +365,7 @@ export class LBSwapService {
       amountInWithFees: amountIn,
       amountOut,
       feeAmount,
-      protocolFeeAmount
+      protocolFeeAmount,
     };
   }
 
@@ -387,7 +387,7 @@ export class LBSwapService {
       swapForY,
       reserveX,
       reserveY,
-      fee
+      fee,
     } = params;
     const protocolShareBigInt = BigInt(protocolShare);
     const binReserveOut = swapForY ? reserveY : reserveX;
@@ -397,7 +397,7 @@ export class LBSwapService {
         amountInWithFees: BigInt(0),
         amountOut: BigInt(0),
         feeAmount: BigInt(0),
-        protocolFeeAmount: BigInt(0)
+        protocolFeeAmount: BigInt(0),
       };
     }
 
@@ -455,7 +455,7 @@ export class LBSwapService {
       amountInWithFees: amountIn + feeAmount,
       amountOut,
       feeAmount,
-      protocolFeeAmount
+      protocolFeeAmount,
     };
   }
 
