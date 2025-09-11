@@ -4,13 +4,13 @@ import { BN } from "@coral-xyz/anchor";
 export enum LiquidityShape {
   Spot = "Spot",
   Curve = "Curve",
-  BidAsk = "BidAsk",
+  BidAsk = "BidAsk"
 }
 
 export enum RemoveLiquidityType {
   Both = "removeBoth",
   BaseToken = "removeBaseToken",
-  QuoteToken = "removeQuoteToken",
+  QuoteToken = "removeQuoteToken"
 }
 
 export interface PositionInfo {

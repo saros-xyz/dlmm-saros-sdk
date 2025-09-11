@@ -4,7 +4,7 @@ import {
   BIN_ARRAY_SIZE,
   FIXED_LENGTH,
   MAX_BASIS_POINTS,
-  UNIT_PRICE_DEFAULT,
+  UNIT_PRICE_DEFAULT
 } from "../constants/config";
 import { Distribution, LiquidityShape, PositionInfo } from "../types/services";
 import { divRem } from "./math";
@@ -47,7 +47,7 @@ const getCurveDistributionFromBinRange = (binRange: number[]) => {
     const negativeDeltaIds = Array.from(Array(activeId - binRange[0]).keys())
       .reverse()
       .slice(0, negDelta)
-      .map((el) => -1 * (el + 1));
+      .map(el => -1 * (el + 1));
 
     deltaIds = [...negativeDeltaIds];
     if (activeId === binRange[1]) {
@@ -77,7 +77,7 @@ const getCurveDistributionFromBinRange = (binRange: number[]) => {
       .reverse()
       .slice(0, posDelta)
       .reverse()
-      .map((el) => el + 1);
+      .map(el => el + 1);
 
     deltaIds = [...positiveDeltaIds];
     if (activeId === binRange[0]) {
@@ -107,9 +107,9 @@ const getCurveDistributionFromBinRange = (binRange: number[]) => {
 
     const negativeDeltaIds = Array.from(Array(negDelta).keys())
       .reverse()
-      .map((el) => -1 * (el + 1));
+      .map(el => -1 * (el + 1));
     const positiveDeltaIds = Array.from(Array(posDelta).keys()).map(
-      (el) => el + 1
+      el => el + 1
     );
     deltaIds = [...negativeDeltaIds, 0, ...positiveDeltaIds];
 
@@ -127,7 +127,7 @@ const getCurveDistributionFromBinRange = (binRange: number[]) => {
       AX,
       ...positiveDeltaIds.map(
         (_, ind) => 2 * AX * Math.exp(-0.5 * Math.pow((ind + 1) / sigmaX, 2))
-      ),
+      )
     ];
 
     // radius is num of bins
@@ -144,15 +144,15 @@ const getCurveDistributionFromBinRange = (binRange: number[]) => {
         (_, ind) => 2 * AY * Math.exp(-0.5 * Math.pow((RY - ind) / sigmaY, 2))
       ),
       AY,
-      ...Array(posDelta).fill(0),
+      ...Array(posDelta).fill(0)
     ];
   }
 
-  let liquidityDistributionX = _distributionX.map((i) =>
+  let liquidityDistributionX = _distributionX.map(i =>
     Math.floor(i * MAX_BASIS_POINTS)
   );
 
-  let liquidityDistributionY = _distributionY.map((i) =>
+  let liquidityDistributionY = _distributionY.map(i =>
     Math.floor(i * MAX_BASIS_POINTS)
   );
 
@@ -164,17 +164,17 @@ const getCurveDistributionFromBinRange = (binRange: number[]) => {
   if (totalX > 0 && totalX !== MAX_BASIS_POINTS) {
     const isOverflow = totalX > MAX_BASIS_POINTS;
     const overPoint = Math.abs(totalX - MAX_BASIS_POINTS);
-    const numberBins = liquidityDistributionX.filter((i) => i > 0).length;
+    const numberBins = liquidityDistributionX.filter(i => i > 0).length;
     const [quotient, remainder] = divRem(overPoint, numberBins);
 
-    liquidityDistributionX = liquidityDistributionX.map((i) => {
+    liquidityDistributionX = liquidityDistributionX.map(i => {
       if (i === 0) return i;
       return isOverflow ? i - Math.floor(quotient) : i + Math.floor(quotient);
     });
     let remainderLeft = remainder;
     if (remainder > 0) {
       if (!isOverflow) {
-        liquidityDistributionX = liquidityDistributionX.map((i) => {
+        liquidityDistributionX = liquidityDistributionX.map(i => {
           if (i === 0) return i;
           if (remainderLeft > 0) {
             remainderLeft--;
@@ -183,7 +183,7 @@ const getCurveDistributionFromBinRange = (binRange: number[]) => {
           return i;
         });
       } else {
-        const reverseLiquid = liquidityDistributionX.reverse().map((i) => {
+        const reverseLiquid = liquidityDistributionX.reverse().map(i => {
           if (i === 0) return i;
           if (remainderLeft > 0) {
             remainderLeft--;
@@ -199,7 +199,7 @@ const getCurveDistributionFromBinRange = (binRange: number[]) => {
   if (totalY > 0 && totalY !== MAX_BASIS_POINTS) {
     const isOverflow = totalY > MAX_BASIS_POINTS;
     const overPoint = Math.abs(totalY - MAX_BASIS_POINTS);
-    const numberBins = liquidityDistributionY.filter((i) => i > 0).length;
+    const numberBins = liquidityDistributionY.filter(i => i > 0).length;
     const [quotient, remainder] = divRem(overPoint, numberBins);
 
     liquidityDistributionY = liquidityDistributionY.map((i, idx) => {
@@ -218,7 +218,7 @@ const getCurveDistributionFromBinRange = (binRange: number[]) => {
     return {
       relativeBinId: i,
       distributionX: liquidityDistributionX[idx],
-      distributionY: liquidityDistributionY[idx],
+      distributionY: liquidityDistributionY[idx]
     };
   });
   return liquidityDistribution;
@@ -242,17 +242,17 @@ export function createUniformDistribution(
 
   if (shape === LiquidityShape.Spot) {
     const totalArrayLength = maxBin - minBin + 1;
-    const findActiveBinIndex = relativeIds.findIndex((item) => item === 0);
+    const findActiveBinIndex = relativeIds.findIndex(item => item === 0);
 
     if (findActiveBinIndex === -1) {
       const isOnlyX = minBin > 0;
       const isOnlyY = maxBin < 0;
       const distribution = MAX_BASIS_POINTS / totalArrayLength;
 
-      return relativeIds.map((x) => ({
+      return relativeIds.map(x => ({
         relativeBinId: x,
         distributionX: isOnlyX ? distribution : 0,
-        distributionY: isOnlyY ? distribution : 0,
+        distributionY: isOnlyY ? distribution : 0
       }));
     }
 
@@ -282,7 +282,7 @@ export function createUniformDistribution(
     return relativeIds.map((x, i) => ({
       relativeBinId: x,
       distributionX: distributionX[i],
-      distributionY: distributionY[i],
+      distributionY: distributionY[i]
     }));
   }
 
@@ -308,7 +308,7 @@ export function createUniformDistribution(
       const negativeDeltaIds = Array.from(Array(activeBin - minBin).keys())
         .reverse()
         .slice(0, negDelta)
-        .map((el) => -1 * (el + 1));
+        .map(el => -1 * (el + 1));
 
       deltaIds = [...negativeDeltaIds];
 
@@ -316,19 +316,19 @@ export function createUniformDistribution(
 
       // dist = 2/R^2 * r
       const rSquare = Math.pow(deltaIds[0], 2);
-      _distributionY = deltaIds.map((i) => ((i - 1) * -2) / rSquare);
+      _distributionY = deltaIds.map(i => ((i - 1) * -2) / rSquare);
     } else if (activeBin < minBin) {
       const posDelta = binRange[1] - binRange[0] + 1;
       const positiveDeltaIds = Array.from(Array(binRange[1] - activeBin).keys())
         .reverse()
         .slice(0, posDelta)
         .reverse()
-        .map((el) => el + 1);
+        .map(el => el + 1);
 
       deltaIds = [...positiveDeltaIds];
       // dist = 2/R^2 * i
       const rSquare = Math.pow(deltaIds[deltaIds.length - 1], 2);
-      _distributionX = deltaIds.map((i) => ((i + 1) * 2) / rSquare);
+      _distributionX = deltaIds.map(i => ((i + 1) * 2) / rSquare);
       _distributionY = [...Array(deltaIds.length).fill(0)];
     } else {
       const negDelta = activeBin - binRange[0];
@@ -336,9 +336,9 @@ export function createUniformDistribution(
 
       const negativeDeltaIds = Array.from(Array(negDelta).keys())
         .reverse()
-        .map((el) => -1 * (el + 1));
+        .map(el => -1 * (el + 1));
       const positiveDeltaIds = Array.from(Array(posDelta).keys()).map(
-        (el) => el + 1
+        el => el + 1
       );
 
       deltaIds = [...negativeDeltaIds, 0, ...positiveDeltaIds];
@@ -353,7 +353,7 @@ export function createUniformDistribution(
       _distributionX = [
         ...Array(negDelta).fill(0),
         1 / rSquareX,
-        ...positiveDeltaIds.map((i) => (i + 1) / rSquareX),
+        ...positiveDeltaIds.map(i => (i + 1) / rSquareX)
       ];
 
       // dist = 1/R^2 * i
@@ -364,17 +364,17 @@ export function createUniformDistribution(
           ? 3
           : Math.pow(negativeDeltaIds[0], 2);
       _distributionY = [
-        ...negativeDeltaIds.map((i) => (-1 * (i - 1)) / rSquareY),
+        ...negativeDeltaIds.map(i => (-1 * (i - 1)) / rSquareY),
         1 / rSquareY,
-        ...Array(posDelta).fill(0),
+        ...Array(posDelta).fill(0)
       ];
     }
 
-    let liquidityDistributionX = _distributionX.map((i) => {
+    let liquidityDistributionX = _distributionX.map(i => {
       return Math.floor(i * MAX_BASIS_POINTS);
     });
 
-    let liquidityDistributionY = _distributionY.map((i) => {
+    let liquidityDistributionY = _distributionY.map(i => {
       return Math.floor(i * MAX_BASIS_POINTS);
     });
 
@@ -386,17 +386,17 @@ export function createUniformDistribution(
     if (totalX > 0 && totalX !== MAX_BASIS_POINTS) {
       const isOverflow = totalX > MAX_BASIS_POINTS;
       const overPoint = Math.abs(totalX - MAX_BASIS_POINTS);
-      const numberBins = liquidityDistributionX.filter((i) => i > 0).length;
+      const numberBins = liquidityDistributionX.filter(i => i > 0).length;
       const [quotient, remainder] = divRem(overPoint, numberBins);
 
-      liquidityDistributionX = liquidityDistributionX.map((i) => {
+      liquidityDistributionX = liquidityDistributionX.map(i => {
         if (i === 0) return i;
         return isOverflow ? i - Math.floor(quotient) : i + Math.floor(quotient);
       });
       let remainderLeft = remainder;
       if (remainder > 0) {
         if (!isOverflow) {
-          liquidityDistributionX = liquidityDistributionX.map((i) => {
+          liquidityDistributionX = liquidityDistributionX.map(i => {
             if (i === 0) return i;
             if (remainderLeft > 0) {
               remainderLeft--;
@@ -405,7 +405,7 @@ export function createUniformDistribution(
             return i;
           });
         } else {
-          const reverseLiquid = liquidityDistributionX.reverse().map((i) => {
+          const reverseLiquid = liquidityDistributionX.reverse().map(i => {
             if (i === 0) return i;
             if (remainderLeft > 0) {
               remainderLeft--;
@@ -421,7 +421,7 @@ export function createUniformDistribution(
     if (totalY > 0 && totalY !== MAX_BASIS_POINTS) {
       const isOverflow = totalY > MAX_BASIS_POINTS;
       const overPoint = Math.abs(totalY - MAX_BASIS_POINTS);
-      const numberBins = liquidityDistributionY.filter((i) => i > 0).length;
+      const numberBins = liquidityDistributionY.filter(i => i > 0).length;
       const [quotient, remainder] = divRem(overPoint, numberBins);
 
       liquidityDistributionY = liquidityDistributionY.map((i, idx) => {
@@ -439,7 +439,7 @@ export function createUniformDistribution(
       return {
         relativeBinId: i,
         distributionX: liquidityDistributionX[idx],
-        distributionY: liquidityDistributionY[idx],
+        distributionY: liquidityDistributionY[idx]
       };
     });
 
@@ -453,7 +453,7 @@ export const getMaxPosition = (range: [number, number], activeId: number) => {
   const leftRangeIndex = Math.floor(activeId / 16);
   const rangeFromIndex = [
     Math.floor((activeId + range[0]) / 16),
-    Math.floor((activeId + range[1]) / 16),
+    Math.floor((activeId + range[1]) / 16)
   ];
 
   const positions = Array.from(
@@ -471,7 +471,7 @@ export const getMaxBinArray = (range: [number, number], activeId: number) => {
 
   const binIndex = [
     Math.floor(arrayIndex[0] / BIN_ARRAY_SIZE),
-    Math.floor(arrayIndex[1] / BIN_ARRAY_SIZE),
+    Math.floor(arrayIndex[1] / BIN_ARRAY_SIZE)
   ];
 
   // check if binArrayLower, binArrayUpper is the same
@@ -484,7 +484,7 @@ export const getMaxBinArray = (range: [number, number], activeId: number) => {
     const index = binIndex[0] + i * 2;
     return {
       binArrayLowerIndex: index,
-      binArrayUpperIndex: index + 1,
+      binArrayUpperIndex: index + 1
     };
   });
 
@@ -497,12 +497,12 @@ export const getBinRange = (index: number, activeId: number) => {
   const firstArray = [-firstBinId, -firstBinId + 16 - 1];
   const range = [
     firstArray[0] + index * FIXED_LENGTH,
-    firstArray[1] + index * FIXED_LENGTH,
+    firstArray[1] + index * FIXED_LENGTH
   ];
   return {
     range,
     binLower: activeId + range[0],
-    binUpper: activeId + range[1] - 1,
+    binUpper: activeId + range[1] - 1
   };
 };
 
@@ -517,14 +517,14 @@ export const findPosition = (index: number, activeBin = ACTIVE_ID) => (
 export const getGasPrice = async (connection: Connection): Promise<number> => {
   const buffNum = 100;
   try {
-    return await new Promise(async (resolve) => {
+    return await new Promise(async resolve => {
       const timeout = setTimeout(() => {
         resolve(UNIT_PRICE_DEFAULT * buffNum);
       }, 2000);
       const getPriority = await connection.getRecentPrioritizationFees();
       const currentFee = getPriority
-        .filter((fee) => fee?.prioritizationFee > 0)
-        .map((fee) => fee?.prioritizationFee);
+        .filter(fee => fee?.prioritizationFee > 0)
+        .map(fee => fee?.prioritizationFee);
       clearTimeout(timeout);
       const unitPrice =
         currentFee.length > 0
