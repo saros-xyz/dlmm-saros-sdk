@@ -1,16 +1,16 @@
-import { PublicKey, Transaction } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
+import { PublicKey, Transaction } from "@solana/web3.js";
 
 export enum LiquidityShape {
   Spot = "Spot",
   Curve = "Curve",
-  BidAsk = "BidAsk"
+  BidAsk = "BidAsk",
 }
 
 export enum RemoveLiquidityType {
   Both = "removeBoth",
   BaseToken = "removeBaseToken",
-  QuoteToken = "removeQuoteToken"
+  QuoteToken = "removeQuoteToken",
 }
 
 export interface PositionInfo {
@@ -204,9 +204,9 @@ export interface GetBinsReserveParams {
 }
 
 export interface GetBinsReserveResponse {
-  reserveX: string | number;
-  reserveY: string | number;
-  totalSupply: string | number;
+  reserveX: number;
+  reserveY: number;
+  totalSupply: BN;
   liquidityShare: BN;
   binId: number;
   binPosistion: number;

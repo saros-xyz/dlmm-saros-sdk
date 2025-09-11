@@ -44,7 +44,7 @@ import {
   UserPositionsParams,
 } from "../types/services";
 import { getGasPrice } from "../utils";
-import { mulDiv, mulShr, shlDiv } from "../utils/math";
+import { mulDivBN, mulShr, shlDiv } from "../utils/math";
 import { getIdFromPrice, getPriceFromId } from "../utils/price";
 import { getProgram } from "./getProgram";
 import { LBSwapService } from "./swap";
@@ -70,12 +70,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
   }
 
   public async getPairAccount(pair: PublicKey) {
-    //@ts-ignore
     return await this.lbProgram.account.pair.fetch(pair);
   }
 
   public async getPositionAccount(position: PublicKey) {
-    //@ts-ignore
     return await this.lbProgram.account.position.fetch(position);
   }
 
@@ -134,7 +132,6 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         pair,
         payer,
       });
-      //@ts-ignore
       const res = await this.lbProgram.account.binArray.fetch(binArrayOther);
       result = [...res.bins, ...bins];
       resultIndex -= 1;
@@ -164,40 +161,37 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     const reserveXY = binIds.map((binId: number, index: number) => {
-      const liquidityShare = positionInfo.liquidityShares[index].toString();
+      const liquidityShare = positionInfo.liquidityShares[index]; // Keep as BN
       const activeBin = bins[binId];
 
       if (activeBin) {
-        const totalReserveX = +BigInt(activeBin.reserveX).toString();
+        // keep as BN
+        const totalReserveX = activeBin.reserveX;
+        const totalReserveY = activeBin.reserveY;
+        const totalSupply = activeBin.totalSupply;
+        // Use BN math throughout, only convert to number at the end
+        const reserveX = totalReserveX.gt(new BN(0))
+          ? mulDivBN(
+              liquidityShare,
+              totalReserveX,
+              totalSupply,
+              "down"
+            ).toNumber()
+          : 0;
 
-        const totalReserveY = +BigInt(activeBin.reserveY).toString();
-
-        const totalSupply = +BigInt(activeBin.totalSupply).toString();
-
-        const reserveX =
-          Number(totalReserveX) > 0
-            ? mulDiv(
-                Number(liquidityShare),
-                Number(totalReserveX),
-                Number(totalSupply),
-                "down"
-              )
-            : 0;
-
-        const reserveY =
-          Number(totalReserveY) > 0
-            ? mulDiv(
-                Number(liquidityShare),
-                Number(totalReserveY),
-                Number(totalSupply),
-                "down"
-              )
-            : 0;
+        const reserveY = totalReserveY.gt(new BN(0))
+          ? mulDivBN(
+              liquidityShare,
+              totalReserveY,
+              totalSupply,
+              "down"
+            ).toNumber()
+          : 0;
 
         return {
-          reserveX: reserveX || 0,
-          reserveY: reserveY || 0,
-          totalSupply: +BigInt(activeBin.totalSupply).toString(),
+          reserveX: reserveX,
+          reserveY: reserveY,
+          totalSupply: totalSupply,
           binId: firstBinId + index,
           binPosistion: binId,
           liquidityShare: positionInfo.liquidityShares[index],
@@ -206,10 +200,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       return {
         reserveX: 0,
         reserveY: 0,
-        totalSupply: "0",
+        totalSupply: new BN(0),
         binId: firstBinId + index,
         binPosistion: binId,
-        liquidityShare: liquidityShare,
+        liquidityShare,
       };
     });
 
