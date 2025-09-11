@@ -1,32 +1,41 @@
-export const divRem = (numerator: number, denominator: number) => {
+import { BN } from "@coral-xyz/anchor";
+
+// Number-based math functions for simple calculations
+export const divRem = (
+  numerator: number,
+  denominator: number
+): [number, number] => {
   if (denominator === 0) {
-    throw new Error("Division by zero"); // Xử lý lỗi chia cho 0
+    throw new Error("Division by zero");
   }
 
-  // Tính thương và phần dư
-  const quotient = numerator / denominator; // Thương
-  const remainder = numerator % denominator; // Phần dư
+  const quotient = Math.floor(numerator / denominator);
+  const remainder = numerator % denominator;
 
-  return [quotient, remainder]; // Trả về mảng chứa thương và phần dư
+  return [quotient, remainder];
 };
 
-/// (x * y) / denominator
 export const mulDiv = (
   x: number,
   y: number,
   denominator: number,
   rounding: "up" | "down"
-) => {
+): number => {
+  if (denominator === 0) {
+    throw new Error("Division by zero");
+  }
+
   const prod = x * y;
 
   if (rounding === "up") {
-    return Math.floor((prod + denominator - 1) / denominator);
+    return Math.ceil(prod / denominator);
   }
 
   if (rounding === "down") {
-    const [quotient] = divRem(prod, denominator);
-    return quotient;
+    return Math.floor(prod / denominator);
   }
+
+  throw new Error(`Invalid rounding mode: ${rounding}`);
 };
 
 export const mulShr = (
@@ -34,18 +43,77 @@ export const mulShr = (
   y: number,
   offset: number,
   rounding: "up" | "down"
-) => {
+): number => {
   const denominator = 1 << offset;
   return mulDiv(x, y, denominator, rounding);
 };
 
-// (x << offset) / y
 export const shlDiv = (
   x: number,
   y: number,
   offset: number,
   rounding: "up" | "down"
-) => {
+): number => {
   const scale = 1 << offset;
   return mulDiv(x, scale, y, rounding);
+};
+
+// BN-based math functions for precision-critical calculations
+export const mulDivBN = (
+  x: BN,
+  y: BN,
+  denominator: BN,
+  rounding: "up" | "down"
+): BN => {
+  if (denominator.isZero()) {
+    throw new Error("Division by zero");
+  }
+
+  const prod = x.mul(y);
+
+  if (rounding === "up") {
+    // Ceiling division: (prod + denominator - 1) / denominator
+    return prod
+      .add(denominator)
+      .sub(new BN(1))
+      .div(denominator);
+  }
+
+  if (rounding === "down") {
+    return prod.div(denominator);
+  }
+
+  throw new Error(`Invalid rounding mode: ${rounding}`);
+};
+
+export const mulShrBN = (
+  x: BN,
+  y: BN,
+  offset: number,
+  rounding: "up" | "down"
+): BN => {
+  const denominator = new BN(1).shln(offset); // Left shift by offset bits
+  return mulDivBN(x, y, denominator, rounding);
+};
+
+export const shlDivBN = (
+  x: BN,
+  y: BN,
+  offset: number,
+  rounding: "up" | "down"
+): BN => {
+  const scaledX = x.shln(offset); // Left shift x by offset bits
+  return mulDivBN(scaledX, new BN(1), y, rounding);
+};
+
+// BN version of divRem for completeness
+export const divRemBN = (numerator: BN, denominator: BN): [BN, BN] => {
+  if (denominator.isZero()) {
+    throw new Error("Division by zero");
+  }
+
+  const quotient = numerator.div(denominator);
+  const remainder = numerator.mod(denominator);
+
+  return [quotient, remainder];
 };
