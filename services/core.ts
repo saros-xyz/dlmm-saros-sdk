@@ -34,7 +34,7 @@ import {
   GetTokenOutputParams,
   GetTokenOutputResponse,
   GetUserVaultInfoParams,
-  DLMMPair,
+  Pair,
   RemoveMultipleLiquidityParams,
   RemoveMultipleLiquidityResponse,
   SwapParams,
@@ -1260,11 +1260,11 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     });
   }
 
-  public async fetchPoolMetadata(poolAdreess: string): Promise<PoolMetadata> {
+  public async fetchPoolMetadata(pair: string): Promise<PoolMetadata> {
     const connection = this.connection;
     //@ts-ignore
-    const pairInfo: DLMMPair = await this.lbProgram.account.pair.fetch(
-      new PublicKey(poolAdreess)
+    const pairInfo: Pair = await this.lbProgram.account.pair.fetch(
+      new PublicKey(pair)
     );
     if (!pairInfo) {
       throw new Error("Pair not found");
@@ -1272,11 +1272,11 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
     const basePairVault = await this.getPairVaultInfo({
       tokenAddress: new PublicKey(pairInfo.tokenMintX),
-      pair: new PublicKey(poolAdreess),
+      pair: new PublicKey(pair),
     });
     const quotePairVault = await this.getPairVaultInfo({
       tokenAddress: new PublicKey(pairInfo.tokenMintY),
-      pair: new PublicKey(poolAdreess),
+      pair: new PublicKey(pair),
     });
 
     const [baseReserve, quoteReserve] = await Promise.all([
@@ -1299,7 +1299,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     ]);
 
     return {
-      poolAddress: poolAdreess,
+      poolAddress: pair,
       baseMint: pairInfo.tokenMintX.toString(),
       baseReserve: baseReserve.value.amount,
       quoteMint: pairInfo.tokenMintY.toString(),
@@ -1308,8 +1308,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         (pairInfo.staticFeeParameters.baseFactor * pairInfo.binStep) / 1e6,
       extra: {
         hook: pairInfo.hook?.toString(),
-        tokenQuoteDecimal: quoteReserve.value.decimals,
-        tokenBaseDecimal: baseReserve.value.decimals,
+        tokenQuoteDecimal: baseReserve.value.decimals,
+        tokenBaseDecimal: quoteReserve.value.decimals,
       },
     };
   }
