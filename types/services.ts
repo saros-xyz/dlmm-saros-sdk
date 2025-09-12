@@ -30,6 +30,7 @@ export interface GetBinArrayParams {
   payer?: PublicKey;
   transaction?: Transaction;
 }
+
 export interface SwapParams {
   tokenMintX: PublicKey;
   tokenMintY: PublicKey;
