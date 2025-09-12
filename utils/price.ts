@@ -20,7 +20,7 @@ export const getPriceFromId = (
   bin_step: number,
   bin_id: number,
   baseTokenDecimal: number,
-  quoteTokenDecimal: number
+  quoteTokenDecimal: number,
 ) => {
   const base = getBase(bin_step) as number;
   const exponent = bin_id - 8_388_608;
@@ -33,11 +33,10 @@ export const getIdFromPrice = (
   price: number,
   binStep: number,
   baseTokenDecimal: number,
-  quoteTokenDecimal: number
+  quoteTokenDecimal: number,
 ): number => {
   if (price <= 0) throw new Error("Giá phải lớn hơn 0");
-  if (binStep <= 0 || binStep > BASIS_POINT_MAX)
-    throw new Error("Bin step invalid");
+  if (binStep <= 0 || binStep > BASIS_POINT_MAX) throw new Error("Bin step invalid");
 
   const decimalPow = Math.pow(10, quoteTokenDecimal - baseTokenDecimal);
 

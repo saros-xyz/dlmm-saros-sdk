@@ -61,7 +61,7 @@ describe("getBinsReserveInformation", () => {
     expect(result).toHaveLength(3);
 
     // Verify BN types are preserved for all elements
-    result.forEach(bin => {
+    result.forEach((bin) => {
       expect(typeof bin.reserveX).toBe("number");
       expect(typeof bin.reserveY).toBe("number");
       expect(bin.totalSupply).toBeInstanceOf(BN);
@@ -138,7 +138,7 @@ describe("getBinsReserveInformation", () => {
     const result = await service.getBinsReserveInformation(params);
 
     // Verify all elements have consistent types regardless of whether bin exists
-    result.forEach(bin => {
+    result.forEach((bin) => {
       expect(typeof bin.reserveX).toBe("number");
       expect(typeof bin.reserveY).toBe("number");
       expect(bin.totalSupply).toBeInstanceOf(BN);

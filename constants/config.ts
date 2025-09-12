@@ -1,15 +1,15 @@
 import { MODE } from "../types";
 
-export const CONFIG = {
+export const RPC_CONFIG = {
   [MODE.TESTNET]: {
-    rpc: "https://api.testnet.solana.com"
+    rpc: "https://api.testnet.solana.com",
   },
   [MODE.DEVNET]: {
-    rpc: "https://api.devnet.solana.com"
+    rpc: "https://api.devnet.solana.com",
   },
   [MODE.MAINNET]: {
-    rpc: "https://api.mainnet-beta.solana.com"
-  }
+    rpc: "https://api.mainnet-beta.solana.com",
+  },
 };
 
 export const BASE_FACTOR = 8_000;
@@ -26,7 +26,7 @@ export const MAX_VOLATILITY_ACCUMULATOR = 350_000;
 export const PROTOCOL_SHARE = 2000;
 export const START_TIME = 1000;
 export const REWARDS_DURATION = 24 * 3600;
-export const REWARDS_PER_SECOND = Math.floor(100e9 / REWARDS_DURATION);
+// export const REWARDS_PER_SECOND = Math.floor(100e9 / REWARDS_DURATION);
 export const VARIABLE_FEE_PRECISION = 100_000_000_000;
 export const SCALE_OFFSET = 64;
 export const BASIS_POINT_MAX = 10_000;
@@ -49,8 +49,8 @@ export const BIN_STEP_CONFIGS = [
       variableFeeControl: 2000000,
       maxVolatilityAccumulator: 100000,
       protocolShare: 2000,
-      space: [0, 0]
-    }
+      space: [0, 0],
+    },
   },
   {
     binStep: 2,
@@ -62,8 +62,8 @@ export const BIN_STEP_CONFIGS = [
       variableFeeControl: 500000,
       maxVolatilityAccumulator: 250000,
       protocolShare: 2000,
-      space: [0, 0]
-    }
+      space: [0, 0],
+    },
   },
   {
     binStep: 5,
@@ -75,8 +75,8 @@ export const BIN_STEP_CONFIGS = [
       variableFeeControl: 120000,
       maxVolatilityAccumulator: 300000,
       protocolShare: 2000,
-      space: [0, 0]
-    }
+      space: [0, 0],
+    },
   },
   {
     binStep: 10,
@@ -88,8 +88,8 @@ export const BIN_STEP_CONFIGS = [
       variableFeeControl: 40000,
       maxVolatilityAccumulator: 350000,
       protocolShare: 2000,
-      space: [0, 0]
-    }
+      space: [0, 0],
+    },
   },
   {
     binStep: 20,
@@ -101,8 +101,8 @@ export const BIN_STEP_CONFIGS = [
       variableFeeControl: 20000,
       maxVolatilityAccumulator: 350000,
       protocolShare: 2000,
-      space: [0, 0]
-    }
+      space: [0, 0],
+    },
   },
   {
     binStep: 50,
@@ -114,8 +114,8 @@ export const BIN_STEP_CONFIGS = [
       variableFeeControl: 10000,
       maxVolatilityAccumulator: 250000,
       protocolShare: 2000,
-      space: [0, 0]
-    }
+      space: [0, 0],
+    },
   },
   {
     binStep: 100,
@@ -127,8 +127,8 @@ export const BIN_STEP_CONFIGS = [
       variableFeeControl: 7500,
       maxVolatilityAccumulator: 150000,
       protocolShare: 2000,
-      space: [0, 0]
-    }
+      space: [0, 0],
+    },
   },
   {
     binStep: 200,
@@ -140,8 +140,8 @@ export const BIN_STEP_CONFIGS = [
       variableFeeControl: 7500,
       maxVolatilityAccumulator: 150000,
       protocolShare: 2000,
-      space: [0, 0]
-    }
+      space: [0, 0],
+    },
   },
   {
     binStep: 250,
@@ -153,7 +153,7 @@ export const BIN_STEP_CONFIGS = [
       variableFeeControl: 7500,
       maxVolatilityAccumulator: 150000,
       protocolShare: 2000,
-      space: [0, 0]
-    }
-  }
+      space: [0, 0],
+    },
+  },
 ];

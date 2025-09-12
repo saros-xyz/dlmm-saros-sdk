@@ -1,6 +1,6 @@
 import { AnchorProvider, Idl, Program, Wallet } from "@coral-xyz/anchor";
 import { Connection } from "@solana/web3.js";
-import { CONFIG } from "../constants/config";
+import { RPC_CONFIG } from "../constants/config";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
 import MdmaIDL from "../constants/idl/mdma_hook.json";
 import LiquidityBookIDLDevnet from "../constants/idl_devnet/liquidity_book.json";
@@ -16,14 +16,14 @@ export abstract class LiquidityBookAbstract {
   constructor(config: ILiquidityBookConfig) {
     // Initialize RPC Connection
     this.connection = new Connection(
-      config.options?.rpcUrl || CONFIG[config.mode].rpc,
-      config.options?.commitmentOrConfig || "confirmed"
+      config.options?.rpcUrl || RPC_CONFIG[config.mode].rpc,
+      config.options?.commitmentOrConfig || "confirmed",
     );
 
     const provider = new AnchorProvider(
       this.connection,
       {} as Wallet,
-      AnchorProvider.defaultOptions()
+      AnchorProvider.defaultOptions(),
     );
     this.mode = config.mode;
 
@@ -31,6 +31,7 @@ export abstract class LiquidityBookAbstract {
       this.lbProgram = new Program(LiquidityBookIDLDevnet as Idl, provider);
       this.hooksProgram = new Program(MdmaIDLDevnet as Idl, provider);
     } else {
+      // MAINNET or TESTNET
       this.lbProgram = new Program(LiquidityBookIDL as Idl, provider);
       this.hooksProgram = new Program(MdmaIDL as Idl, provider);
     }

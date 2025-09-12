@@ -6,20 +6,18 @@ describe("Math Utils - Edge Cases", () => {
   describe("Error Handling", () => {
     it("should throw on division by zero", () => {
       expect(() => mulDiv(100, 50, 0, "down")).toThrow("Division by zero");
-      expect(() =>
-        mulDivBN(new BN(100), new BN(50), new BN(0), "down")
-      ).toThrow("Division by zero");
+      expect(() => mulDivBN(new BN(100), new BN(50), new BN(0), "down")).toThrow(
+        "Division by zero",
+      );
       expect(() => divRemBN(new BN(10), new BN(0))).toThrow("Division by zero");
     });
 
     it("should throw on invalid rounding mode", () => {
       // @ts-expect-error Testing invalid input
-      expect(() => mulDiv(100, 50, 10, "invalid")).toThrow(
-        "Invalid rounding mode"
-      );
+      expect(() => mulDiv(100, 50, 10, "invalid")).toThrow("Invalid rounding mode");
       expect(() =>
         // @ts-expect-error Testing invalid input
-        mulDivBN(new BN(100), new BN(50), new BN(10), "invalid")
+        mulDivBN(new BN(100), new BN(50), new BN(10), "invalid"),
       ).toThrow("Invalid rounding mode");
     });
   });
@@ -44,10 +42,7 @@ describe("Math Utils - Edge Cases", () => {
 
   describe("Large Number Precision", () => {
     it("should handle BN large number division correctly", () => {
-      const [quotient, remainder] = divRemBN(
-        new BN("999999999999999999"),
-        new BN("123456789")
-      );
+      const [quotient, remainder] = divRemBN(new BN("999999999999999999"), new BN("123456789"));
       expect(quotient.toString()).toBe("8100000073");
       expect(remainder.toString()).toBe("87654402");
     });
@@ -58,12 +53,7 @@ describe("Math Utils - Edge Cases", () => {
       const totalReserve = new BN("5000000000000000000"); // 5000 tokens
       const totalSupply = new BN("10000000000000000000"); // 10000 tokens
 
-      const result = mulDivBN(
-        liquidityShare,
-        totalReserve,
-        totalSupply,
-        "down"
-      );
+      const result = mulDivBN(liquidityShare, totalReserve, totalSupply, "down");
       expect(result.toString()).toBe("500000000"); // 0.5 tokens
     });
 
@@ -72,12 +62,7 @@ describe("Math Utils - Edge Cases", () => {
       const totalReserve = new BN("1000000000");
       const totalSupply = new BN("999999999999999999");
 
-      const result = mulDivBN(
-        liquidityShare,
-        totalReserve,
-        totalSupply,
-        "down"
-      );
+      const result = mulDivBN(liquidityShare, totalReserve, totalSupply, "down");
       expect(result.toNumber()).toBe(0); // Rounds down to 0
     });
   });
@@ -91,12 +76,7 @@ describe("Math Utils - Edge Cases", () => {
 
       testCases.forEach(({ x, y, denominator }) => {
         const numberResult = mulDiv(x, y, denominator, "down");
-        const bnResult = mulDivBN(
-          new BN(x),
-          new BN(y),
-          new BN(denominator),
-          "down"
-        );
+        const bnResult = mulDivBN(new BN(x), new BN(y), new BN(denominator), "down");
         expect(bnResult.toNumber()).toBe(numberResult);
       });
     });
