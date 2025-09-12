@@ -109,7 +109,7 @@ export class LBSwapService {
         currentBinArrayIndex,
         currentBinArrayIndex + 1,
       ];
-      const binArrayAddresses = binArrayIndexes.map((idx) =>
+      const binArrayAddresses = binArrayIndexes.map(idx =>
         this.getBinArray({
           binArrayIndex: idx,
           pair,
@@ -181,6 +181,8 @@ export class LBSwapService {
   ) {
     try {
       let amountIn = BigInt(0);
+      // UNUSED TODO: INVESTIGATE
+      // is assigned a value but never used
       let totalProtocolFee = BigInt(0);
       let amountOutLeft = amount;
       let activeId = pairInfo.activeId;
@@ -223,7 +225,7 @@ export class LBSwapService {
       }
 
       if (totalBinUsed >= 30) {
-        throw "Swap crosses too many bins – quote aborted.";
+        throw new Error("Quote Failed: Swap crosses too many bins");
       }
 
       return amountIn;
@@ -243,6 +245,8 @@ export class LBSwapService {
   ) {
     try {
       let amountOut = BigInt(0);
+      // UNUSED TODO: INVESTIGATE
+      // is assigned a value but never used
       let totalProtocolFee = BigInt(0);
       let amountInLeft = amount;
       let activeId = pairInfo.activeId;
@@ -284,7 +288,7 @@ export class LBSwapService {
         activeId = this.moveActiveId(activeId, swapForY);
       }
       if (totalBinUsed >= 30) {
-        throw "Swap crosses too many bins – quote aborted.";
+        throw new Error("Quote Failed: Swap crosses too many bins");
       }
 
       return amountOut;
@@ -303,8 +307,16 @@ export class LBSwapService {
     reserveX: BN;
     reserveY: BN;
   }) {
-    const { binStep, activeId, amountOutLeft, protocolShare, swapForY, reserveX, reserveY, fee } =
-      params;
+    const {
+      binStep,
+      activeId,
+      amountOutLeft,
+      protocolShare,
+      swapForY,
+      reserveX,
+      reserveY,
+      fee,
+    } = params;
     const protocolShareBigInt = BigInt(protocolShare);
     const binReserveOut = swapForY ? reserveY : reserveX;
 
@@ -355,8 +367,16 @@ export class LBSwapService {
     reserveX: BN;
     reserveY: BN;
   }) {
-    const { binStep, activeId, amountInLeft, protocolShare, swapForY, reserveX, reserveY, fee } =
-      params;
+    const {
+      binStep,
+      activeId,
+      amountInLeft,
+      protocolShare,
+      swapForY,
+      reserveX,
+      reserveY,
+      fee,
+    } = params;
     const protocolShareBigInt = BigInt(protocolShare);
     const binReserveOut = swapForY ? reserveY : reserveX;
 

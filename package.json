@@ -4,12 +4,12 @@
   "description": "Saros DLMM (Dynamic Liquidity Market Maker) - the engine that powers the Internet Capital Market on Solana.",
   "main": "dist/index.js",
   "scripts": {
-    "prettier": "prettier --write \"**/*.{ts,tsx}\"",
-    "test": "vitest",
     "start": "tsdx watch --entry index.ts",
     "build": "tsdx build --entry index.ts",
-    "lint": "tsdx lint",
-    "prepare": "tsdx build --entry index.ts"
+    "prepare": "tsdx build --entry index.ts",
+    "lint": "tsdx lint .",
+    "format": "prettier --write \"**/*.{ts,tsx}\"",
+    "test": "vitest"
   },
   "author": "Saros Finance",
   "license": "ISC",

@@ -55,7 +55,10 @@ export const mulDivBN = (x: BN, y: BN, denominator: BN, rounding: "up" | "down")
 
   if (rounding === "up") {
     // Ceiling division: (prod + denominator - 1) / denominator
-    return prod.add(denominator).sub(new BN(1)).div(denominator);
+    return prod
+      .add(denominator)
+      .sub(new BN(1))
+      .div(denominator);
   }
 
   if (rounding === "down") {

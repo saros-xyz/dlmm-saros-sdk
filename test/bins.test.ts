@@ -2,8 +2,7 @@ import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiquidityBookServices } from "../services/core";
-import { MODE } from "../types";
-import type { BinAccount } from "../types/anchor";
+import { BinAccount, MODE } from "../types";
 
 describe("getBinsReserveInformation", () => {
   let service: LiquidityBookServices;
@@ -61,7 +60,7 @@ describe("getBinsReserveInformation", () => {
     expect(result).toHaveLength(3);
 
     // Verify BN types are preserved for all elements
-    result.forEach((bin) => {
+    result.forEach(bin => {
       expect(typeof bin.reserveX).toBe("number");
       expect(typeof bin.reserveY).toBe("number");
       expect(bin.totalSupply).toBeInstanceOf(BN);
@@ -138,7 +137,7 @@ describe("getBinsReserveInformation", () => {
     const result = await service.getBinsReserveInformation(params);
 
     // Verify all elements have consistent types regardless of whether bin exists
-    result.forEach((bin) => {
+    result.forEach(bin => {
       expect(typeof bin.reserveX).toBe("number");
       expect(typeof bin.reserveY).toBe("number");
       expect(bin.totalSupply).toBeInstanceOf(BN);

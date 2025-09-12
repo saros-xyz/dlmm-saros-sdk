@@ -24,7 +24,7 @@ import {
 } from "../constants/config";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
 import { LiquidityBookAbstract } from "../interface/liquidityBookAbstract";
-import { ILiquidityBookConfig, MODE, PoolMetadata } from "../types";
+import { MODE, PoolMetadata } from "../types";
 import {
   AddLiquidityIntoPositionParams,
   BinReserveInfo,
@@ -50,9 +50,6 @@ import { LBSwapService } from "./swap";
 
 export class LiquidityBookServices extends LiquidityBookAbstract {
   bufferGas?: number;
-  constructor(config: ILiquidityBookConfig) {
-    super(config);
-  }
 
   get lbConfig() {
     if (this.mode === MODE.DEVNET) {
@@ -664,8 +661,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           type === "removeBoth"
             ? !item.liquidityShare.isZero()
             : type === "removeQuoteToken"
-              ? !item.reserveX
-              : !item.reserveY,
+            ? !item.reserveX
+            : !item.reserveY,
         );
 
         const isClosePosition =
@@ -782,7 +779,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
     const binArrayAddresses = await Promise.all(
       surroundingIndexes.map(
-        async (idx) =>
+        async idx =>
           await this.getBinArray({
             binArrayIndex: idx,
             pair,
@@ -1065,7 +1062,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
   public async fetchPoolAddresses() {
     const programId = this.getDexProgramId();
     const connection = this.connection;
-    const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === "Pair");
+    const pairAccount = LiquidityBookIDL.accounts.find(acc => acc.name === "Pair");
     const pairAccountDiscriminator = pairAccount ? pairAccount.discriminator : undefined;
 
     if (!pairAccountDiscriminator) {
@@ -1103,15 +1100,15 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     });
 
     const positionMints = tokenAccounts.value
-      .filter((acc) => {
+      .filter(acc => {
         const amount = acc.account.data.parsed.info.tokenAmount.uiAmount;
         // Only interested in NFTs or position tokens with amount > 0
         return amount && amount > 0;
       })
-      .map((acc) => new PublicKey(acc.account.data.parsed.info.mint));
+      .map(acc => new PublicKey(acc.account.data.parsed.info.mint));
 
     const positions = await Promise.all(
-      positionMints.map(async (mint) => {
+      positionMints.map(async mint => {
         // Derive PDA for Position account
         const [positionPda] = PublicKey.findProgramAddressSync(
           [Buffer.from(utils.bytes.utf8.encode("position")), mint.toBuffer()],
@@ -1275,14 +1272,14 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     const LB_PROGRAM_ID = this.getDexProgramId();
     this.connection.onLogs(
       LB_PROGRAM_ID,
-      (logInfo) => {
+      logInfo => {
         if (!logInfo.err) {
           const logs = logInfo.logs || [];
           for (const log of logs) {
             if (log.includes("Instruction: InitializePair")) {
               const signature = logInfo.signature;
 
-              this.getPairAddressFromLogs(signature).then((address) => {
+              this.getPairAddressFromLogs(signature).then(address => {
                 postTxFunction(address);
               });
             }
@@ -1305,7 +1302,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     const message = TransactionMessage.decompile(compiledMessage);
     const instructions = message.instructions;
     const initializePairStruct = LiquidityBookIDL.instructions.find(
-      (item) => item.name === "initialize_pair",
+      item => item.name === "initialize_pair",
     )!;
 
     const initializePairDescrimator = Buffer.from(initializePairStruct!.discriminator);
