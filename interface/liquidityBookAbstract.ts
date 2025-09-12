@@ -15,7 +15,7 @@ export abstract class LiquidityBookAbstract {
   mode!: MODE
 
   constructor(config: ILiquidityBookConfig) {
-    // Initialize the services heref
+    // Initialize RPC connection
     this.connection = new Connection(
       config.options?.rpcUrl || RPC_CONFIG[config.mode].rpc,
       config.options?.commitmentOrConfig || "confirmed"
@@ -32,6 +32,7 @@ export abstract class LiquidityBookAbstract {
       this.lbProgram = new Program(LiquidityBookIDLDevnet as Idl, provider);
       this.hooksProgram = new Program(MdmaIDLDevnet as Idl, provider);
     } else {
+      // MODE.MAINNET or MODE.TESTNET
       this.lbProgram = new Program(LiquidityBookIDL as Idl, provider);
       this.hooksProgram = new Program(MdmaIDL as Idl, provider);
     }
