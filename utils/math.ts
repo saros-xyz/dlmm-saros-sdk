@@ -1,3 +1,5 @@
+import { BN } from "@coral-xyz/anchor"
+
 export const divRem = (numerator: number, denominator: number) => {
   if (denominator === 0) {
     throw new Error('Division by zero') // Xử lý lỗi chia cho 0
@@ -49,3 +51,27 @@ export const shlDiv = (
   const scale = 1 << offset
   return mulDiv(x, scale, y, rounding)
 }
+
+
+// BN-based math functions for precision-critical calculations
+export const mulDivBN = (x: BN, y: BN, denominator: BN, rounding: "up" | "down"): BN => {
+  if (denominator.isZero()) {
+    throw new Error("Division by zero");
+  }
+
+  const prod = x.mul(y);
+
+  if (rounding === "up") {
+    // Ceiling division: (prod + denominator - 1) / denominator
+    return prod
+      .add(denominator)
+      .sub(new BN(1))
+      .div(denominator);
+  }
+
+  if (rounding === "down") {
+    return prod.div(denominator);
+  }
+
+  throw new Error(`Invalid rounding mode: ${rounding}`);
+};

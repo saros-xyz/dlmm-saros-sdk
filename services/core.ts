@@ -30,21 +30,20 @@ import {
   GetBinArrayParams,
   GetBinsArrayInfoParams,
   GetBinsReserveParams,
-  GetBinsReserveResponse,
+  BinReserveInfo,
   GetTokenOutputParams,
   GetTokenOutputResponse,
   GetUserVaultInfoParams,
   Pair,
   RemoveMultipleLiquidityParams,
   RemoveMultipleLiquidityResponse,
-  ReserveParams,
   SwapParams,
   UserPositionsParams,
 } from "../types/services";
 import { LBSwapService } from "./swap";
 import bigDecimal from "js-big-decimal";
 import { getIdFromPrice, getPriceFromId } from "../utils/price";
-import { mulDiv, mulShr, shlDiv } from "../utils/math";
+import { mulDiv, mulDivBN, mulShr, shlDiv } from "../utils/math";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import { getGasPrice } from "../utils";
@@ -145,7 +144,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
   public async getBinsReserveInformation(
     params: GetBinsReserveParams
-  ): Promise<GetBinsReserveResponse[]> {
+  ): Promise<BinReserveInfo[]> {
     const { position, pair, payer } = params;
     const positionInfo = await this.getPositionAccount(position);
     const firstBinId = positionInfo.lowerBinId;
@@ -164,40 +163,26 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     const reserveXY = binIds.map((binId: number, index: number) => {
-      const liquidityShare = positionInfo.liquidityShares[index].toString();
+      const liquidityShare = positionInfo.liquidityShares[index]; // keep as BN
       const activeBin = bins[binId];
 
       if (activeBin) {
-        const totalReserveX = +BigInt(activeBin.reserveX).toString();
+        // Use BN values throughout. Convert to numbers at end
+        const totalReserveX = activeBin.reserveX;
+        const totalReserveY = activeBin.reserveY;
+        const totalSupply = activeBin.totalSupply;
+        const reserveX = totalReserveX.gt(new BN(0))
+          ? mulDivBN(liquidityShare, totalReserveX, totalSupply, "down").toNumber()
+          : 0;
 
-        const totalReserveY = +BigInt(activeBin.reserveY).toString();
-
-        const totalSupply = +BigInt(activeBin.totalSupply).toString();
-
-        const reserveX =
-          Number(totalReserveX) > 0
-            ? mulDiv(
-                Number(liquidityShare),
-                Number(totalReserveX),
-                Number(totalSupply),
-                "down"
-              )
-            : 0;
-
-        const reserveY =
-          Number(totalReserveY) > 0
-            ? mulDiv(
-                Number(liquidityShare),
-                Number(totalReserveY),
-                Number(totalSupply),
-                "down"
-              )
-            : 0;
+        const reserveY = totalReserveY.gt(new BN(0))
+          ? mulDivBN(liquidityShare, totalReserveY, totalSupply, "down").toNumber()
+          : 0;
 
         return {
-          reserveX: reserveX || 0,
-          reserveY: reserveY || 0,
-          totalSupply: +BigInt(activeBin.totalSupply).toString(),
+          reserveX: reserveX,
+          reserveY: reserveY,
+          totalSupply: totalSupply,
           binId: firstBinId + index,
           binPosistion: binId,
           liquidityShare: positionInfo.liquidityShares[index],
@@ -206,7 +191,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       return {
         reserveX: 0,
         reserveY: 0,
-        totalSupply: "0",
+        totalSupply: new BN(0),
         binId: firstBinId + index,
         binPosistion: binId,
         liquidityShare: liquidityShare,
@@ -686,7 +671,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         let removedShares: BN[] = [];
 
         if (type === "removeBoth") {
-          removedShares = reserveXY.map((reserve: ReserveParams) => {
+          removedShares = reserveXY.map((reserve: BinReserveInfo) => {
             const binId = reserve.binId;
             if (binId >= Number(start) && binId <= Number(end)) {
               return reserve.liquidityShare;
@@ -697,7 +682,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         }
 
         if (type === "removeBaseToken") {
-          removedShares = reserveXY.map((reserve: ReserveParams) => {
+          removedShares = reserveXY.map((reserve: BinReserveInfo) => {
             if (reserve.reserveX && reserve.reserveY === 0) {
               return reserve.liquidityShare;
             }
@@ -707,7 +692,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         }
 
         if (type === "removeQuoteToken") {
-          removedShares = reserveXY.map((reserve: ReserveParams) => {
+          removedShares = reserveXY.map((reserve: BinReserveInfo) => {
             if (reserve.reserveY && reserve.reserveX === 0) {
               return reserve.liquidityShare;
             }
@@ -716,7 +701,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           });
         }
 
-        const availableShares = reserveXY.filter((item: ReserveParams) =>
+        const availableShares = reserveXY.filter((item: BinReserveInfo) =>
           type === "removeBoth"
             ? !new BN(item.liquidityShare).eq(new BN(0))
             : type === "removeQuoteToken"

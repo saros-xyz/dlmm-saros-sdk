@@ -175,20 +175,13 @@ export interface GetBinsReserveParams {
   payer: PublicKey;
 }
 
-export interface GetBinsReserveResponse {
-  reserveX: string | number;
-  reserveY: string | number;
-  totalSupply: string | number;
+export interface BinReserveInfo {
+  reserveX: number;
+  reserveY: number;
+  totalSupply: BN;
   liquidityShare: BN;
   binId: number;
   binPosistion: number;
-}
-
-export interface ReserveParams {
-  binId: number;
-  reserveX: string | number;
-  reserveY: string | number;
-  liquidityShare: string | number;
 }
 
 export interface UserPositionsParams {
