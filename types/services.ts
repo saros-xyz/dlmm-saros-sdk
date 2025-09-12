@@ -63,13 +63,13 @@ export interface GetTokenOutputResponse {
   otherAmountOffset: bigint;
 }
 
-export interface Pair {
-  bump: number[];
-  liquidityBookConfig: string; // PublicKey as string
+export interface DLMMPair {
+   bump: number[];
+  liquidityBookConfig: PublicKey;
   binStep: number;
   binStepSeed: number[];
-  tokenMintX: string; // PublicKey as string
-  tokenMintY: string; // PublicKey as string
+  tokenMintX: PublicKey;
+  tokenMintY: PublicKey;
   staticFeeParameters: {
     baseFactor: number;
     filterPeriod: number;
@@ -82,15 +82,15 @@ export interface Pair {
   };
   activeId: number;
   dynamicFeeParameters: {
-    timeLastUpdated: BN; // hex string, likely timestamp
+    timeLastUpdated: BN;
     volatilityAccumulator: number;
     volatilityReference: number;
     idReference: number;
     space: [number, number, number, number];
   };
-  protocolFeesX: string; // likely bytes/hex
-  protocolFeesY: string; // likely bytes/hex
-  hook: null | string; // hook could be nullable
+  protocolFeesX: BN;
+  protocolFeesY: BN;
+  hook: PublicKey | null;
 }
 
 export interface CreatePairWithConfigParams {

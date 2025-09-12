@@ -13,7 +13,7 @@ import { getPriceFromId } from "../utils/price";
 import {
   GetBinArrayParams,
   GetTokenOutputParams,
-  DLMMPair,
+  Pair,
 } from "../types/services";
 
 class LBError extends Error {
@@ -104,7 +104,7 @@ export class LBSwapService {
     const { amount, swapForY, pair, isExactInput } = params;
     try {
        //@ts-ignore
-      const pairInfo: DLMMPair = await this.lbProgram.account.pair.fetch(pair);
+      const pairInfo: Pair = await this.lbProgram.account.pair.fetch(pair);
       if (!pairInfo) throw new Error("Pair not found");
 
       const currentBinArrayIndex = Math.floor(
@@ -186,7 +186,7 @@ export class LBSwapService {
   public async calculateAmountIn(
     amount: bigint,
     bins: BinArrayRange,
-    pairInfo: DLMMPair,
+    pairInfo: Pair,
     swapForY: boolean
   ) {
     try {
@@ -248,7 +248,7 @@ export class LBSwapService {
   public async calculateAmountOut(
     amount: bigint,
     bins: BinArrayRange,
-    pairInfo: DLMMPair,
+    pairInfo: Pair,
     swapForY: boolean
   ) {
     try {
@@ -459,7 +459,7 @@ export class LBSwapService {
     };
   }
 
-  public async updateReferences(pairInfo: DLMMPair, activeId: number) {
+  public async updateReferences(pairInfo: Pair, activeId: number) {
     this.referenceId = pairInfo.dynamicFeeParameters.idReference;
     this.timeLastUpdated =
       pairInfo.dynamicFeeParameters.timeLastUpdated.toNumber();
@@ -488,14 +488,14 @@ export class LBSwapService {
     return this.updateVolatilityAccumulator(pairInfo, activeId);
   }
 
-  public updateVolatilityReference(pairInfo: DLMMPair) {
+  public updateVolatilityReference(pairInfo: Pair) {
     this.volatilityReference =
       (pairInfo.dynamicFeeParameters.volatilityAccumulator *
         pairInfo.staticFeeParameters.reductionFactor) /
       10_000;
   }
 
-  public updateVolatilityAccumulator(pairInfo: DLMMPair, activeId: number) {
+  public updateVolatilityAccumulator(pairInfo: Pair, activeId: number) {
     const deltaId = Math.abs(activeId - this.referenceId);
     const volatilityAccumulator = deltaId * 10000 + this.volatilityReference;
 
@@ -509,7 +509,7 @@ export class LBSwapService {
     }
   }
 
-  public getVariableFee(pairInfo: DLMMPair): bigint {
+  public getVariableFee(pairInfo: Pair): bigint {
     const variableFeeControl = BigInt(
       pairInfo.staticFeeParameters.variableFeeControl
     );
@@ -551,7 +551,7 @@ export class LBSwapService {
     return protocolFee;
   }
 
-  public getTotalFee(pairInfo: DLMMPair) {
+  public getTotalFee(pairInfo: Pair) {
     return (
       this.getBaseFee(
         pairInfo.binStep,
