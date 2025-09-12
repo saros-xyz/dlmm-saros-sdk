@@ -1,10 +1,10 @@
-import { BASIS_POINT_MAX, ONE, SCALE_OFFSET } from '../constants/config'
+import { ACTIVE_ID, MAX_BASIS_POINTS, ONE, SCALE_OFFSET } from '../constants/config'
 
 const getBase = (binStep: number) => {
   const quotient = binStep << SCALE_OFFSET
   if (quotient < 0) return null
 
-  const basisPointMaxBigInt = BASIS_POINT_MAX
+  const basisPointMaxBigInt = MAX_BASIS_POINTS
 
   //@ts-ignore
   if (basisPointMaxBigInt === 0) return null
@@ -23,7 +23,7 @@ export const getPriceFromId = (
   quoteTokenDecimal: number
 ) => {
   const base = getBase(bin_step) as number
-  const exponent = bin_id - 8_388_608
+  const exponent = bin_id - ACTIVE_ID;
   const decimalPow = Math.pow(10, baseTokenDecimal - quoteTokenDecimal)
 
   return Math.pow(base, exponent) * decimalPow
@@ -36,14 +36,14 @@ export const getIdFromPrice = (
   quoteTokenDecimal: number
 ): number => {
   if (price <= 0) throw new Error('Price must be greater than 0')
-  if (binStep <= 0 || binStep > BASIS_POINT_MAX)
+  if (binStep <= 0 || binStep > MAX_BASIS_POINTS)
     throw new Error('Bin step invalid. (0 < binStep <= 10000)')
 
   const decimalPow = Math.pow(10, quoteTokenDecimal - baseTokenDecimal)
 
-  const base = 1 + binStep / BASIS_POINT_MAX
+  const base = 1 + binStep / MAX_BASIS_POINTS
   const exponent = Math.log(price * decimalPow) / Math.log(base)
-  const binId = Math.round(exponent + 8_388_608)
+  const binId = Math.round(exponent + ACTIVE_ID)
 
   return binId
 }
