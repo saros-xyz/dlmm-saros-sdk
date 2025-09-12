@@ -93,12 +93,6 @@ export interface Pair {
   hook: null | string; // hook could be nullable
 }
 
-interface Bin {
-  totalSupply: string;
-  reserveX: string;
-  reserveY: string;
-}
-
 export interface CreatePairWithConfigParams {
   tokenBase: {
     decimal: number;
