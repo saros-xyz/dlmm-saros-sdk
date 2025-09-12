@@ -146,29 +146,6 @@ export interface AddLiquidityIntoPositionParams {
   binArrayUpper: PublicKey;
 }
 
-export interface AddLiquidityParams {
-  tokenX: {
-    address?: string;
-    decimals: number;
-    amount: number;
-    mintAddress: string;
-  };
-  tokenY: {
-    address?: string;
-    decimals: number;
-    amount: number;
-    mintAddress: string;
-  };
-
-  pair: string;
-  binRange: [number, number];
-  positions: PositionInfo[];
-  shape: LiquidityShape;
-  activeBin: number;
-  refId: number;
-  payer: PublicKey;
-}
-
 export interface RemoveMultipleLiquidityParams {
   maxPositionList: {
     position: string;
