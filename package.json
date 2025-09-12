@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "tsdx watch --entry index.ts",
     "build": "tsdx build --entry index.ts",
-    "lint": "tsdx lint",
+    "lint": "tsdx lint .",
     "prepare": "tsdx build --entry index.ts"
   },
   "author": "Saros Finance",

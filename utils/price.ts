@@ -35,7 +35,7 @@ export const getIdFromPrice = (
   baseTokenDecimal: number,
   quoteTokenDecimal: number
 ): number => {
-  if (price <= 0) throw new Error('Giá phải lớn hơn 0')
+  if (price <= 0) throw new Error('Price invalid')
   if (binStep <= 0 || binStep > BASIS_POINT_MAX)
     throw new Error('Bin step invalid')
 
