@@ -140,7 +140,7 @@ export class LBSwapService {
       );
       const totalSupply = binRange
         .getAllBins()
-        .reduce((acc, cur) => acc.add(cur.totalSupply), new BN(0));
+        .reduce((acc, cur) => acc.add(new BN(cur.totalSupply)), new BN(0));
       if (totalSupply.isZero()) {
         return {
           amountIn: BigInt(0),
@@ -220,8 +220,8 @@ export class LBSwapService {
           fee,
           protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
-          reserveX: activeBin.reserveX,
-          reserveY: activeBin.reserveY,
+          reserveX: new BN(activeBin.reserveX),
+          reserveY: new BN(activeBin.reserveY),
         });
 
         amountIn += amountInWithFees;
@@ -282,8 +282,8 @@ export class LBSwapService {
           fee,
           protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
-          reserveX: activeBin.reserveX,
-          reserveY: activeBin.reserveY,
+          reserveX: new BN(activeBin.reserveX),
+          reserveY: new BN(activeBin.reserveY),
         });
 
         amountOut += amountOutOfBin;
