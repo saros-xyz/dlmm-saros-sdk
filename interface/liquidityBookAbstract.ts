@@ -1,7 +1,7 @@
 import { Connection } from "@solana/web3.js";
 import { AnchorProvider, Idl, Program, Wallet } from "@coral-xyz/anchor";
 import { ILiquidityBookConfig, MODE } from "../types";
-import { CONFIG } from "../constants/config";
+import { RPC_CONFIG } from "../constants/config";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
 import MdmaIDL from "../constants/idl/mdma_hook.json";
 import LiquidityBookIDLDevnet from "../constants/idl_devnet/liquidity_book.json";
@@ -17,7 +17,7 @@ export abstract class LiquidityBookAbstract {
   constructor(config: ILiquidityBookConfig) {
     // Initialize the services heref
     this.connection = new Connection(
-      config.options?.rpcUrl || CONFIG[config.mode].rpc,
+      config.options?.rpcUrl || RPC_CONFIG[config.mode].rpc,
       config.options?.commitmentOrConfig || "confirmed"
     );
 

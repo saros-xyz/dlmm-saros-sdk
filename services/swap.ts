@@ -3,7 +3,7 @@ import { Bin, BinArray } from "../types";
 
 import { Connection, PublicKey } from "@solana/web3.js";
 import {
-  BASIS_POINT_MAX,
+  MAX_BASIS_POINTS,
   BIN_ARRAY_SIZE,
   PRECISION,
   SCALE_OFFSET,
@@ -546,7 +546,7 @@ export class LBSwapService {
   }
 
   public getProtocolFee(fee: bigint, protocolShare: bigint) {
-    const protocolFee = (fee * protocolShare) / BigInt(BASIS_POINT_MAX);
+    const protocolFee = (fee * protocolShare) / BigInt(MAX_BASIS_POINTS);
 
     return protocolFee;
   }
