@@ -34,7 +34,7 @@ import {
   GetTokenOutputParams,
   GetTokenOutputResponse,
   GetUserVaultInfoParams,
-  Pair,
+  DLMMPair,
   RemoveMultipleLiquidityParams,
   RemoveMultipleLiquidityResponse,
   SwapParams,
@@ -1263,7 +1263,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
   public async fetchPoolMetadata(pair: string): Promise<PoolMetadata> {
     const connection = this.connection;
     //@ts-ignore
-    const pairInfo: Pair = await this.lbProgram.account.pair.fetch(
+    const pairInfo: DLMMPair = await this.lbProgram.account.pair.fetch(
       new PublicKey(pair)
     );
     if (!pairInfo) {

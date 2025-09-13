@@ -17,7 +17,6 @@ export interface PositionInfo {
   pair: string;
   positionMint: string;
   position: string;
-
   liquidityShares: string[];
   lowerBinId: number;
   upperBinId: number;
