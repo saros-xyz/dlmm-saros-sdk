@@ -310,8 +310,8 @@ export class LBSwapService {
     fee: bigint;
     protocolShare: number;
     swapForY: boolean;
-    reserveX: BN;
-    reserveY: BN;
+    reserveX: BN | number;
+    reserveY: BN | number;
   }) {
     const {
       binStep,
@@ -376,8 +376,8 @@ export class LBSwapService {
     fee: bigint;
     protocolShare: number;
     swapForY: boolean;
-    reserveX: BN;
-    reserveY: BN;
+    reserveX: BN | number;
+    reserveY: BN | number;
   }) {
     const {
       binStep,

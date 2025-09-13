@@ -1,13 +1,12 @@
 export const divRem = (numerator: number, denominator: number) => {
   if (denominator === 0) {
-    throw new Error('Division by zero') // Xử lý lỗi chia cho 0
+    throw new Error('Division by zero')
   }
 
-  // Tính thương và phần dư
-  const quotient = numerator / denominator // Thương
-  const remainder = numerator % denominator // Phần dư
+  const quotient = numerator / denominator
+  const remainder = numerator % denominator
 
-  return [quotient, remainder] // Trả về mảng chứa thương và phần dư
+  return [quotient, remainder]
 }
 
 /// (x * y) / denominator

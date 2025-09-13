@@ -43,6 +43,11 @@ export type BinArray = {
   index: number;
 };
 
+export type BinArrayInfo = {
+  bins: Bin[];
+  resultIndex: number
+}
+
 export type StaticFeeParameters = {
   baseFactor: number;
   filterPeriod: number;

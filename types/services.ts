@@ -8,20 +8,18 @@ export enum LiquidityShape {
 }
 
 export enum RemoveLiquidityType {
-  Both = "removeBoth",
-  BaseToken = "removeBaseToken",
-  QuoteToken = "removeQuoteToken",
+  All = "All",
+  BaseToken = "BaseToken",
+  QuoteToken = "QuoteToken",
 }
 
 export interface PositionInfo {
-  pair: string;
-  positionMint: string;
-  position: string;
+  positionMint: PublicKey;
+  position: PublicKey;
 
-  liquidityShares: string[];
+  liquidityShares: BN[];
   lowerBinId: number;
   upperBinId: number;
-  space: number[];
 }
 
 export interface GetBinArrayParams {
@@ -64,11 +62,11 @@ export interface GetTokenOutputResponse {
 
 export interface Pair {
   bump: number[];
-  liquidityBookConfig: string; // PublicKey as string
+  liquidityBookConfig: PublicKey; // PublicKey as string
   binStep: number;
   binStepSeed: number[];
-  tokenMintX: string; // PublicKey as string
-  tokenMintY: string; // PublicKey as string
+  tokenMintX: PublicKey; // PublicKey as string
+  tokenMintY: PublicKey; // PublicKey as string
   staticFeeParameters: {
     baseFactor: number;
     filterPeriod: number;
@@ -87,15 +85,9 @@ export interface Pair {
     idReference: number;
     space: [number, number, number, number];
   };
-  protocolFeesX: string; // likely bytes/hex
-  protocolFeesY: string; // likely bytes/hex
+  protocolFeesX: BN; // likely bytes/hex
+  protocolFeesY: BN; // likely bytes/hex
   hook: null | string; // hook could be nullable
-}
-
-interface Bin {
-  totalSupply: string;
-  reserveX: string;
-  reserveY: string;
 }
 
 export interface CreatePairWithConfigParams {
@@ -146,29 +138,6 @@ export interface AddLiquidityIntoPositionParams {
   binArrayUpper: PublicKey;
 }
 
-export interface AddLiquidityParams {
-  tokenX: {
-    address?: string;
-    decimals: number;
-    amount: number;
-    mintAddress: string;
-  };
-  tokenY: {
-    address?: string;
-    decimals: number;
-    amount: number;
-    mintAddress: string;
-  };
-
-  pair: string;
-  binRange: [number, number];
-  positions: PositionInfo[];
-  shape: LiquidityShape;
-  activeBin: number;
-  refId: number;
-  payer: PublicKey;
-}
-
 export interface RemoveMultipleLiquidityParams {
   maxPositionList: {
     position: string;
@@ -177,7 +146,7 @@ export interface RemoveMultipleLiquidityParams {
     positionMint: string;
   }[];
   payer: PublicKey;
-  type: "removeBoth" | "removeBaseToken" | "removeQuoteToken";
+  type: RemoveLiquidityType;
   pair: PublicKey;
   tokenMintX: PublicKey;
   tokenMintY: PublicKey;
@@ -212,14 +181,16 @@ export interface GetBinsReserveResponse {
   binPosistion: number;
 }
 
-export interface ReserveParams {
-  binId: number;
-  reserveX: string | number;
-  reserveY: string | number;
-  liquidityShare: string | number;
-}
-
 export interface UserPositionsParams {
   payer: PublicKey;
   pair: PublicKey;
+}
+
+export interface PositionAccount {
+  liquidityShares: BN[];
+  lowerBinId: number;
+  pair: PublicKey;
+  positionMint: PublicKey;
+  space: number[];
+  upperBinId: number;
 }
