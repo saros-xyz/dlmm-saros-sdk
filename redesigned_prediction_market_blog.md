@@ -83,42 +83,12 @@ flowchart TD
 
 **SWOT Analysis:**
 
-```mermaid
-quadrantChart
-    title Binary Oracle-Based Platforms SWOT
-    x-axis Low Scalability --> High Scalability
-    y-axis Low Innovation --> High Innovation
-    quadrant-1 High Scalability & High Innovation
-    quadrant-2 Low Scalability & High Innovation
-    quadrant-3 Low Scalability & Low Innovation
-    quadrant-4 High Scalability & Low Innovation
-    "Strengths: High automation, Objective outcomes, Scalable": [0.9, 0.8]
-    "Weaknesses: Limited outcomes, Oracle risks": [0.2, 0.3]
-    "Opportunities: IoT integration, Derivatives": [0.8, 0.7]
-    "Threats: Regulation, Competition": [0.3, 0.2]
-```
-
-**Strengths:**
-- High automation reduces costs and delays
-- Objective outcomes eliminate human bias
-- Scalable architecture supporting thousands of markets
-- Clear user understanding of outcomes
-
-**Weaknesses:**
-- Limited to objectively verifiable outcomes
-- Vulnerable to oracle manipulation
-- Binary outcomes miss nuanced predictions
-- All-or-nothing payouts discourage analysis
-
-**Opportunities:**
-- IoT integration for novel prediction types
-- Prediction-based derivatives expansion
-- Cross-chain integration
-
-**Threats:**
-- Regulatory scrutiny as unregistered securities
-- Oracle centralization risks
-- Competition from superior UX platforms
+| Aspect | Description |
+|--------|-------------|
+| Strengths | High automation reduces costs and delays<br>Objective outcomes eliminate human bias<br>Scalable architecture supporting thousands of markets<br>Clear user understanding of outcomes |
+| Weaknesses | Limited to objectively verifiable outcomes<br>Vulnerable to oracle manipulation<br>Binary outcomes miss nuanced predictions<br>All-or-nothing payouts discourage analysis |
+| Opportunities | IoT integration for novel prediction types<br>Prediction-based derivatives expansion<br>Cross-chain integration |
+| Threats | Regulatory scrutiny as unregistered securities<br>Oracle centralization risks<br>Competition from superior UX platforms |
 
 ### 3.2 Hybrid Resolution Scalar Platforms
 **Representative Platforms:**
@@ -127,20 +97,12 @@ quadrantChart
 
 **SWOT Analysis:**
 
-```mermaid
-quadrantChart
-    title Hybrid Resolution Scalar Platforms SWOT
-    x-axis Low Complexity --> High Complexity
-    y-axis Low Flexibility --> High Flexibility
-    quadrant-1 High Complexity & High Flexibility
-    quadrant-2 Low Complexity & High Flexibility
-    quadrant-3 Low Complexity & Low Flexibility
-    quadrant-4 High Complexity & Low Flexibility
-    "Strengths: Accuracy rewards, Information richness": [0.8, 0.9]
-    "Weaknesses: UI complexity, Higher costs": [0.7, 0.3]
-    "Opportunities: AI integration, Institutional use": [0.9, 0.8]
-    "Threats: Regulation, Technical barriers": [0.4, 0.5]
-```
+| Aspect | Description |
+|--------|-------------|
+| Strengths | Accuracy rewards encourage analytical thinking<br>Hybrid resolution provides outcome flexibility<br>Continuous formats capture more information<br>Lower risk profile through partial rewards<br>Educational value promoting financial literacy |
+| Weaknesses | Higher UI/UX complexity requirements<br>Sophisticated infrastructure increases costs<br>Challenge establishing numerical resolution criteria<br>Limited liquidity vs binary markets |
+| Opportunities | AI/ML integration for enhanced accuracy<br>Corporate forecasting applications<br>Prediction-based credit scoring<br>Cross-platform data sharing |
+| Threats | Regulatory uncertainty around novel payouts<br>Technical complexity barriers<br>Oracle system manipulation risks<br>Traditional derivatives competition |
 
 **Strengths:**
 - Accuracy rewards encourage analytical thinking
@@ -154,18 +116,6 @@ quadrantChart
 - Sophisticated infrastructure increases costs
 - Challenge establishing numerical resolution criteria
 - Limited liquidity vs binary markets
-
-**Opportunities:**
-- AI/ML integration for enhanced accuracy
-- Corporate forecasting applications
-- Prediction-based credit scoring
-- Cross-platform data sharing
-
-**Threats:**
-- Regulatory uncertainty around novel payouts
-- Technical complexity barriers
-- Oracle system manipulation risks
-- Traditional derivatives competition
 
 ## 4. Trepa Deep Dive: Technical Innovation
 
