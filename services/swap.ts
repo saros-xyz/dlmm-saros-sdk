@@ -3,13 +3,17 @@ import { Bin, BinArray } from "../types";
 
 import { Connection, PublicKey } from "@solana/web3.js";
 import {
-  MAX_BASIS_POINTS,
   BIN_ARRAY_SIZE,
-  PRECISION,
   SCALE_OFFSET,
   VARIABLE_FEE_PRECISION,
+  PRECISION_BIGINT,
+  MAX_BASIS_POINTS_BIGINT,
 } from "../constants/config";
-import { getPriceFromId } from "../utils/price";
+import {
+  getAmountInByPrice,
+  getAmountOutByPrice,
+  getPriceFromId,
+} from "../utils/price";
 import {
   GetBinArrayParams,
   GetTokenOutputParams,
@@ -349,10 +353,9 @@ export class LBSwapService {
       Math.round(Number(price) * Math.pow(2, SCALE_OFFSET))
     );
 
-    const amountInWithoutFee = this.calcAmountInByPrice(
+    const amountInWithoutFee = getAmountInByPrice(
       amountOut,
       priceScaled,
-      SCALE_OFFSET,
       swapForY,
       "up"
     );
@@ -414,10 +417,9 @@ export class LBSwapService {
     );
 
     // Calculate maxAmountIn (input needed to take all output in bin, before fee)
-    let maxAmountIn = this.calcAmountInByPrice(
+    let maxAmountIn = getAmountInByPrice(
       binReserveOutBigInt,
       priceScaled,
-      SCALE_OFFSET,
       swapForY,
       "up"
     );
@@ -437,13 +439,7 @@ export class LBSwapService {
     } else {
       feeAmount = this.getFeeAmount(amountInLeft, fee);
       amountIn = amountInLeft - feeAmount;
-      amountOut = this.calcAmountOutByPrice(
-        amountIn,
-        priceScaled,
-        SCALE_OFFSET,
-        swapForY,
-        "down"
-      );
+      amountOut = getAmountOutByPrice(amountIn, priceScaled, swapForY, "down");
       if (amountOut > binReserveOutBigInt) {
         amountOut = binReserveOutBigInt;
       }
@@ -537,7 +533,7 @@ export class LBSwapService {
   }
 
   public getFeeForAmount(amount: bigint, fee: bigint) {
-    const denominator = BigInt(PRECISION) - fee;
+    const denominator = PRECISION_BIGINT - fee;
     const feeForAmount = (amount * fee + denominator - BigInt(1)) / denominator;
 
     return feeForAmount;
@@ -545,13 +541,13 @@ export class LBSwapService {
 
   public getFeeAmount(amount: bigint, fee: bigint) {
     const feeAmount =
-      (amount * fee + BigInt(PRECISION) - BigInt(1)) / BigInt(PRECISION);
+      (amount * fee + PRECISION_BIGINT - BigInt(1)) / PRECISION_BIGINT;
 
     return feeAmount;
   }
 
   public getProtocolFee(fee: bigint, protocolShare: bigint) {
-    const protocolFee = (fee * protocolShare) / BigInt(MAX_BASIS_POINTS);
+    const protocolFee = (fee * protocolShare) / MAX_BASIS_POINTS_BIGINT;
 
     return protocolFee;
   }
@@ -570,76 +566,6 @@ export class LBSwapService {
       return pairId - 1;
     } else {
       return pairId + 1;
-    }
-  }
-
-  /**
-   * Calculates the input amount required for a swap based on the desired output amount and price.
-   *
-   * @param amountOut - The desired output amount as a bigint.
-   * @param priceScaled - The scaled price as a bigint.
-   * @param scaleOffset - The scaling factor used for price adjustments.
-   * @param swapForY - A boolean indicating the direction of the swap
-   * @param rounding - Specifies the rounding mode
-   * @returns The calculated input amount as a bigint.
-   */
-  private calcAmountInByPrice(
-    amountOut: bigint,
-    priceScaled: bigint,
-    scaleOffset: number,
-    swapForY: boolean,
-    rounding: "up" | "down"
-  ): bigint {
-    if (swapForY) {
-      // amountIn = (amountOut << scaleOffset) / priceScaled
-      return rounding === "up"
-        ? ((amountOut << BigInt(scaleOffset)) + priceScaled - BigInt(1)) /
-            priceScaled
-        : (amountOut << BigInt(scaleOffset)) / priceScaled;
-    } else {
-      // amountIn = (amountOut * priceScaled) >> scaleOffset
-      return rounding === "up"
-        ? (amountOut * priceScaled +
-            (BigInt(1) << BigInt(scaleOffset)) -
-            BigInt(1)) >>
-            BigInt(scaleOffset)
-        : (amountOut * priceScaled) >> BigInt(scaleOffset);
-    }
-  }
-
-  /**
-   * Calculates the output amount based on the input amount, price, and scaling factors.
-   *
-   * @param amountIn - The input amount as a bigint.
-   * @param priceScaled - The scaled price as a bigint.
-   * @param scaleOffset - The scaling offset as a number, used to adjust the precision.
-   * @param swapForY - A boolean indicating the direction of the swap
-   * @param rounding - The rounding mode to apply when calculating the output amount
-   * @returns The calculated output amount as a bigint.
-   */
-  private calcAmountOutByPrice(
-    amountIn: bigint,
-    priceScaled: bigint,
-    scaleOffset: number,
-    swapForY: boolean,
-    rounding: "up" | "down"
-  ): bigint {
-    if (swapForY) {
-      // price = (Y / X) & swapForY => amountOut = amountIn * price
-      // amountOut = (amountIn * priceScaled) >> scaleOffset
-      return rounding === "up"
-        ? (amountIn * priceScaled +
-            (BigInt(1) << BigInt(scaleOffset)) -
-            BigInt(1)) >>
-            BigInt(scaleOffset)
-        : (amountIn * priceScaled) >> BigInt(scaleOffset);
-    } else {
-      // price = (X / Y) & !swapForY => amountOut = amountIn / price
-      // amountOut = (amountIn << scaleOffset) / priceScaled
-      return rounding === "up"
-        ? ((amountIn << BigInt(scaleOffset)) + priceScaled - BigInt(1)) /
-            priceScaled
-        : (amountIn << BigInt(scaleOffset)) / priceScaled;
     }
   }
 }

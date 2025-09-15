@@ -1,19 +1,10 @@
-import {
-  ComputeBudgetProgram,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-  TransactionMessage,
-} from "@solana/web3.js";
+import { PublicKey, Transaction, TransactionMessage } from "@solana/web3.js";
 import {
   BIN_ARRAY_INDEX,
   BIN_ARRAY_SIZE,
-  CCU_LIMIT,
   FIXED_LENGTH,
-  MAX_BASIS_POINTS,
-  PRECISION,
+  MAX_BASIS_POINTS_BIGINT,
   SCALE_OFFSET,
-  UNIT_PRICE_DEFAULT,
   WRAP_SOL_PUBKEY,
 } from "../constants/config";
 import { BN, utils } from "@coral-xyz/anchor";
@@ -21,6 +12,7 @@ import * as spl from "@solana/spl-token";
 import { LiquidityBookAbstract } from "../interface/liquidityBookAbstract";
 import { getProgram } from "./getProgram";
 import { Buffer } from "buffer";
+import bs58 from "bs58";
 import cloneDeep from "lodash/cloneDeep";
 import {
   DLMMPairAccount,
@@ -45,14 +37,17 @@ import {
   RemoveLiquidityType,
 } from "../types";
 import { LBSwapService } from "./swap";
-import bigDecimal from "js-big-decimal";
-import { getIdFromPrice, getPriceFromId } from "../utils/price";
-import { mulShr, shlDiv } from "../utils/math";
+import { getIdFromPrice, getPriceFromId, getPriceImpact } from "../utils/price";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
-// TODO: investigate, why is local import used?
-// reported in: https://gist.github.com/BlackObsidian007/a87d8b45a29fb6f6a43718b27a970f11
-import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
-import { getGasPrice } from "../utils";
+import {
+  getGasPrice,
+  getMinOutputWithSlippage,
+  getMaxInputWithSlippage,
+  addComputeBudgetInstructions,
+  addSolTransferInstructions,
+  addCloseAccountInstruction,
+  getComputeUnitPrice,
+} from "../utils";
 
 export class LiquidityBookServices extends LiquidityBookAbstract {
   bufferGas?: number;
@@ -433,19 +428,18 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
       if (totalLiquid) {
         const amount = Number(
-          (BigInt(totalLiquid) * totalAmount) / BigInt(MAX_BASIS_POINTS)
+          (BigInt(totalLiquid) * totalAmount) / MAX_BASIS_POINTS_BIGINT
         );
 
         const associatedUserVault = isNativeY
           ? associatedUserVaultY
           : associatedUserVaultX;
 
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: payer,
-            toPubkey: associatedUserVault,
-            lamports: amount,
-          })
+        addSolTransferInstructions(
+          transaction,
+          payer,
+          associatedUserVault,
+          amount
         );
         transaction.add(spl.createSyncNativeInstruction(associatedUserVault));
       }
@@ -455,10 +449,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       () => undefined
     );
 
-    const unitPrice = Math.max(
-      Number(unitSPrice) ?? 0,
-      UNIT_PRICE_DEFAULT * (this.bufferGas ?? 1)
-    );
+    const unitPrice = getComputeUnitPrice(unitSPrice, this.bufferGas);
 
     const hook = PublicKey.findProgramAddressSync(
       [
@@ -517,16 +508,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       ])
       .instruction();
 
-    transaction.add(
-      ComputeBudgetProgram.setComputeUnitLimit({
-        units: CCU_LIMIT,
-      })
-    );
-    transaction.add(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: unitPrice,
-      })
-    );
+    addComputeBudgetInstructions(transaction, unitPrice);
 
     transaction.add(addLiquidityInstructions);
   }
@@ -609,10 +591,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       () => undefined
     );
 
-    const unitPrice = Math.max(
-      Number(unitSPrice) ?? 0,
-      UNIT_PRICE_DEFAULT * (this.bufferGas ?? 1)
-    );
+    const unitPrice = getComputeUnitPrice(unitSPrice, this.bufferGas);
 
     const positionClosed: Record<string, string>[] = [];
     const txs = await Promise.all(
@@ -638,16 +617,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         });
 
         const tx = new Transaction();
-        tx.add(
-          ComputeBudgetProgram.setComputeUnitLimit({
-            units: CCU_LIMIT,
-          })
-        );
-        tx.add(
-          ComputeBudgetProgram.setComputeUnitPrice({
-            microLamports: unitPrice,
-          })
-        );
+        addComputeBudgetInstructions(tx, unitPrice);
 
         const positionVault = spl.getAssociatedTokenAddressSync(
           new PublicKey(positionMint),
@@ -814,9 +784,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         ? associatedUserVaultY
         : associatedUserVaultX;
 
-      txCloseAccount.add(
-        spl.createCloseAccountInstruction(associatedUserVault, payer, payer)
-      );
+      addCloseAccountInstruction(txCloseAccount, associatedUserVault, payer);
     }
 
     return {
@@ -1002,24 +970,12 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         : associatedUserVaultX;
 
       if (isNativeY && !swapForY) {
-        tx.add(
-          SystemProgram.transfer({
-            fromPubkey: payer,
-            toPubkey: associatedUserVault,
-            lamports: amount,
-          })
-        );
+        addSolTransferInstructions(tx, payer, associatedUserVault, amount);
         tx.add(spl.createSyncNativeInstruction(associatedUserVault));
       }
 
       if (!isNativeY && swapForY) {
-        tx.add(
-          SystemProgram.transfer({
-            fromPubkey: payer,
-            toPubkey: associatedUserVault,
-            lamports: amount,
-          })
-        );
+        addSolTransferInstructions(tx, payer, associatedUserVault, amount);
         tx.add(spl.createSyncNativeInstruction(associatedUserVault));
       }
     }
@@ -1066,9 +1022,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         ? associatedUserVaultY
         : associatedUserVaultX;
       if ((isNativeY && swapForY) || (!isNativeY && !swapForY)) {
-        tx.add(
-          spl.createCloseAccountInstruction(associatedUserVault, payer, payer)
-        );
+        addCloseAccountInstruction(tx, associatedUserVault, payer);
       }
     }
 
@@ -1085,39 +1039,31 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       ).calculateInOutAmount(params);
       const { amountIn, amountOut } = data;
 
-      const slippageFraction = params.slippage / 100;
-      const slippageScaled = Math.round(slippageFraction * PRECISION);
       let maxAmountIn = amountIn;
       let minAmountOut = amountOut;
+
       if (params.isExactInput) {
-        minAmountOut =
-          (amountOut * BigInt(PRECISION - slippageScaled)) / BigInt(PRECISION);
+        minAmountOut = getMinOutputWithSlippage(amountOut, params.slippage);
       } else {
-        // max mount in should div for slippage
-        maxAmountIn =
-          (amountIn * BigInt(PRECISION)) / BigInt(PRECISION - slippageScaled);
+        maxAmountIn = getMaxInputWithSlippage(amountIn, params.slippage);
       }
 
       const { maxAmountOut } = await this.getMaxAmountOutWithFee(
         params.pair,
-        Number(amountIn.toString()),
+        amountIn,
         params.swapForY,
         params.tokenBaseDecimal,
         params.tokenQuoteDecimal
       );
 
-      const priceImpact = new bigDecimal(amountOut)
-        .subtract(new bigDecimal(maxAmountOut))
-        .divide(new bigDecimal(maxAmountOut))
-        .multiply(new bigDecimal(100))
-        .getValue();
+      const priceImpact = getPriceImpact(amountOut, maxAmountOut);
 
       return {
         amountIn: amountIn,
         amountOut: amountOut,
         amount: params.isExactInput ? maxAmountIn : minAmountOut,
         otherAmountOffset: params.isExactInput ? minAmountOut : maxAmountIn,
-        priceImpact: Number(priceImpact),
+        priceImpact: priceImpact,
       };
     } catch (error) {
       throw error;
@@ -1126,13 +1072,13 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
   public async getMaxAmountOutWithFee(
     pairAddress: PublicKey,
-    amount: number,
+    amount: bigint,
     swapForY: boolean = false,
     decimalBase: number = 9,
     decimalQuote: number = 9
-  ) {
+  ): Promise<{ maxAmountOut: bigint; price: number }> {
     try {
-      let amountIn = BigInt(amount);
+      let amountIn = amount;
       const pair = await this.getPairAccount(pairAddress);
 
       if (!pair) throw new Error("Pair not found");
@@ -1155,18 +1101,13 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       const feeAmount = swapService.getFeeAmount(amountIn, feePrice);
       amountIn = amountIn - feeAmount;
       const maxAmountOut = swapForY
-        ? mulShr(Number(amountIn.toString()), activePrice, SCALE_OFFSET, "down")
-        : shlDiv(
-            Number(amountIn.toString()),
-            activePrice,
-            SCALE_OFFSET,
-            "down"
-          );
+        ? (amountIn * BigInt(activePrice)) >> BigInt(SCALE_OFFSET)
+        : (amountIn << BigInt(SCALE_OFFSET)) / BigInt(activePrice);
 
       return { maxAmountOut, price };
     } catch {}
 
-    return { maxAmountOut: 0, price: 0 };
+    return { maxAmountOut: 0n, price: 0 };
   }
 
   public getDexName() {
@@ -1238,7 +1179,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     const positions = await Promise.all(
       positionMints.map(async (mint) => {
         // Derive PDA for Position account
-        const [positionPda] = await PublicKey.findProgramAddressSync(
+        const [positionPda] = PublicKey.findProgramAddressSync(
           [Buffer.from(utils.bytes.utf8.encode("position")), mint.toBuffer()],
           this.lbProgram.programId
         );
