@@ -25,7 +25,6 @@ export const PRECISION = 1_000_000_000;
 export const UNIT_PRICE_DEFAULT = 1_000_000;
 export const CCU_LIMIT = 400_000;
 export const WRAP_SOL_ADDRESS = "So11111111111111111111111111111111111111112";
-// TODO: remove .toString() calls in core and use WRAP_SOL_PUBKEY instead
 export const WRAP_SOL_PUBKEY = new PublicKey(WRAP_SOL_ADDRESS);
 export const FIXED_LENGTH = 16;
 

@@ -14,7 +14,7 @@ import {
   PRECISION,
   SCALE_OFFSET,
   UNIT_PRICE_DEFAULT,
-  WRAP_SOL_ADDRESS,
+  WRAP_SOL_PUBKEY,
 } from "../constants/config";
 import { BN, utils } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
@@ -420,10 +420,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     });
 
     if (
-      pairInfo.tokenMintY.toString() === WRAP_SOL_ADDRESS ||
-      pairInfo.tokenMintX.toString() === WRAP_SOL_ADDRESS
+      pairInfo.tokenMintY.equals(WRAP_SOL_PUBKEY) ||
+      pairInfo.tokenMintX.equals(WRAP_SOL_PUBKEY)
     ) {
-      const isNativeY = pairInfo.tokenMintY.toString() === WRAP_SOL_ADDRESS;
+      const isNativeY = pairInfo.tokenMintY.equals(WRAP_SOL_PUBKEY);
 
       const totalAmount = isNativeY ? amountY : amountX;
       const totalLiquid = liquidityDistribution.reduce((prev, curr) => {
@@ -805,10 +805,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     const txCloseAccount = new Transaction();
 
     if (
-      tokenMintY.toString() === WRAP_SOL_ADDRESS ||
-      tokenMintX.toString() === WRAP_SOL_ADDRESS
+      tokenMintY.equals(WRAP_SOL_PUBKEY) ||
+      tokenMintX.equals(WRAP_SOL_PUBKEY)
     ) {
-      const isNativeY = tokenMintY.toString() === WRAP_SOL_ADDRESS;
+      const isNativeY = tokenMintY.equals(WRAP_SOL_PUBKEY);
 
       const associatedUserVault = isNativeY
         ? associatedUserVaultY
@@ -992,10 +992,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     // )[0];
 
     if (
-      tokenMintY.toString() === WRAP_SOL_ADDRESS ||
-      tokenMintX.toString() === WRAP_SOL_ADDRESS
+      tokenMintY.equals(WRAP_SOL_PUBKEY) ||
+      tokenMintX.equals(WRAP_SOL_PUBKEY)
     ) {
-      const isNativeY = tokenMintY.toString() === WRAP_SOL_ADDRESS;
+      const isNativeY = tokenMintY.equals(WRAP_SOL_PUBKEY);
 
       const associatedUserVault = isNativeY
         ? associatedUserVaultY
@@ -1057,10 +1057,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     tx.add(swapInstructions);
 
     if (
-      tokenMintY.toString() === WRAP_SOL_ADDRESS ||
-      tokenMintX.toString() === WRAP_SOL_ADDRESS
+      tokenMintY.equals(WRAP_SOL_PUBKEY) ||
+      tokenMintX.equals(WRAP_SOL_PUBKEY)
     ) {
-      const isNativeY = tokenMintY.toString() === WRAP_SOL_ADDRESS;
+      const isNativeY = tokenMintY.equals(WRAP_SOL_PUBKEY);
 
       const associatedUserVault = isNativeY
         ? associatedUserVaultY
