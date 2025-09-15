@@ -82,7 +82,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return await this.lbProgram.account.position.fetch(position);
   }
 
-  async getBinArray(params: GetBinArrayParams) {
+  async getBinArray(params: GetBinArrayParams): Promise<PublicKey> {
     const { binArrayIndex, pair, payer, transaction } = params;
 
     const binArray = PublicKey.findProgramAddressSync(
@@ -324,10 +324,18 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       relativeBinIdLeft,
       relativeBinIdRight,
       pair,
-      binArrayIndex,
       positionMint,
       transaction,
     } = params;
+
+    const pairInfo = await this.getPairAccount(pair);
+    const activeBinId = pairInfo.activeId;
+
+    const lowerBinId = activeBinId + relativeBinIdLeft;
+    const upperBinId = activeBinId + relativeBinIdRight;
+
+    const binArrayIndexLower = Math.floor(lowerBinId / BIN_ARRAY_SIZE);
+    const binArrayIndexUpper = Math.floor(upperBinId / BIN_ARRAY_SIZE);
 
     const position = PublicKey.findProgramAddressSync(
       [
@@ -345,16 +353,19 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     await this.getBinArray({
-      binArrayIndex,
+      binArrayIndex: binArrayIndexLower,
       pair,
       payer,
     });
 
-    await this.getBinArray({
-      binArrayIndex: binArrayIndex + 1,
-      pair,
-      payer,
-    });
+    // Only create upper bin array if position spans multiple bin arrays
+    if (binArrayIndexLower !== binArrayIndexUpper) {
+      await this.getBinArray({
+        binArrayIndex: binArrayIndexUpper,
+        pair,
+        payer,
+      });
+    }
 
     const initializePositionTx = await this.lbProgram.methods
       .createPosition(new BN(relativeBinIdLeft), new BN(relativeBinIdRight))

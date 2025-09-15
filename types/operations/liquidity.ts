@@ -43,7 +43,6 @@ export interface CreatePositionParams {
   relativeBinIdLeft: number;
   relativeBinIdRight: number;
   pair: PublicKey;
-  binArrayIndex: number;
   positionMint: PublicKey;
   transaction: Transaction;
 }
