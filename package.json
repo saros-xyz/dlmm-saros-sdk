@@ -19,7 +19,6 @@
     "@solana/spl-token": "0.4.13",
     "@solana/web3.js": "1.98.2",
     "bs58": "^6.0.0",
-    "js-big-decimal": "^2.2.0",
     "lodash": "^4.17.21",
     "tsdx": "^0.14.1"
   },
