@@ -23,7 +23,7 @@ export enum LiquidityShape {
 }
 
 export enum RemoveLiquidityType {
-  Both = "removeBoth",
-  BaseToken = "removeBaseToken",
-  QuoteToken = "removeQuoteToken",
+  All = "All",
+  BaseToken = "BaseToken",
+  QuoteToken = "QuoteToken",
 }

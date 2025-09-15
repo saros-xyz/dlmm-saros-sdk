@@ -33,3 +33,13 @@ export interface DLMMPairAccount {
   protocolFeesY: BN;
   hook: PublicKey | null;
 }
+
+export interface PositionAccount {
+  pair: PublicKey;
+  positionMint: PublicKey;
+  position: string;
+  liquidityShares: BN[];
+  lowerBinId: number;
+  upperBinId: number;
+  space: number[];
+}

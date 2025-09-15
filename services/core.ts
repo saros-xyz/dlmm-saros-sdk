@@ -35,6 +35,7 @@ import {
   UserPositionsParams,
   BinArray,
   RemoveLiquidityType,
+  PositionAccount,
 } from "../types";
 import { LBSwapService } from "./swap";
 import { getIdFromPrice, getPriceFromId, getPriceImpact } from "../utils/price";
@@ -74,7 +75,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return await this.lbProgram.account.pair.fetch(pair);
   }
 
-  public async getPositionAccount(position: PublicKey) {
+  public async getPositionAccount(position: PublicKey): Promise<PositionAccount> {
     //@ts-ignore
     return await this.lbProgram.account.position.fetch(position);
   }
@@ -173,7 +174,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         const totalReserveX = activeBin.reserveX;
         const totalReserveY = activeBin.reserveY;
         const totalSupply = activeBin.totalSupply;
-        const liquidityShareBigInt = liquidityShare;
+        const liquidityShareBigInt = BigInt(liquidityShare.toString());
 
         const reserveX =
           totalReserveX > 0n
@@ -662,7 +663,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         )[0];
 
         let removedShares: BN[] = [];
-        if (type === RemoveLiquidityType.Both) {
+        if (type === RemoveLiquidityType.All) {
           removedShares = reserveXY.map((reserve: BinReserveInfo) => {
             const binId = reserve.binId;
             if (binId >= Number(start) && binId <= Number(end)) {
@@ -693,7 +694,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         }
 
         const availableShares = reserveXY.filter((item: BinReserveInfo) =>
-          type === RemoveLiquidityType.Both
+          type === RemoveLiquidityType.All
             ? item.liquidityShare > 0n // Direct bigint comparison
             : type === RemoveLiquidityType.QuoteToken
             ? item.reserveX > 0n
@@ -701,7 +702,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         );
 
         const isClosePosition =
-          (type === RemoveLiquidityType.Both &&
+          (type === RemoveLiquidityType.All &&
             end - start + 1 >= availableShares.length) ||
           (end - start + 1 === FIXED_LENGTH &&
             availableShares.length === FIXED_LENGTH);
@@ -1118,7 +1119,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return this.lbProgram.programId;
   }
 
-  public async getAllPoolAddresses() {
+  public async getAllPoolAddresses(): Promise<string[]> {
     const programId = this.getDexProgramId();
     const connection = this.connection;
     const pairAccount = LiquidityBookIDL.accounts.find(
@@ -1159,7 +1160,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return poolAdresses;
   }
 
-  public async getUserPositions({ payer, pair }: UserPositionsParams) {
+  public async getUserPositions({ payer, pair }: UserPositionsParams): Promise<PositionAccount[]> {
     const connection = this.connection;
     const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
       payer,

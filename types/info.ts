@@ -1,3 +1,6 @@
+import { BN } from "@coral-xyz/anchor";
+import { PublicKey } from "@solana/web3.js";
+
 export interface PoolMetadata {
   poolAddress: string;
   baseToken: TokenInfo;
@@ -14,16 +17,6 @@ export interface TokenInfo {
     reserve: string;
     // TODO: consider adding quote price to response
     // currentPrice?: string 
-}
-
-export interface PositionInfo {
-  pair: string;
-  positionMint: string;
-  position: string;
-  liquidityShares: string[];
-  lowerBinId: number;
-  upperBinId: number;
-  space: number[];
 }
 
 export interface BinReserveInfo {

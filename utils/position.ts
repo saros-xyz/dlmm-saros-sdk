@@ -1,5 +1,5 @@
 import { MAX_BASIS_POINTS, BIN_ARRAY_SIZE, FIXED_LENGTH, ACTIVE_ID } from "../constants";
-import { LiquidityShape, Distribution, PositionInfo } from "../types";
+import { LiquidityShape, Distribution, PositionAccount } from "../types";
 import { divRem } from "./math";
 
 interface CreateLiquidityDistributionParams {
@@ -504,7 +504,7 @@ export const getBinRange = (index: number, activeId: number) => {
 
 export const findPosition =
   (index: number, activeBin = ACTIVE_ID) =>
-  (position: PositionInfo) => {
+  (position: PositionAccount) => {
     const { binLower, binUpper } = getBinRange(index, activeBin);
 
     return position.lowerBinId <= binLower && position.upperBinId >= binUpper;
