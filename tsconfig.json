@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
-    "types": ["jsdom"],
+    "types": [
+      "jsdom",
+      "jest"
+    ],
     "target": "es2020",
     "module": "ES2015",
     "strict": true,
