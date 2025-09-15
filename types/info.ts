@@ -27,3 +27,11 @@ export interface BinReserveInfo {
   binId: number;
   binPosition: number;
 }
+
+export interface PositionInfo {
+  positionMint: PublicKey;
+  position: string;
+  liquidityShares: BN[];
+  lowerBinId: number;
+  upperBinId: number;
+}

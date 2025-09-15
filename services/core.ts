@@ -36,6 +36,7 @@ import {
   BinArray,
   RemoveLiquidityType,
   PositionAccount,
+  PositionInfo,
 } from "../types";
 import { LBSwapService } from "./swap";
 import { getIdFromPrice, getPriceFromId, getPriceImpact } from "../utils/price";
@@ -49,6 +50,7 @@ import {
   addCloseAccountInstruction,
   getComputeUnitPrice,
 } from "../utils";
+import { chunk } from "lodash";
 
 export class LiquidityBookServices extends LiquidityBookAbstract {
   bufferGas?: number;
@@ -1160,7 +1162,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return poolAdresses;
   }
 
-  public async getUserPositions({ payer, pair }: UserPositionsParams): Promise<PositionAccount[]> {
+  public async getUserPositions({ payer, pair }: UserPositionsParams): Promise<PositionInfo[]> {
     const connection = this.connection;
     const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
       payer,
@@ -1177,29 +1179,75 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       })
       .map((acc) => new PublicKey(acc.account.data.parsed.info.mint));
 
-    const positions = await Promise.all(
-      positionMints.map(async (mint) => {
-        // Derive PDA for Position account
-        const [positionPda] = PublicKey.findProgramAddressSync(
-          [Buffer.from(utils.bytes.utf8.encode("position")), mint.toBuffer()],
-          this.lbProgram.programId
-        );
-        // Fetch and decode the Position account
-        try {
-          const accountInfo = await connection.getAccountInfo(positionPda);
-          if (!accountInfo) return null;
+     const arrPositionPda = positionMints.map((mint) => {
+      const [positionPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from(utils.bytes.utf8.encode("position")), mint.toBuffer()],
+        this.lbProgram.programId
+      );
+      return positionPda;
+    });
+
+    let positions = [];
+    //use GetMultipleAccoutsInfo if supported by the rpc provider
+    try {
+      const arrPositionPdaChunked: PublicKey[][] = chunk(arrPositionPda, 10);
+      //@ts-ignore
+      const results = [];
+      for (const item of arrPositionPdaChunked) {
+        const accountsInfo = await connection.getMultipleAccountsInfo(item);
+        results.push(...accountsInfo);
+      }
+      if (results.length !== arrPositionPda.length) {
+        throw new Error("Invalid account info");
+      }
+      positions = await Promise.all(
+        arrPositionPda.map(async (positionPda, idx) => {
           //@ts-ignore
-          const position = await this.lbProgram.account.position.fetch(
-            positionPda
-          );
-          if (position.pair.toString() !== pair.toString()) return null;
-          return { ...position, position: positionPda.toString() };
-        } catch {
-          return null;
-        }
-      })
-    );
-    return positions.filter(Boolean);
+          const accountInfo = results[idx];
+          if (!accountInfo) return null;
+          try {
+            //@ts-ignore
+            const position = await this.lbProgram.account.position.fetch(
+              positionPda
+            );
+            if (position.pair.toString() !== pair.toString()) return null;
+            return { ...position, position: positionPda.toString() };
+          } catch {
+            return null;
+          }
+        })
+      );
+    } catch {
+      positions = await Promise.all(
+        arrPositionPda.map(async (positionPda) => {
+          // Fetch and decode the Position account
+          try {
+            const accountInfo = await connection.getAccountInfo(positionPda);
+            if (!accountInfo) return null;
+            //@ts-ignore
+            const position = await this.lbProgram.account.position.fetch(
+              positionPda
+            );
+            if (position.pair.toString() !== pair.toString()) return null;
+            return { ...position, position: positionPda.toString() };
+          } catch {
+            return null;
+          }
+        })
+      );
+    }
+
+    return positions
+      .filter(Boolean)
+      .sort((a, b) => a.lowerBinId - b.lowerBinId)
+      .map((item) => ({
+        liquidityShares: item.liquidityShares,
+        lowerBinId: item.lowerBinId,
+        upperBinId: item.upperBinId,
+        positionMint: item.positionMint,
+        position: item.position,
+      } as PositionInfo));
+      
   }
 
   public async quote(params: {
