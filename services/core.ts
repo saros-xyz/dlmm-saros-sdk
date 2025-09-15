@@ -6,7 +6,7 @@ import {
   MAX_BASIS_POINTS_BIGINT,
   SCALE_OFFSET,
   WRAP_SOL_PUBKEY,
-} from "../constants/config";
+} from "../constants";
 import { BN, utils } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import { LiquidityBookAbstract } from "../interface/liquidityBookAbstract";
@@ -455,7 +455,6 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           associatedUserVault,
           amount
         );
-        transaction.add(spl.createSyncNativeInstruction(associatedUserVault));
       }
     }
 
@@ -983,14 +982,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         ? associatedUserVaultY
         : associatedUserVaultX;
 
-      if (isNativeY && !swapForY) {
+      if (isNativeY && !swapForY || !isNativeY && swapForY) {
         addSolTransferInstructions(tx, payer, associatedUserVault, amount);
-        tx.add(spl.createSyncNativeInstruction(associatedUserVault));
-      }
-
-      if (!isNativeY && swapForY) {
-        addSolTransferInstructions(tx, payer, associatedUserVault, amount);
-        tx.add(spl.createSyncNativeInstruction(associatedUserVault));
       }
     }
 

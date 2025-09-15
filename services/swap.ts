@@ -8,7 +8,7 @@ import {
   VARIABLE_FEE_PRECISION,
   PRECISION_BIGINT,
   MAX_BASIS_POINTS_BIGINT,
-} from "../constants/config";
+} from "../constants";
 import {
   getAmountInByPrice,
   getAmountOutByPrice,

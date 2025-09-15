@@ -1,3 +1,3 @@
 export * from './swap';
-export * from './liquidity';
+export * from './positions';
 export * from './pools';

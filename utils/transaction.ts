@@ -5,7 +5,7 @@ import {
   PublicKey,
 } from "@solana/web3.js";
 import * as spl from "@solana/spl-token";
-import { CCU_LIMIT, UNIT_PRICE_DEFAULT } from "../constants/config";
+import { CCU_LIMIT, UNIT_PRICE_DEFAULT } from "../constants";
 
 /**
  * Add compute budget instructions to a transaction
