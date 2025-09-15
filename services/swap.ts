@@ -13,8 +13,8 @@ import { getPriceFromId } from "../utils/price";
 import {
   GetBinArrayParams,
   GetTokenOutputParams,
-  DLMMPair,
-} from "../types/services";
+  DLMMPairAccount,
+} from "../types";
 
 class LBError extends Error {
   static BinNotFound = new LBError("Bin not found");
@@ -103,7 +103,7 @@ export class LBSwapService {
   public async calculateInOutAmount(params: GetTokenOutputParams) {
     const { amount, swapForY, pair, isExactInput } = params;
     try {
-       //@ts-ignore
+      //@ts-ignore
       const pairInfo: Pair = await this.lbProgram.account.pair.fetch(pair);
       if (!pairInfo) throw new Error("Pair not found");
 
@@ -125,7 +125,7 @@ export class LBSwapService {
       // Fetch bin arrays in batch, fallback to empty if not found
       const binArrays: BinArray[] = await Promise.all(
         binArrayAddresses.map((address, i) =>
-           //@ts-ignore
+          //@ts-ignore
           this.lbProgram.account.binArray.fetch(address).catch((error: any) => {
             return { index: binArrayIndexes[i], bins: [] } as BinArray;
           })
@@ -140,7 +140,10 @@ export class LBSwapService {
       );
       const totalSupply = binRange
         .getAllBins()
-        .reduce((acc, cur) => acc.add(new BN(cur.totalSupply)), new BN(0));
+        .reduce(
+          (acc, cur) => acc.add(new BN(cur.totalSupply.toString())),
+          new BN(0)
+        );
       if (totalSupply.isZero()) {
         return {
           amountIn: BigInt(0),
@@ -186,7 +189,7 @@ export class LBSwapService {
   public async calculateAmountIn(
     amount: bigint,
     bins: BinArrayRange,
-    pairInfo: DLMMPair,
+    pairInfo: DLMMPairAccount,
     swapForY: boolean
   ) {
     try {
@@ -220,8 +223,8 @@ export class LBSwapService {
           fee,
           protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
-          reserveX: new BN(activeBin.reserveX),
-          reserveY: new BN(activeBin.reserveY),
+          reserveX: new BN(activeBin.reserveX.toString()),
+          reserveY: new BN(activeBin.reserveY.toString()),
         });
 
         amountIn += amountInWithFees;
@@ -248,7 +251,7 @@ export class LBSwapService {
   public async calculateAmountOut(
     amount: bigint,
     bins: BinArrayRange,
-    pairInfo: DLMMPair,
+    pairInfo: DLMMPairAccount,
     swapForY: boolean
   ) {
     try {
@@ -282,8 +285,8 @@ export class LBSwapService {
           fee,
           protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
-          reserveX: new BN(activeBin.reserveX),
-          reserveY: new BN(activeBin.reserveY),
+          reserveX: new BN(activeBin.reserveX.toString()),
+          reserveY: new BN(activeBin.reserveY.toString()),
         });
 
         amountOut += amountOutOfBin;
@@ -459,10 +462,9 @@ export class LBSwapService {
     };
   }
 
-  public async updateReferences(pairInfo: DLMMPair, activeId: number) {
+  public async updateReferences(pairInfo: DLMMPairAccount, activeId: number) {
     this.referenceId = pairInfo.dynamicFeeParameters.idReference;
-    this.timeLastUpdated =
-      pairInfo.dynamicFeeParameters.timeLastUpdated.toNumber();
+    this.timeLastUpdated = pairInfo.dynamicFeeParameters.timeLastUpdated.toNumber();
     this.volatilityReference =
       pairInfo.dynamicFeeParameters.volatilityReference;
 
@@ -488,14 +490,17 @@ export class LBSwapService {
     return this.updateVolatilityAccumulator(pairInfo, activeId);
   }
 
-  public updateVolatilityReference(pairInfo: DLMMPair) {
+  public updateVolatilityReference(pairInfo: DLMMPairAccount) {
     this.volatilityReference =
       (pairInfo.dynamicFeeParameters.volatilityAccumulator *
         pairInfo.staticFeeParameters.reductionFactor) /
       10_000;
   }
 
-  public updateVolatilityAccumulator(pairInfo: DLMMPair, activeId: number) {
+  public updateVolatilityAccumulator(
+    pairInfo: DLMMPairAccount,
+    activeId: number
+  ) {
     const deltaId = Math.abs(activeId - this.referenceId);
     const volatilityAccumulator = deltaId * 10000 + this.volatilityReference;
 
@@ -509,7 +514,7 @@ export class LBSwapService {
     }
   }
 
-  public getVariableFee(pairInfo: DLMMPair): bigint {
+  public getVariableFee(pairInfo: DLMMPairAccount): bigint {
     const variableFeeControl = BigInt(
       pairInfo.staticFeeParameters.variableFeeControl
     );
@@ -551,7 +556,7 @@ export class LBSwapService {
     return protocolFee;
   }
 
-  public getTotalFee(pairInfo: DLMMPair) {
+  public getTotalFee(pairInfo: DLMMPairAccount) {
     return (
       this.getBaseFee(
         pairInfo.binStep,

@@ -5,7 +5,6 @@ import {
   Transaction,
   TransactionMessage,
 } from "@solana/web3.js";
-import { ILiquidityBookConfig, MODE, PoolMetadata } from "../types";
 import {
   BIN_ARRAY_INDEX,
   BIN_ARRAY_SIZE,
@@ -24,27 +23,34 @@ import { getProgram } from "./getProgram";
 import { Buffer } from "buffer";
 import cloneDeep from "lodash/cloneDeep";
 import {
+  DLMMPairAccount,
   AddLiquidityIntoPositionParams,
+  BinReserveInfo,
   CreatePairWithConfigParams,
   CreatePositionParams,
   GetBinArrayParams,
   GetBinsArrayInfoParams,
   GetBinsReserveParams,
-  BinReserveInfo,
   GetTokenOutputParams,
   GetTokenOutputResponse,
   GetUserVaultInfoParams,
-  DLMMPair,
+  ILiquidityBookConfig,
+  MODE,
+  PoolMetadata,
   RemoveMultipleLiquidityParams,
   RemoveMultipleLiquidityResponse,
   SwapParams,
   UserPositionsParams,
-} from "../types/services";
+  BinArray,
+  RemoveLiquidityType,
+} from "../types";
 import { LBSwapService } from "./swap";
 import bigDecimal from "js-big-decimal";
 import { getIdFromPrice, getPriceFromId } from "../utils/price";
-import { mulDiv, mulDivBN, mulShr, shlDiv } from "../utils/math";
+import { mulShr, shlDiv } from "../utils/math";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
+// TODO: investigate, why is local import used?
+// reported in: https://gist.github.com/BlackObsidian007/a87d8b45a29fb6f6a43718b27a970f11
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import { getGasPrice } from "../utils";
 
@@ -68,7 +74,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return new PublicKey("DgW5ARD9sU3W6SJqtyJSH3QPivxWt7EMvjER9hfFKWXF");
   }
 
-  public async getPairAccount(pair: PublicKey) {
+  public async getPairAccount(pair: PublicKey): Promise<DLMMPairAccount> {
     //@ts-ignore
     return await this.lbProgram.account.pair.fetch(pair);
   }
@@ -105,7 +111,9 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return binArray;
   }
 
-  public async getBinArrayInfo(params: GetBinsArrayInfoParams) {
+  public async getBinArrayInfo(
+    params: GetBinsArrayInfoParams
+  ): Promise<BinArray> {
     const { binArrayIndex, pair, payer } = params;
     let resultIndex = binArrayIndex;
     let result = [];
@@ -139,7 +147,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       resultIndex -= 1;
     }
 
-    return { bins: result, resultIndex };
+    return { bins: result, index: resultIndex };
   }
 
   public async getBinsReserveInformation(
@@ -150,51 +158,55 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     const firstBinId = positionInfo.lowerBinId;
     const binArrayIndex = Math.floor(firstBinId / BIN_ARRAY_SIZE);
 
-    const { bins, resultIndex } = await this.getBinArrayInfo({
+    const { bins, index } = await this.getBinArrayInfo({
       binArrayIndex,
       pair,
       payer,
     });
 
-    const firstBinIndex = resultIndex * BIN_ARRAY_SIZE;
+    const firstBinIndex = index * BIN_ARRAY_SIZE;
     const binIds = Array.from(
       { length: positionInfo.upperBinId - firstBinId + 1 },
       (_, i) => firstBinId - firstBinIndex + i
     );
 
     const reserveXY = binIds.map((binId: number, index: number) => {
-      const liquidityShare = positionInfo.liquidityShares[index]; // keep as BN
+      const liquidityShare = positionInfo.liquidityShares[index]; // BN
       const activeBin = bins[binId];
 
       if (activeBin) {
-        // Use BN values throughout. Convert to numbers at end
         const totalReserveX = activeBin.reserveX;
         const totalReserveY = activeBin.reserveY;
         const totalSupply = activeBin.totalSupply;
-        const reserveX = totalReserveX.gt(new BN(0))
-          ? mulDivBN(liquidityShare, totalReserveX, totalSupply, "down").toNumber()
-          : 0;
+        const liquidityShareBigInt = liquidityShare;
 
-        const reserveY = totalReserveY.gt(new BN(0))
-          ? mulDivBN(liquidityShare, totalReserveY, totalSupply, "down").toNumber()
-          : 0;
+        const reserveX =
+          totalReserveX > 0n
+            ? (liquidityShareBigInt * totalReserveX) / totalSupply
+            : 0n;
+
+        const reserveY =
+          totalReserveY > 0n
+            ? (liquidityShareBigInt * totalReserveY) / totalSupply
+            : 0n;
 
         return {
-          reserveX: reserveX,
-          reserveY: reserveY,
-          totalSupply: totalSupply,
+          reserveX,
+          reserveY,
+          totalSupply,
           binId: firstBinId + index,
-          binPosistion: binId,
-          liquidityShare: positionInfo.liquidityShares[index],
+          binPosition: binId,
+          liquidityShare: liquidityShareBigInt,
         };
       }
+
       return {
-        reserveX: 0,
-        reserveY: 0,
-        totalSupply: new BN(0),
+        reserveX: 0n,
+        reserveY: 0n,
+        totalSupply: 0n,
         binId: firstBinId + index,
-        binPosistion: binId,
-        liquidityShare: liquidityShare,
+        binPosition: binId,
+        liquidityShare: BigInt(liquidityShare.toString()),
       };
     });
 
@@ -420,7 +432,9 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       }, 0);
 
       if (totalLiquid) {
-        const amount = (totalLiquid * totalAmount) / MAX_BASIS_POINTS;
+        const amount = Number(
+          (BigInt(totalLiquid) * totalAmount) / BigInt(MAX_BASIS_POINTS)
+        );
 
         const associatedUserVault = isNativeY
           ? associatedUserVaultY
@@ -471,7 +485,11 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     const addLiquidityInstructions = await this.lbProgram.methods
-      .increasePosition(new BN(amountX), new BN(amountY), liquidityDistribution)
+      .increasePosition(
+        new BN(amountX.toString()),
+        new BN(amountY.toString()),
+        liquidityDistribution
+      )
       .accountsPartial({
         pair: pair,
         position: position,
@@ -516,8 +534,14 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
   public async removeMultipleLiquidity(
     params: RemoveMultipleLiquidityParams
   ): Promise<RemoveMultipleLiquidityResponse> {
-    const { maxPositionList, payer, type, pair, tokenMintX, tokenMintY } =
-      params;
+    const {
+      maxPositionList,
+      payer,
+      type,
+      pair,
+      tokenMintX,
+      tokenMintY,
+    } = params;
 
     const tokenProgramX = await getProgram(tokenMintX, this.connection);
     const tokenProgramY = await getProgram(tokenMintY, this.connection);
@@ -570,14 +594,13 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     if (!infoHookTokenY) {
-      const hookTokenYInstructions =
-        spl.createAssociatedTokenAccountInstruction(
-          payer,
-          associatedHookTokenY,
-          hook,
-          tokenMintY,
-          tokenProgramY
-        );
+      const hookTokenYInstructions = spl.createAssociatedTokenAccountInstruction(
+        payer,
+        associatedHookTokenY,
+        hook,
+        tokenMintY,
+        tokenProgramY
+      );
 
       txCreateAccount.add(hookTokenYInstructions);
     }
@@ -596,20 +619,20 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       maxPositionList.map(async ({ position, start, end, positionMint }) => {
         const binArrayIndex = Math.floor(start / BIN_ARRAY_SIZE);
 
-        const { resultIndex } = await this.getBinArrayInfo({
+        const { index } = await this.getBinArrayInfo({
           binArrayIndex,
           pair,
           payer,
         });
 
         const binArrayLower = await this.getBinArray({
-          binArrayIndex: resultIndex,
+          binArrayIndex: index,
           pair,
           payer,
         });
 
         const binArrayUpper = await this.getBinArray({
-          binArrayIndex: resultIndex + 1,
+          binArrayIndex: index + 1,
           pair,
           payer,
         });
@@ -669,48 +692,46 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         )[0];
 
         let removedShares: BN[] = [];
-
-        if (type === "removeBoth") {
+        if (type === RemoveLiquidityType.Both) {
           removedShares = reserveXY.map((reserve: BinReserveInfo) => {
             const binId = reserve.binId;
             if (binId >= Number(start) && binId <= Number(end)) {
-              return reserve.liquidityShare;
+              return new BN(reserve.liquidityShare.toString()); // Convert bigint to BN
             }
-
             return new BN(0);
           });
         }
 
-        if (type === "removeBaseToken") {
+        if (type === RemoveLiquidityType.BaseToken) {
           removedShares = reserveXY.map((reserve: BinReserveInfo) => {
-            if (reserve.reserveX && reserve.reserveY === 0) {
-              return reserve.liquidityShare;
+            if (reserve.reserveX > 0n && reserve.reserveY === 0n) {
+              // Use bigint comparison
+              return new BN(reserve.liquidityShare.toString());
             }
-
             return new BN(0);
           });
         }
 
-        if (type === "removeQuoteToken") {
+        if (type === RemoveLiquidityType.QuoteToken) {
           removedShares = reserveXY.map((reserve: BinReserveInfo) => {
-            if (reserve.reserveY && reserve.reserveX === 0) {
-              return reserve.liquidityShare;
+            if (reserve.reserveY > 0n && reserve.reserveX === 0n) {
+              // Use bigint comparison
+              return new BN(reserve.liquidityShare.toString());
             }
-
             return new BN(0);
           });
         }
 
         const availableShares = reserveXY.filter((item: BinReserveInfo) =>
-          type === "removeBoth"
-            ? !new BN(item.liquidityShare).eq(new BN(0))
-            : type === "removeQuoteToken"
-            ? !item.reserveX
-            : !item.reserveY
+          type === RemoveLiquidityType.Both
+            ? item.liquidityShare > 0n // Direct bigint comparison
+            : type === RemoveLiquidityType.QuoteToken
+            ? item.reserveX > 0n
+            : item.reserveY > 0n
         );
 
         const isClosePosition =
-          (type === "removeBoth" &&
+          (type === RemoveLiquidityType.Both &&
             end - start + 1 >= availableShares.length) ||
           (end - start + 1 === FIXED_LENGTH &&
             availableShares.length === FIXED_LENGTH);
@@ -844,7 +865,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           })
       )
     );
-    
+
     const binArrayAccountsInfo = await this.connection.getMultipleAccountsInfo(
       binArrayAddresses
     );
@@ -1024,7 +1045,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         tokenProgramY,
         user: payer,
         hook: hook || null,
-        hooksProgram: this.hooksProgram.programId
+        hooksProgram: this.hooksProgram.programId,
       })
       .remainingAccounts([
         { pubkey: pair, isWritable: false, isSigner: false },
@@ -1113,8 +1134,11 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     try {
       let amountIn = BigInt(amount);
       const pair = await this.getPairAccount(pairAddress);
-      const activeId = pair?.activeId;
-      const binStep = pair?.binStep;
+
+      if (!pair) throw new Error("Pair not found");
+
+      const { activeId, binStep } = pair;
+
       const swapService = LBSwapService.fromLbConfig(
         this.lbProgram,
         this.connection
@@ -1129,7 +1153,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       );
 
       const feeAmount = swapService.getFeeAmount(amountIn, feePrice);
-      amountIn = BigInt(amountIn) - BigInt(feeAmount); // new BN(amountIn).subtract(new BN(feeAmount));
+      amountIn = amountIn - feeAmount;
       const maxAmountOut = swapForY
         ? mulShr(Number(amountIn.toString()), activePrice, SCALE_OFFSET, "down")
         : shlDiv(
@@ -1153,7 +1177,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return this.lbProgram.programId;
   }
 
-  public async fetchPoolAddresses() {
+  public async getAllPoolAddresses() {
     const programId = this.getDexProgramId();
     const connection = this.connection;
     const pairAccount = LiquidityBookIDL.accounts.find(
@@ -1253,19 +1277,19 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       pair: new PublicKey(metadata.poolAddress),
       slippage: optional.slippage,
       swapForY: optional.swapForY,
-      tokenBase: new PublicKey(metadata.baseMint),
-      tokenBaseDecimal: metadata.extra.tokenBaseDecimal,
-      tokenQuote: new PublicKey(metadata.quoteMint),
-      tokenQuoteDecimal: metadata.extra.tokenQuoteDecimal,
+      tokenBase: new PublicKey(metadata.baseToken.mintAddress),
+      tokenBaseDecimal: metadata.baseToken.decimals,
+      tokenQuote: new PublicKey(metadata.quoteToken.mintAddress),
+      tokenQuoteDecimal: metadata.quoteToken.decimals,
     });
   }
 
-  public async fetchPoolMetadata(pair: string): Promise<PoolMetadata> {
+  public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
     const connection = this.connection;
-    //@ts-ignore
-    const pairInfo: DLMMPair = await this.lbProgram.account.pair.fetch(
+    const pairInfo: DLMMPairAccount = await this.getPairAccount(
       new PublicKey(pair)
     );
+
     if (!pairInfo) {
       throw new Error("Pair not found");
     }
@@ -1300,16 +1324,20 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
     return {
       poolAddress: pair,
-      baseMint: pairInfo.tokenMintX.toString(),
-      baseReserve: baseReserve.value.amount,
-      quoteMint: pairInfo.tokenMintY.toString(),
-      quoteReserve: quoteReserve.value.amount,
+      baseToken: {
+        mintAddress: pairInfo.tokenMintX.toString(),
+        decimals: baseReserve.value.decimals,
+        reserve: baseReserve.value.amount,
+      },
+      quoteToken: {
+        mintAddress: pairInfo.tokenMintY.toString(),
+        decimals: quoteReserve.value.decimals,
+        reserve: quoteReserve.value.amount,
+      },
       tradeFee:
         (pairInfo.staticFeeParameters.baseFactor * pairInfo.binStep) / 1e6,
       extra: {
         hook: pairInfo.hook?.toString(),
-        tokenQuoteDecimal: baseReserve.value.decimals,
-        tokenBaseDecimal: quoteReserve.value.decimals,
       },
     };
   }
@@ -1338,14 +1366,13 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       );
 
       if (!infoPairVault) {
-        const pairVaultYInstructions =
-          spl.createAssociatedTokenAccountInstruction(
-            payer,
-            associatedPairVault,
-            pair,
-            tokenMint,
-            tokenProgram
-          );
+        const pairVaultYInstructions = spl.createAssociatedTokenAccountInstruction(
+          payer,
+          associatedPairVault,
+          pair,
+          tokenMint,
+          tokenProgram
+        );
         transaction.add(pairVaultYInstructions);
       }
     }
@@ -1369,14 +1396,13 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       );
 
       if (!infoUserVault) {
-        const userVaultYInstructions =
-          spl.createAssociatedTokenAccountInstruction(
-            payer,
-            associatedUserVault,
-            payer,
-            tokenAddress,
-            tokenProgram
-          );
+        const userVaultYInstructions = spl.createAssociatedTokenAccountInstruction(
+          payer,
+          associatedUserVault,
+          payer,
+          tokenAddress,
+          tokenProgram
+        );
         transaction.add(userVaultYInstructions);
       }
     }

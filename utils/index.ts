@@ -6,7 +6,7 @@ import {
   MAX_BASIS_POINTS,
   UNIT_PRICE_DEFAULT,
 } from "../constants/config";
-import { Distribution, LiquidityShape, PositionInfo } from "../types/services";
+import { Distribution, LiquidityShape, PositionInfo } from "../types";
 import { divRem } from "./math";
 
 interface CreateLiquidityDistributionParams {
