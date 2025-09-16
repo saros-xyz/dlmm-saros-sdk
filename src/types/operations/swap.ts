@@ -1,49 +1,38 @@
 import { PublicKey } from '@solana/web3.js';
-import { PoolMetadata } from '../info';
+
+export interface SwapOptions {
+  isExactInput?: boolean;
+}
 
 // Swap operation parameters
 export interface SwapParams {
   tokenMintX: PublicKey;
   tokenMintY: PublicKey;
   amount: bigint;
+  // what is otherAmountOffset? Why is the user required to provide it?
   otherAmountOffset: bigint;
   swapForY: boolean;
   isExactInput: boolean;
   pair: PublicKey;
   hook: PublicKey;
   payer: PublicKey;
+  // why is slippage not a parameter for swap?
 }
 
 // Quote/output calculation parameters
-export interface GetTokenOutputParams {
+export interface QuoteParams {
   pair: PublicKey;
-  tokenBase: PublicKey;
-  tokenQuote: PublicKey;
   amount: bigint;
   swapForY: boolean;
   isExactInput: boolean;
-  tokenBaseDecimal: number;
-  tokenQuoteDecimal: number;
   slippage: number;
 }
 
 // Quote/output calculation response
-export interface GetTokenOutputResponse {
+export interface QuoteResponse {
   amountIn: bigint;
   amountOut: bigint;
   priceImpact: number;
   amount: bigint;
   otherAmountOffset: bigint;
-}
-
-
-// Quote operations
-export interface QuoteParams {
-  amount: number;
-  metadata: PoolMetadata;
-  optional: {
-    isExactInput: boolean;
-    swapForY: boolean;
-    slippage: number;
-  };
 }

@@ -175,14 +175,12 @@ export class PositionService extends LiquidityBookAbstract {
     return reserveXY;
   }
 
-  async createPosition(params: CreatePositionParams) {
+  async createPosition(params: CreatePositionParams, pairInfo: DLMMPairAccount) {
     const { payer, relativeBinIdLeft, relativeBinIdRight, pair, positionMint, transaction } =
       params;
-
-    //@ts-ignore
-    const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
+    // const tokenProgramX = await this.getTokenProgram(pairInfo.tokenMintX);
+    // const tokenProgramY = await this.getTokenProgram(pairInfo.tokenMintY);
     const activeBinId = pairInfo.activeId;
-
     const lowerBinId = activeBinId + relativeBinIdLeft;
     const upperBinId = activeBinId + relativeBinIdRight;
 
@@ -232,7 +230,10 @@ export class PositionService extends LiquidityBookAbstract {
     return { position: position.toString() };
   }
 
-  async addLiquidityIntoPosition(params: AddLiquidityIntoPositionParams) {
+  async addLiquidityIntoPosition(
+    params: AddLiquidityIntoPositionParams,
+    pairInfo: DLMMPairAccount
+  ) {
     const {
       positionMint,
       payer,
@@ -244,9 +245,6 @@ export class PositionService extends LiquidityBookAbstract {
       amountX,
       amountY,
     } = params;
-
-    //@ts-ignore
-    const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
 
     const tokenProgramX = await this.getTokenProgram(pairInfo.tokenMintX);
     const tokenProgramY = await this.getTokenProgram(pairInfo.tokenMintY);
@@ -605,8 +603,7 @@ export class PositionService extends LiquidityBookAbstract {
   }
 
   public async getUserPositions({ payer, pair }: UserPositionsParams): Promise<PositionInfo[]> {
-    const connection = this.connection;
-    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(payer, {
+    const tokenAccounts = await this.connection.getParsedTokenAccountsByOwner(payer, {
       programId: spl.TOKEN_2022_PROGRAM_ID,
     });
 
@@ -631,7 +628,7 @@ export class PositionService extends LiquidityBookAbstract {
       const arrPositionPdaChunked: PublicKey[][] = chunk(arrPositionPda, 100);
       const results: any[] = [];
       for (const item of arrPositionPdaChunked) {
-        const accountsInfo = await connection.getMultipleAccountsInfo(item);
+        const accountsInfo = await this.connection.getMultipleAccountsInfo(item);
         results.push(...accountsInfo);
       }
       if (results.length !== arrPositionPda.length) {
@@ -655,7 +652,7 @@ export class PositionService extends LiquidityBookAbstract {
       positions = await Promise.all(
         arrPositionPda.map(async (positionPda) => {
           try {
-            const accountInfo = await connection.getAccountInfo(positionPda);
+            const accountInfo = await this.connection.getAccountInfo(positionPda);
             if (!accountInfo) return null;
             //@ts-ignore
             const position = await this.lbProgram.account.position.fetch(positionPda);

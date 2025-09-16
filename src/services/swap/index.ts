@@ -5,14 +5,15 @@ import { FeeCalculator } from './fees';
 import { VolatilityManager } from './volatility';
 import { BinArrayRange } from './bin-manager';
 import { SwapExecutor } from './execution';
-import { BIN_ARRAY_SIZE, SCALE_OFFSET } from '../../constants';
+import { BIN_ARRAY_SIZE, MAX_BIN_CROSSINGS, SCALE_OFFSET } from '../../constants';
 import {
   DLMMPairAccount,
-  GetTokenOutputParams,
-  GetTokenOutputResponse,
+  QuoteParams,
+  QuoteResponse,
   SwapParams,
   BinArray,
   ILiquidityBookConfig,
+  PoolMetadata,
 } from '../../types';
 import { getPriceFromId } from '../../utils/price';
 import {
@@ -22,6 +23,8 @@ import {
   getMinOutputWithSlippage,
   getMaxInputWithSlippage,
 } from './calculations';
+import { PoolServiceError } from '../pools/errors';
+import { SwapServiceError } from './errors';
 
 export class SwapService extends LiquidityBookAbstract {
   private volatilityManager: VolatilityManager;
@@ -38,12 +41,12 @@ export class SwapService extends LiquidityBookAbstract {
     );
   }
 
-  public async calculateInOutAmount(params: GetTokenOutputParams) {
+  private async calculateInOutAmount(params: QuoteParams) {
     const { amount, swapForY, pair, isExactInput } = params;
     try {
       //@ts-ignore
       const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
-      if (!pairInfo) throw new Error('Pair not found');
+      if (!pairInfo) throw PoolServiceError.PoolNotFound;
 
       const currentBinArrayIndex = Math.floor(pairInfo.activeId / BIN_ARRAY_SIZE);
       const binArrayIndexes = [
@@ -184,8 +187,8 @@ export class SwapService extends LiquidityBookAbstract {
         activeId = this.moveActiveId(activeId, swapForY);
       }
 
-      if (totalBinUsed >= 30) {
-        throw 'Swap crosses too many bins – quote aborted.';
+      if (totalBinUsed >= MAX_BIN_CROSSINGS) {
+        throw SwapServiceError.SwapExceedsMaxBinCrossings;
       }
 
       return amountIn;
@@ -250,8 +253,8 @@ export class SwapService extends LiquidityBookAbstract {
         if (!amountInLeft) break;
         activeId = this.moveActiveId(activeId, swapForY);
       }
-      if (totalBinUsed >= 30) {
-        throw 'Swap crosses too many bins – quote aborted.';
+      if (totalBinUsed >= MAX_BIN_CROSSINGS) {
+        throw SwapServiceError.SwapExceedsMaxBinCrossings;
       }
 
       return amountOut;
@@ -276,12 +279,7 @@ export class SwapService extends LiquidityBookAbstract {
     const binReserveOut = swapForY ? reserveY : reserveX;
 
     if (binReserveOut.isZero()) {
-      return {
-        amountInWithFees: BigInt(0),
-        amountOut: BigInt(0),
-        feeAmount: BigInt(0),
-        protocolFeeAmount: BigInt(0),
-      };
+      throw SwapServiceError.BinHasNoReserves;
     }
 
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
@@ -320,12 +318,7 @@ export class SwapService extends LiquidityBookAbstract {
     const binReserveOut = swapForY ? reserveY : reserveX;
 
     if (binReserveOut.isZero()) {
-      return {
-        amountInWithFees: BigInt(0),
-        amountOut: BigInt(0),
-        feeAmount: BigInt(0),
-        protocolFeeAmount: BigInt(0),
-      };
+      throw SwapServiceError.BinHasNoReserves;
     }
 
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
@@ -375,44 +368,7 @@ export class SwapService extends LiquidityBookAbstract {
       return pairId + 1;
     }
   }
-
-  public async getQuote(params: GetTokenOutputParams): Promise<GetTokenOutputResponse> {
-    try {
-      const data = await this.calculateInOutAmount(params);
-      const { amountIn, amountOut } = data;
-
-      let maxAmountIn = amountIn;
-      let minAmountOut = amountOut;
-
-      if (params.isExactInput) {
-        minAmountOut = getMinOutputWithSlippage(amountOut, params.slippage);
-      } else {
-        maxAmountIn = getMaxInputWithSlippage(amountIn, params.slippage);
-      }
-
-      const { maxAmountOut } = await this.getMaxAmountOutWithFee(
-        params.pair,
-        amountIn,
-        params.swapForY,
-        params.tokenBaseDecimal,
-        params.tokenQuoteDecimal
-      );
-
-      const priceImpact = getPriceImpact(amountOut, maxAmountOut);
-
-      return {
-        amountIn: amountIn,
-        amountOut: amountOut,
-        amount: params.isExactInput ? maxAmountIn : minAmountOut,
-        otherAmountOffset: params.isExactInput ? minAmountOut : maxAmountIn,
-        priceImpact: priceImpact,
-      };
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  public async getMaxAmountOutWithFee(
+  private async getMaxAmountOutWithFee(
     pairAddress: PublicKey,
     amount: bigint,
     swapForY: boolean = false,
@@ -423,8 +379,7 @@ export class SwapService extends LiquidityBookAbstract {
       let amountIn = amount;
       //@ts-ignore
       const pair: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pairAddress);
-
-      if (!pair) throw new Error('Pair not found');
+      if (!pair) throw new PoolServiceError('Pair not found');
 
       const { activeId, binStep } = pair;
 
@@ -447,7 +402,45 @@ export class SwapService extends LiquidityBookAbstract {
     }
   }
 
+  // only swap and getQuote are public
   public async swap(params: SwapParams): Promise<Transaction> {
     return this.swapExecutor.executeSwap(params);
+  }
+
+  public async getQuote(params: QuoteParams, poolMetadata: PoolMetadata): Promise<QuoteResponse> {
+    try {
+      const { baseToken, quoteToken } = poolMetadata;
+      const data = await this.calculateInOutAmount(params);
+      const { amountIn, amountOut } = data;
+
+      let maxAmountIn = amountIn;
+      let minAmountOut = amountOut;
+
+      if (params.isExactInput) {
+        minAmountOut = getMinOutputWithSlippage(amountOut, params.slippage);
+      } else {
+        maxAmountIn = getMaxInputWithSlippage(amountIn, params.slippage);
+      }
+
+      const { maxAmountOut } = await this.getMaxAmountOutWithFee(
+        params.pair,
+        amountIn,
+        params.swapForY,
+        baseToken.decimals,
+        quoteToken.decimals
+      );
+
+      const priceImpact = getPriceImpact(amountOut, maxAmountOut);
+
+      return {
+        amountIn: amountIn,
+        amountOut: amountOut,
+        amount: params.isExactInput ? maxAmountIn : minAmountOut,
+        otherAmountOffset: params.isExactInput ? minAmountOut : maxAmountIn,
+        priceImpact: priceImpact,
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 }

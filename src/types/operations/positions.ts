@@ -7,7 +7,6 @@ export interface UserPositionsParams {
   pair: PublicKey;
 }
 
-
 // Create a position in a specific pool
 export interface CreatePositionParams {
   payer: PublicKey;

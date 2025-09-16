@@ -3,20 +3,23 @@ import { PublicKey } from '@solana/web3.js';
 
 export interface PoolMetadata {
   poolAddress: string;
-  baseToken: TokenInfo;
-  quoteToken: TokenInfo;
+  baseToken: TokenInfoWithReserve;
+  quoteToken: TokenInfoWithReserve;
   tradeFee: number;
   extra: {
     hook?: string;
   };
-}
-
-export interface TokenInfo {
-  mintAddress: string;
-  decimals: number;
-  reserve: string;
   // TODO: consider adding quote price to response
   // currentPrice?: string
+}
+
+export interface BaseTokenInfo {
+  mintAddress: string;
+  decimals: number;
+}
+
+export interface TokenInfoWithReserve extends BaseTokenInfo {
+  reserve: string;
 }
 
 export interface BinReserveInfo {

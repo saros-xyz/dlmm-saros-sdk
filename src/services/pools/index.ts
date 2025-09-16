@@ -14,15 +14,18 @@ import {
 } from '../../types';
 import { getIdFromPrice } from '../../utils/price';
 import LiquidityBookIDL from '../../constants/idl/liquidity_book.json';
+import { PoolServiceError } from './errors';
 
 export class PoolService extends LiquidityBookAbstract {
   constructor(config: ILiquidityBookConfig) {
     super(config);
   }
 
-  public async getPairAccount(pair: PublicKey): Promise<DLMMPairAccount> {
-    //@ts-ignore
-    return await this.lbProgram.account.pair.fetch(pair);
+  public async getPoolAccount(pair: PublicKey): Promise<DLMMPairAccount> {
+    // @ts-ignore
+    const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
+    if (!pairInfo) throw PoolServiceError.PoolNotFound;
+    return pairInfo;
   }
 
   public async createPairWithConfig(params: CreatePairWithConfigParams) {
@@ -122,8 +125,7 @@ export class PoolService extends LiquidityBookAbstract {
   }
 
   public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
-    const connection = this.connection;
-    const pairInfo: DLMMPairAccount = await this.getPairAccount(new PublicKey(pair));
+    const pairInfo: DLMMPairAccount = await this.getPoolAccount(new PublicKey(pair));
 
     if (!pairInfo) {
       throw new Error('Pair not found');
@@ -139,7 +141,7 @@ export class PoolService extends LiquidityBookAbstract {
     });
 
     const [baseReserve, quoteReserve] = await Promise.all([
-      connection.getTokenAccountBalance(basePairVault).catch(() => ({
+      this.connection.getTokenAccountBalance(basePairVault).catch(() => ({
         value: {
           uiAmount: 0,
           amount: '0',
@@ -147,7 +149,7 @@ export class PoolService extends LiquidityBookAbstract {
           uiAmountString: '0',
         },
       })),
-      connection.getTokenAccountBalance(quotePairVault).catch(() => ({
+      this.connection.getTokenAccountBalance(quotePairVault).catch(() => ({
         value: {
           uiAmount: 0,
           amount: '0',
@@ -214,7 +216,6 @@ export class PoolService extends LiquidityBookAbstract {
 
   public async getAllPoolAddresses(): Promise<string[]> {
     const programId = this.getDexProgramId();
-    const connection = this.connection;
     const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
     const pairAccountDiscriminator = pairAccount ? pairAccount.discriminator : undefined;
 
@@ -222,7 +223,7 @@ export class PoolService extends LiquidityBookAbstract {
       throw new Error('Pair account not found');
     }
 
-    const accounts = await connection.getProgramAccounts(new PublicKey(programId), {
+    const accounts = await this.connection.getProgramAccounts(new PublicKey(programId), {
       filters: [
         {
           memcmp: { offset: 0, bytes: bs58.encode(pairAccountDiscriminator) },
@@ -248,7 +249,7 @@ export class PoolService extends LiquidityBookAbstract {
 
   public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
     const LB_PROGRAM_ID = this.getDexProgramId();
-    this.connection.onLogs(
+    const subscriptionId = this.connection.onLogs(
       LB_PROGRAM_ID,
       (logInfo) => {
         if (!logInfo.err) {
@@ -266,6 +267,11 @@ export class PoolService extends LiquidityBookAbstract {
       },
       'finalized'
     );
+
+    // return cleanup function
+    return () => {
+      this.connection.removeOnLogsListener(subscriptionId);
+    };
   }
 
   private async getPairAddressFromLogs(signature: string) {

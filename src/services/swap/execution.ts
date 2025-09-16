@@ -4,6 +4,7 @@ import * as spl from '@solana/spl-token';
 import { BIN_ARRAY_SIZE, WRAP_SOL_PUBKEY } from '../../constants';
 import { SwapParams, DLMMPairAccount } from '../../types';
 import { addSolTransferInstructions, addCloseAccountInstruction } from '../../utils/transaction';
+import { PoolServiceError } from '../pools/errors';
 
 export class SwapExecutor {
   constructor(
@@ -27,7 +28,7 @@ export class SwapExecutor {
     } = params;
 
     const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
-    if (!pairInfo) throw new Error('Pair not found');
+    if (!pairInfo) throw PoolServiceError.PoolNotFound;
 
     const currentBinArrayIndex = Math.floor(pairInfo.activeId / BIN_ARRAY_SIZE);
 

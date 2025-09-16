@@ -2,13 +2,11 @@ import { LiquidityBookAbstract } from './base/abstract';
 import { SwapService } from './swap/index';
 import { PositionService } from './positions/index';
 import { PoolService } from './pools/index';
-import { BinArrayManager } from './pools/bins';
-import { getPairVaultInfo, GetPairVaultInfoParams, getUserVaultInfo, GetUserVaultInfoParams } from '../utils/vaults';
 import {
   ILiquidityBookConfig,
   SwapParams,
-  GetTokenOutputParams,
-  GetTokenOutputResponse,
+  QuoteParams,
+  QuoteResponse,
   CreatePositionParams,
   AddLiquidityIntoPositionParams,
   RemoveMultipleLiquidityParams,
@@ -17,14 +15,12 @@ import {
   BinReserveInfo,
   UserPositionsParams,
   PositionInfo,
-  CreatePairWithConfigParams,
+  CreatePairWithConfigParams as CreatePoolParams,
   PoolMetadata,
   DLMMPairAccount,
-  PositionAccount,
-  QuoteParams,
-  GetBinsArrayInfoParams,
 } from '../types';
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { Transaction } from '@solana/web3.js';
+import { PoolServiceError } from './pools/errors';
 
 export class LiquidityBookServices extends LiquidityBookAbstract {
   bufferGas?: number;
@@ -39,42 +35,34 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     this.poolService = new PoolService(config);
   }
 
-  // Swap Service Methods
+  //
+  // SWAP Methods
+  //
   public async swap(params: SwapParams): Promise<Transaction> {
     return this.swapService.swap(params);
   }
 
-  public async getQuote(params: GetTokenOutputParams): Promise<GetTokenOutputResponse> {
-    return this.swapService.getQuote(params);
+  public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
+    // fetch pool metadata and pass to getQuote instead of requiring user to do it
+    const poolMetadata = await this.getPoolMetadata(params.pair.toString());
+    if (!poolMetadata) throw PoolServiceError.PoolNotFound;
+
+    return this.swapService.getQuote(params, poolMetadata);
   }
 
-  public async getMaxAmountOutWithFee(
-    pairAddress: PublicKey,
-    amount: bigint,
-    swapForY: boolean = false,
-    decimalBase: number = 9,
-    decimalQuote: number = 9
-  ): Promise<{ maxAmountOut: bigint; price: number }> {
-    return this.swapService.getMaxAmountOutWithFee(
-      pairAddress,
-      amount,
-      swapForY,
-      decimalBase,
-      decimalQuote
-    );
-  }
-
-  // Position Service Methods
-  public async getPositionAccount(position: PublicKey): Promise<PositionAccount> {
-    return this.positionService.getPositionAccount(position);
-  }
-
+  //
+  // POSITION Methods
+  //
   public async createPosition(params: CreatePositionParams) {
-    return this.positionService.createPosition(params);
+    // get pair info first to verify pool exists and pass to createPosition
+    const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.pair);
+    return this.positionService.createPosition(params, pairInfo);
   }
 
   public async addLiquidityIntoPosition(params: AddLiquidityIntoPositionParams) {
-    return this.positionService.addLiquidityIntoPosition(params);
+    // same here
+    const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.pair);
+    return this.positionService.addLiquidityIntoPosition(params, pairInfo);
   }
 
   public async removeMultipleLiquidity(
@@ -91,12 +79,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return this.positionService.getUserPositions({ payer, pair });
   }
 
-  // Pool Service Methods
-  public async getPairAccount(pair: PublicKey): Promise<DLMMPairAccount> {
-    return this.poolService.getPairAccount(pair);
-  }
-
-  public async createPairWithConfig(params: CreatePairWithConfigParams) {
+  //
+  // POOL Methods
+  //
+  public async createPool(params: CreatePoolParams) {
     return this.poolService.createPairWithConfig(params);
   }
 
@@ -110,45 +96,5 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
   public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
     return this.poolService.listenNewPoolAddress(postTxFunction);
-  }
-
-  public async quote(params: QuoteParams ): Promise<GetTokenOutputResponse> {
-    return this.swapService.getQuote({
-    amount: BigInt(params.amount),
-    isExactInput: params.optional.isExactInput,
-    pair: new PublicKey(params.metadata.poolAddress),
-    slippage: params.optional.slippage,
-    swapForY: params.optional.swapForY,
-    tokenBase: new PublicKey(params.metadata.baseToken.mintAddress),
-    tokenBaseDecimal: params.metadata.baseToken.decimals,
-    tokenQuote: new PublicKey(params.metadata.quoteToken.mintAddress),
-    tokenQuoteDecimal: params.metadata.quoteToken.decimals,
-  });
-  }
-
-  // Legacy compatibility methods (delegated to appropriate services)
-  async getBinArray(params: {
-    binArrayIndex: number;
-    pair: PublicKey;
-    payer?: PublicKey;
-    transaction?: Transaction;
-  }): Promise<PublicKey> {
-    return BinArrayManager.getBinArrayAddress(
-      params.binArrayIndex,
-      params.pair,
-      this.lbProgram.programId
-    );
-  }
-
-  public async getBinArrayInfo(params: GetBinsArrayInfoParams) {
-    return this.positionService.getBinArrayInfo(params);
-  }
-
-  public async getPairVaultInfo(params: GetPairVaultInfoParams) {
-    return getPairVaultInfo(params, this.connection);
-  }
-
-  public async getUserVaultInfo(params: GetUserVaultInfoParams) {
-    return getUserVaultInfo(params, this.connection);
   }
 }
