@@ -21,8 +21,8 @@ describe("getPoolMetadata", () => {
     expect(metadata.baseToken.mintAddress).not.toBe(
       metadata.quoteToken.mintAddress
     );
-    expect(metadata.baseToken.decimals).toBe(6); // USDC standard
-    expect(metadata.quoteToken.decimals).toBe(6); // USDT standard
+    expect(metadata.baseToken.decimals).toBe(6); // USDC
+    expect(metadata.quoteToken.decimals).toBe(6); // USDT
   });
 
   it("should fetch and validate metadata for SOL/USDC Pool", async () => {
@@ -35,8 +35,8 @@ describe("getPoolMetadata", () => {
     expect(metadata.baseToken.mintAddress).not.toBe(
       metadata.quoteToken.mintAddress
     );
-    expect(metadata.baseToken.decimals).toBe(9); // SOL standard
-    expect(metadata.quoteToken.decimals).toBe(6); // USDC standard
+    expect(metadata.baseToken.decimals).toBe(9); // SOL
+    expect(metadata.quoteToken.decimals).toBe(6); // USDC
     expect(metadata.baseToken.mintAddress.toString()).toBe(
       "So11111111111111111111111111111111111111112"
     ); // SOL mint
