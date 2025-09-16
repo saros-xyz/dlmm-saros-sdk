@@ -43,11 +43,6 @@ export interface GetUserVaultInfoParams {
   transaction?: Transaction;
 }
 
-// User query operations
-export interface UserPositionsParams {
-  payer: PublicKey;
-  pair: PublicKey;
-}
 
 // Quote operations
 export interface QuoteParams {
@@ -58,9 +53,4 @@ export interface QuoteParams {
     swapForY: boolean;
     slippage: number;
   };
-}
-
-// Pool metadata operations
-export interface GetPoolMetadataParams {
-  pair: string;
 }

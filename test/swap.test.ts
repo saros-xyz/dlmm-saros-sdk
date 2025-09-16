@@ -1,7 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 import { describe, it, expect } from 'vitest';
-import { LiquidityBookServices } from '../services';
-import { MODE } from '../types';
+import { LiquidityBookServices, MODE } from '../src';
 
 const lbServices = new LiquidityBookServices({
   mode: MODE.MAINNET,

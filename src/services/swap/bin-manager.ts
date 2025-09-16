@@ -1,4 +1,3 @@
-// BN import removed as it's not used in this file
 import { Bin, BinArray } from '../../types';
 import { BIN_ARRAY_SIZE } from '../../constants';
 import { SwapServiceError } from './errors';

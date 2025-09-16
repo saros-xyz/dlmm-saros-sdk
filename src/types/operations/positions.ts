@@ -1,7 +1,24 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { RemoveLiquidityType } from '../config';
 
-// Add liquidity operations
+// Get user positions for a specific pool
+export interface UserPositionsParams {
+  payer: PublicKey;
+  pair: PublicKey;
+}
+
+
+// Create a position in a specific pool
+export interface CreatePositionParams {
+  payer: PublicKey;
+  relativeBinIdLeft: number;
+  relativeBinIdRight: number;
+  pair: PublicKey;
+  positionMint: PublicKey;
+  transaction: Transaction;
+}
+
+// Add liquidity into an existing position
 export interface AddLiquidityIntoPositionParams {
   positionMint: PublicKey;
   payer: PublicKey;
@@ -35,16 +52,6 @@ export interface RemoveMultipleLiquidityResponse {
   txCreateAccount?: Transaction;
   txCloseAccount?: Transaction;
   positionClosed?: Record<string, string>[];
-}
-
-// Position operations
-export interface CreatePositionParams {
-  payer: PublicKey;
-  relativeBinIdLeft: number;
-  relativeBinIdRight: number;
-  pair: PublicKey;
-  positionMint: PublicKey;
-  transaction: Transaction;
 }
 
 // liquidity distribution shape

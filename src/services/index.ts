@@ -24,7 +24,6 @@ import {
   GetUserVaultInfoParams,
   QuoteParams,
   GetBinsArrayInfoParams,
-  GetPoolMetadataParams,
 } from '../types';
 import { PublicKey, Transaction } from '@solana/web3.js';
 
@@ -102,8 +101,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return this.poolService.createPairWithConfig(params);
   }
 
-  public async getPoolMetadata(params: GetPoolMetadataParams): Promise<PoolMetadata> {
-    return this.poolService.getPoolMetadata(params.pair);
+  public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
+    return this.poolService.getPoolMetadata(pair);
   }
 
   public async getAllPoolAddresses(): Promise<string[]> {

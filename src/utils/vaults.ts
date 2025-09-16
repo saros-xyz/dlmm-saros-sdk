@@ -8,8 +8,11 @@ export interface GetPairVaultInfoParams {
   transaction?: Transaction;
 }
 
-// GetUserVaultInfoParams is already exported from types
-import { GetUserVaultInfoParams } from '../types';
+export interface GetUserVaultInfoParams {
+  tokenAddress: PublicKey;
+  payer: PublicKey;
+  transaction?: Transaction;
+}
 
 export async function getTokenProgram(
   address: PublicKey,
