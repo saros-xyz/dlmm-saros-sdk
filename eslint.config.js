@@ -3,8 +3,7 @@ import tsParser from '@typescript-eslint/parser';
 import prettier from 'eslint-config-prettier';
 
 export default [
-  prettier, // Disables formatting rules that conflict with Prettier
-
+  prettier, // obey prettier rules
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
@@ -19,21 +18,10 @@ export default [
     },
     rules: {
       // Code quality rules only (no formatting)
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-        },
-      ],
-      //   'no-unused-vars': 'off',
-      //   'no-async-promise-executor': 'off',
-      //   'no-useless-catch': 'off',
+      '@typescript-eslint/no-unused-vars': 'error',
     },
   },
-
   {
-    ignores: ['dist/**', 'node_modules/**', '**/*.json', '.claude/**'],
+    ignores: ['dist/**', 'node_modules/**', '**/*.json'],
   },
 ];

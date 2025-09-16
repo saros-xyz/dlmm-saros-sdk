@@ -18,13 +18,13 @@ export abstract class LiquidityBookAbstract {
     // Initialize RPC connection
     this.connection = new Connection(
       config.options?.rpcUrl || RPC_CONFIG[config.mode].rpc,
-      config.options?.commitmentOrConfig || 'confirmed',
+      config.options?.commitmentOrConfig || 'confirmed'
     );
 
     const provider = new AnchorProvider(
       this.connection,
       {} as Wallet,
-      AnchorProvider.defaultOptions(),
+      AnchorProvider.defaultOptions()
     );
     this.mode = config.mode;
 

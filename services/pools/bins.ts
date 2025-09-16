@@ -6,7 +6,7 @@ export class BinArrayManager {
   public static getBinArrayAddress(
     binArrayIndex: number,
     pair: PublicKey,
-    programId: PublicKey,
+    programId: PublicKey
   ): PublicKey {
     const binArray = PublicKey.findProgramAddressSync(
       [
@@ -14,7 +14,7 @@ export class BinArrayManager {
         pair.toBuffer(),
         new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
       ],
-      programId,
+      programId
     )[0];
 
     return binArray;
@@ -30,7 +30,7 @@ export class BinArrayManager {
     payer: PublicKey,
     transaction: Transaction,
     connection: any,
-    lbProgram: any,
+    lbProgram: any
   ): Promise<void> {
     const binArray = this.getBinArrayAddress(binArrayIndex, pair, lbProgram.programId);
     const binArrayInfo = await connection.getAccountInfo(binArray);

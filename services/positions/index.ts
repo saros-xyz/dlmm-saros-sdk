@@ -100,7 +100,7 @@ export class PositionService extends LiquidityBookAbstract {
         pair.toBuffer(),
         new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
       ],
-      this.lbProgram.programId,
+      this.lbProgram.programId
     )[0];
 
     if (transaction && payer) {
@@ -133,7 +133,7 @@ export class PositionService extends LiquidityBookAbstract {
     const firstBinIndex = index * BIN_ARRAY_SIZE;
     const binIds = Array.from(
       { length: positionInfo.upperBinId - firstBinId + 1 },
-      (_, i) => firstBinId - firstBinIndex + i,
+      (_, i) => firstBinId - firstBinIndex + i
     );
 
     const reserveXY = binIds.map((binId: number, index: number) => {
@@ -191,14 +191,14 @@ export class PositionService extends LiquidityBookAbstract {
 
     const position = PublicKey.findProgramAddressSync(
       [Buffer.from(utils.bytes.utf8.encode('position')), positionMint.toBuffer()],
-      this.lbProgram.programId,
+      this.lbProgram.programId
     )[0];
 
     const positionVault = spl.getAssociatedTokenAddressSync(
       positionMint,
       payer,
       true,
-      spl.TOKEN_2022_PROGRAM_ID,
+      spl.TOKEN_2022_PROGRAM_ID
     );
 
     await this.getBinArray({
@@ -256,7 +256,7 @@ export class PositionService extends LiquidityBookAbstract {
         tokenAddress: pairInfo.tokenMintX,
         pair,
       },
-      this.connection,
+      this.connection
     );
 
     const associatedPairVaultY = await getPairVaultInfo(
@@ -264,7 +264,7 @@ export class PositionService extends LiquidityBookAbstract {
         tokenAddress: pairInfo.tokenMintY,
         pair,
       },
-      this.connection,
+      this.connection
     );
 
     const associatedUserVaultX = await getUserVaultInfo(
@@ -272,7 +272,7 @@ export class PositionService extends LiquidityBookAbstract {
         tokenAddress: pairInfo.tokenMintX,
         payer,
       },
-      this.connection,
+      this.connection
     );
 
     const associatedUserVaultY = await getUserVaultInfo(
@@ -280,7 +280,7 @@ export class PositionService extends LiquidityBookAbstract {
         tokenAddress: pairInfo.tokenMintY,
         payer,
       },
-      this.connection,
+      this.connection
     );
 
     if (
@@ -310,26 +310,26 @@ export class PositionService extends LiquidityBookAbstract {
 
     const hook = PublicKey.findProgramAddressSync(
       [Buffer.from(utils.bytes.utf8.encode('hook')), this.hooksConfig.toBuffer(), pair.toBuffer()],
-      this.hooksProgram.programId,
+      this.hooksProgram.programId
     )[0];
 
     const position = PublicKey.findProgramAddressSync(
       [Buffer.from(utils.bytes.utf8.encode('position')), positionMint.toBuffer()],
-      this.lbProgram.programId,
+      this.lbProgram.programId
     )[0];
 
     const positionVault = spl.getAssociatedTokenAddressSync(
       positionMint,
       payer,
       true,
-      spl.TOKEN_2022_PROGRAM_ID,
+      spl.TOKEN_2022_PROGRAM_ID
     );
 
     const addLiquidityInstructions = await this.lbProgram.methods
       .increasePosition(
         new BN(amountX.toString()),
         new BN(amountY.toString()),
-        liquidityDistribution,
+        liquidityDistribution
       )
       .accountsPartial({
         pair: pair,
@@ -364,7 +364,7 @@ export class PositionService extends LiquidityBookAbstract {
   }
 
   public async removeMultipleLiquidity(
-    params: RemoveMultipleLiquidityParams,
+    params: RemoveMultipleLiquidityParams
   ): Promise<RemoveMultipleLiquidityResponse> {
     const { maxPositionList, payer, type, pair, tokenMintX, tokenMintY } = params;
 
@@ -380,7 +380,7 @@ export class PositionService extends LiquidityBookAbstract {
         payer,
         transaction: txCreateAccount,
       },
-      this.connection,
+      this.connection
     );
 
     const associatedPairVaultY = await getPairVaultInfo(
@@ -390,7 +390,7 @@ export class PositionService extends LiquidityBookAbstract {
         payer,
         transaction: txCreateAccount,
       },
-      this.connection,
+      this.connection
     );
 
     const associatedUserVaultX = await getUserVaultInfo(
@@ -399,7 +399,7 @@ export class PositionService extends LiquidityBookAbstract {
         payer,
         transaction: txCreateAccount,
       },
-      this.connection,
+      this.connection
     );
 
     const associatedUserVaultY = await getUserVaultInfo(
@@ -408,19 +408,19 @@ export class PositionService extends LiquidityBookAbstract {
         payer,
         transaction: txCreateAccount,
       },
-      this.connection,
+      this.connection
     );
 
     const hook = PublicKey.findProgramAddressSync(
       [Buffer.from(utils.bytes.utf8.encode('hook')), this.hooksConfig.toBuffer(), pair.toBuffer()],
-      this.hooksProgram.programId,
+      this.hooksProgram.programId
     )[0];
 
     const associatedHookTokenY = spl.getAssociatedTokenAddressSync(
       tokenMintY,
       hook,
       true,
-      tokenProgramY,
+      tokenProgramY
     );
     const infoHookTokenY = await this.connection.getAccountInfo(associatedHookTokenY);
 
@@ -430,7 +430,7 @@ export class PositionService extends LiquidityBookAbstract {
         associatedHookTokenY,
         hook,
         tokenMintY,
-        tokenProgramY,
+        tokenProgramY
       );
 
       txCreateAccount.add(hookTokenYInstructions);
@@ -470,7 +470,7 @@ export class PositionService extends LiquidityBookAbstract {
           new PublicKey(positionMint),
           payer,
           true,
-          spl.TOKEN_2022_PROGRAM_ID,
+          spl.TOKEN_2022_PROGRAM_ID
         );
 
         const reserveXY = cloneDeep(
@@ -478,7 +478,7 @@ export class PositionService extends LiquidityBookAbstract {
             position: new PublicKey(position),
             pair,
             payer,
-          }),
+          })
         );
 
         const hookBinArrayLower = PublicKey.findProgramAddressSync(
@@ -487,7 +487,7 @@ export class PositionService extends LiquidityBookAbstract {
             hook.toBuffer(),
             new BN(BIN_ARRAY_INDEX).toArrayLike(Buffer, 'le', 4),
           ],
-          this.hooksProgram.programId,
+          this.hooksProgram.programId
         )[0];
 
         const hookBinArrayUpper = PublicKey.findProgramAddressSync(
@@ -496,7 +496,7 @@ export class PositionService extends LiquidityBookAbstract {
             hook.toBuffer(),
             new BN(BIN_ARRAY_INDEX + 1).toArrayLike(Buffer, 'le', 4),
           ],
-          this.hooksProgram.programId,
+          this.hooksProgram.programId
         )[0];
 
         const hookPosition = PublicKey.findProgramAddressSync(
@@ -505,7 +505,7 @@ export class PositionService extends LiquidityBookAbstract {
             hook.toBuffer(),
             new PublicKey(position).toBuffer(),
           ],
-          this.hooksProgram.programId,
+          this.hooksProgram.programId
         )[0];
 
         const removedShares = LiquidityHelper.calculateRemovedShares(reserveXY, type, start, end);
@@ -516,7 +516,7 @@ export class PositionService extends LiquidityBookAbstract {
           type,
           start,
           end,
-          availableShares,
+          availableShares
         );
 
         if (isClosePosition) {
@@ -583,7 +583,7 @@ export class PositionService extends LiquidityBookAbstract {
         }
 
         return tx;
-      }),
+      })
     );
 
     const txCloseAccount = new Transaction();
@@ -611,16 +611,16 @@ export class PositionService extends LiquidityBookAbstract {
     });
 
     const positionMints = tokenAccounts.value
-      .filter(acc => {
+      .filter((acc) => {
         const amount = acc.account.data.parsed.info.tokenAmount.uiAmount;
         return amount && amount > 0;
       })
-      .map(acc => new PublicKey(acc.account.data.parsed.info.mint));
+      .map((acc) => new PublicKey(acc.account.data.parsed.info.mint));
 
-    const arrPositionPda = positionMints.map(mint => {
+    const arrPositionPda = positionMints.map((mint) => {
       const [positionPda] = PublicKey.findProgramAddressSync(
         [Buffer.from(utils.bytes.utf8.encode('position')), mint.toBuffer()],
-        this.lbProgram.programId,
+        this.lbProgram.programId
       );
       return positionPda;
     });
@@ -648,11 +648,11 @@ export class PositionService extends LiquidityBookAbstract {
           } catch {
             return null;
           }
-        }),
+        })
       );
     } catch {
       positions = await Promise.all(
-        arrPositionPda.map(async positionPda => {
+        arrPositionPda.map(async (positionPda) => {
           try {
             const accountInfo = await connection.getAccountInfo(positionPda);
             if (!accountInfo) return null;
@@ -663,7 +663,7 @@ export class PositionService extends LiquidityBookAbstract {
           } catch {
             return null;
           }
-        }),
+        })
       );
     }
 
@@ -671,14 +671,14 @@ export class PositionService extends LiquidityBookAbstract {
       .filter(Boolean)
       .sort((a, b) => a.lowerBinId - b.lowerBinId)
       .map(
-        item =>
+        (item) =>
           ({
             liquidityShares: item.liquidityShares,
             lowerBinId: item.lowerBinId,
             upperBinId: item.upperBinId,
             positionMint: item.positionMint,
             position: item.position,
-          }) as PositionInfo,
+          }) as PositionInfo
       );
   }
 }

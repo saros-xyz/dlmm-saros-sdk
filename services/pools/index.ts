@@ -48,7 +48,7 @@ export class PoolService extends LiquidityBookAbstract {
         this.lbConfig.toBuffer(),
         new Uint8Array([binStep]),
       ],
-      this.lbProgram.programId,
+      this.lbProgram.programId
     )[0];
 
     const quoteAssetBadge = PublicKey.findProgramAddressSync(
@@ -57,7 +57,7 @@ export class PoolService extends LiquidityBookAbstract {
         this.lbConfig.toBuffer(),
         tokenY.toBuffer(),
       ],
-      this.lbProgram.programId,
+      this.lbProgram.programId
     )[0];
 
     const pair = PublicKey.findProgramAddressSync(
@@ -68,7 +68,7 @@ export class PoolService extends LiquidityBookAbstract {
         tokenY.toBuffer(),
         new Uint8Array([binStep]),
       ],
-      this.lbProgram.programId,
+      this.lbProgram.programId
     )[0];
 
     const initializePairConfigTx = await this.lbProgram.methods
@@ -89,13 +89,13 @@ export class PoolService extends LiquidityBookAbstract {
     const binArrayLower = BinArrayManager.getBinArrayAddress(
       binArrayIndex,
       pair,
-      this.lbProgram.programId,
+      this.lbProgram.programId
     );
 
     const binArrayUpper = BinArrayManager.getBinArrayAddress(
       binArrayIndex + 1,
       pair,
-      this.lbProgram.programId,
+      this.lbProgram.programId
     );
 
     const initializeBinArrayLowerConfigTx = await this.lbProgram.methods
@@ -192,7 +192,7 @@ export class PoolService extends LiquidityBookAbstract {
       tokenMint,
       pair,
       true,
-      tokenProgram,
+      tokenProgram
     );
 
     if (transaction && payer) {
@@ -204,7 +204,7 @@ export class PoolService extends LiquidityBookAbstract {
           associatedPairVault,
           pair,
           tokenMint,
-          tokenProgram,
+          tokenProgram
         );
         transaction.add(pairVaultYInstructions);
       }
@@ -216,7 +216,7 @@ export class PoolService extends LiquidityBookAbstract {
   public async getAllPoolAddresses(): Promise<string[]> {
     const programId = this.getDexProgramId();
     const connection = this.connection;
-    const pairAccount = LiquidityBookIDL.accounts.find(acc => acc.name === 'Pair');
+    const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
     const pairAccountDiscriminator = pairAccount ? pairAccount.discriminator : undefined;
 
     if (!pairAccountDiscriminator) {
@@ -251,21 +251,21 @@ export class PoolService extends LiquidityBookAbstract {
     const LB_PROGRAM_ID = this.getDexProgramId();
     this.connection.onLogs(
       LB_PROGRAM_ID,
-      logInfo => {
+      (logInfo) => {
         if (!logInfo.err) {
           const logs = logInfo.logs || [];
           for (const log of logs) {
             if (log.includes('Instruction: InitializePair')) {
               const signature = logInfo.signature;
 
-              this.getPairAddressFromLogs(signature).then(address => {
+              this.getPairAddressFromLogs(signature).then((address) => {
                 postTxFunction(address);
               });
             }
           }
         }
       },
-      'finalized',
+      'finalized'
     );
   }
 
@@ -281,7 +281,7 @@ export class PoolService extends LiquidityBookAbstract {
     const message = TransactionMessage.decompile(compiledMessage);
     const instructions = message.instructions;
     const initializePairStruct = LiquidityBookIDL.instructions.find(
-      item => item.name === 'initialize_pair',
+      (item) => item.name === 'initialize_pair'
     )!;
 
     const initializePairDescrimator = Buffer.from(initializePairStruct.discriminator);

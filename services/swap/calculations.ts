@@ -7,7 +7,7 @@ export const getAmountInByPrice = (
   amountOut: bigint,
   priceScaled: bigint,
   swapForY: boolean,
-  rounding: 'up' | 'down',
+  rounding: 'up' | 'down'
 ): bigint => {
   if (swapForY) {
     // amountIn = (amountOut << scaleOffset) / priceScaled
@@ -30,7 +30,7 @@ export const getAmountOutByPrice = (
   amountIn: bigint,
   priceScaled: bigint,
   swapForY: boolean,
-  rounding: 'up' | 'down',
+  rounding: 'up' | 'down'
 ): bigint => {
   if (swapForY) {
     // price = (Y / X) & swapForY => amountOut = amountIn * price

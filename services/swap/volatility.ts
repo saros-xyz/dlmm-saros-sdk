@@ -10,7 +10,7 @@ export class VolatilityManager {
     pairInfo: DLMMPairAccount,
     activeId: number,
     getCurrentSlot: () => Promise<number>,
-    getBlockTime: (slot: number) => Promise<number | null>,
+    getBlockTime: (slot: number) => Promise<number | null>
   ): Promise<void> {
     this.referenceId = pairInfo.dynamicFeeParameters.idReference;
     this.timeLastUpdated = pairInfo.dynamicFeeParameters.timeLastUpdated.toNumber();

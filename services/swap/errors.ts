@@ -1,3 +1,4 @@
+// TODO: create similar error classes in other services
 export class SwapServiceError extends Error {
   static BinNotFound = new SwapServiceError('Bin not found');
   static BinArrayIndexMismatch = new SwapServiceError('Bin array index mismatch');

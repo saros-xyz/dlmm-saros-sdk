@@ -7,7 +7,7 @@ export class LiquidityHelper {
     reserveXY: BinReserveInfo[],
     type: RemoveLiquidityType,
     start: number,
-    end: number,
+    end: number
   ): BN[] {
     let removedShares: BN[] = [];
 
@@ -44,14 +44,14 @@ export class LiquidityHelper {
 
   public static getAvailableShares(
     reserveXY: BinReserveInfo[],
-    type: RemoveLiquidityType,
+    type: RemoveLiquidityType
   ): BinReserveInfo[] {
     return reserveXY.filter((item: BinReserveInfo) =>
       type === RemoveLiquidityType.All
         ? item.liquidityShare > 0n
         : type === RemoveLiquidityType.QuoteToken
           ? item.reserveX > 0n
-          : item.reserveY > 0n,
+          : item.reserveY > 0n
     );
   }
 
@@ -59,7 +59,7 @@ export class LiquidityHelper {
     type: RemoveLiquidityType,
     start: number,
     end: number,
-    availableShares: BinReserveInfo[],
+    availableShares: BinReserveInfo[]
   ): boolean {
     return (
       (type === RemoveLiquidityType.All && end - start + 1 >= availableShares.length) ||

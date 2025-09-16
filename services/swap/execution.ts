@@ -10,7 +10,7 @@ export class SwapExecutor {
     private lbProgram: any,
     private hooksProgram: any,
     private connection: any,
-    private getTokenProgram: (address: PublicKey) => Promise<PublicKey>,
+    private getTokenProgram: (address: PublicKey) => Promise<PublicKey>
   ) {}
 
   public async executeSwap(params: SwapParams): Promise<Transaction> {
@@ -38,12 +38,12 @@ export class SwapExecutor {
     ];
 
     const binArrayAddresses = await Promise.all(
-      surroundingIndexes.map(async idx =>
+      surroundingIndexes.map(async (idx) =>
         this.getBinArrayAddress({
           binArrayIndex: idx,
           pair,
-        }),
-      ),
+        })
+      )
     );
 
     const binArrayAccountsInfo = await this.connection.getMultipleAccountsInfo(binArrayAddresses);
@@ -91,28 +91,28 @@ export class SwapExecutor {
       tokenMintX,
       pair,
       true,
-      tokenProgramX,
+      tokenProgramX
     );
 
     const associatedPairVaultY = spl.getAssociatedTokenAddressSync(
       tokenMintY,
       pair,
       true,
-      tokenProgramY,
+      tokenProgramY
     );
 
     const associatedUserVaultX = spl.getAssociatedTokenAddressSync(
       tokenMintX,
       payer,
       true,
-      tokenProgramX,
+      tokenProgramX
     );
 
     const associatedUserVaultY = spl.getAssociatedTokenAddressSync(
       tokenMintY,
       payer,
       true,
-      tokenProgramY,
+      tokenProgramY
     );
 
     // Create user vault accounts if they don't exist
@@ -124,7 +124,7 @@ export class SwapExecutor {
       tokenProgramX,
       tokenProgramY,
       associatedUserVaultX,
-      associatedUserVaultY,
+      associatedUserVaultY
     );
 
     // Handle wrapped SOL transfers
@@ -143,7 +143,7 @@ export class SwapExecutor {
         new BN(amount.toString()),
         new BN(otherAmountOffset.toString()),
         swapForY,
-        isExactInput ? { exactInput: {} } : { exactOutput: {} },
+        isExactInput ? { exactInput: {} } : { exactOutput: {} }
       )
       .accountsPartial({
         pair: pair,
@@ -191,7 +191,7 @@ export class SwapExecutor {
         pair.toBuffer(),
         new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
       ],
-      this.lbProgram.programId,
+      this.lbProgram.programId
     )[0];
 
     return binArray;
@@ -205,7 +205,7 @@ export class SwapExecutor {
     tokenProgramX: PublicKey,
     tokenProgramY: PublicKey,
     associatedUserVaultX: PublicKey,
-    associatedUserVaultY: PublicKey,
+    associatedUserVaultY: PublicKey
   ): Promise<void> {
     const infoUserVaultX = await this.connection.getAccountInfo(associatedUserVaultX);
     if (!infoUserVaultX) {
@@ -214,7 +214,7 @@ export class SwapExecutor {
         associatedUserVaultX,
         payer,
         tokenMintX,
-        tokenProgramX,
+        tokenProgramX
       );
       tx.add(userVaultXInstructions);
     }
@@ -226,7 +226,7 @@ export class SwapExecutor {
         associatedUserVaultY,
         payer,
         tokenMintY,
-        tokenProgramY,
+        tokenProgramY
       );
       tx.add(userVaultYInstructions);
     }

@@ -55,14 +55,14 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     amount: bigint,
     swapForY: boolean = false,
     decimalBase: number = 9,
-    decimalQuote: number = 9,
+    decimalQuote: number = 9
   ): Promise<{ maxAmountOut: bigint; price: number }> {
     return this.swapService.getMaxAmountOutWithFee(
       pairAddress,
       amount,
       swapForY,
       decimalBase,
-      decimalQuote,
+      decimalQuote
     );
   }
 
@@ -80,7 +80,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
   }
 
   public async removeMultipleLiquidity(
-    params: RemoveMultipleLiquidityParams,
+    params: RemoveMultipleLiquidityParams
   ): Promise<RemoveMultipleLiquidityResponse> {
     return this.positionService.removeMultipleLiquidity(params);
   }
@@ -128,7 +128,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return BinArrayManager.getBinArrayAddress(
       params.binArrayIndex,
       params.pair,
-      this.lbProgram.programId,
+      this.lbProgram.programId
     );
   }
 

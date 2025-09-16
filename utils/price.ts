@@ -4,7 +4,7 @@ export const getPriceFromId = (
   bin_step: number,
   bin_id: number,
   baseTokenDecimal: number,
-  quoteTokenDecimal: number,
+  quoteTokenDecimal: number
 ): number => {
   // Use same base calculation as getIdFromPrice for consistency
   const base = 1 + bin_step / MAX_BASIS_POINTS;
@@ -18,7 +18,7 @@ export const getIdFromPrice = (
   price: number,
   binStep: number,
   baseTokenDecimal: number,
-  quoteTokenDecimal: number,
+  quoteTokenDecimal: number
 ): number => {
   if (price <= 0) throw new Error('Price must be greater than 0');
   if (binStep <= 0 || binStep > MAX_BASIS_POINTS)

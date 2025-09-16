@@ -34,10 +34,10 @@ describe('getPoolMetadata', () => {
     expect(metadata.baseToken.decimals).toBe(9); // SOL
     expect(metadata.quoteToken.decimals).toBe(6); // USDC
     expect(metadata.baseToken.mintAddress.toString()).toBe(
-      'So11111111111111111111111111111111111111112',
+      'So11111111111111111111111111111111111111112'
     ); // SOL mint
     expect(metadata.quoteToken.mintAddress.toString()).toBe(
-      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
     ); // USDC mint
   });
 });
@@ -51,7 +51,7 @@ describe('getAllPoolAddresses', () => {
     expect(poolAddresses.length).toBeGreaterThan(0);
 
     // Each item should be string address
-    poolAddresses.forEach(item => {
+    poolAddresses.forEach((item) => {
       expect(item).toBeDefined();
       expect(typeof item).toBe('string');
     });

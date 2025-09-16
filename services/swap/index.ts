@@ -39,7 +39,7 @@ export class SwapService extends LiquidityBookAbstract {
       this.lbProgram,
       this.hooksProgram,
       this.connection,
-      this.getTokenProgram.bind(this),
+      this.getTokenProgram.bind(this)
     );
   }
 
@@ -56,21 +56,21 @@ export class SwapService extends LiquidityBookAbstract {
         currentBinArrayIndex,
         currentBinArrayIndex + 1,
       ];
-      const binArrayAddresses = binArrayIndexes.map(idx =>
+      const binArrayAddresses = binArrayIndexes.map((idx) =>
         this.getBinArrayAddress({
           binArrayIndex: idx,
           pair,
-        }),
+        })
       );
 
       // Fetch bin arrays in batch, fallback to empty if not found
       const binArrays: BinArray[] = await Promise.all(
         binArrayAddresses.map((address, i) =>
           //@ts-ignore
-          this.lbProgram.account.binArray.fetch(address).catch((_: any) => {
+          this.lbProgram.account.binArray.fetch(address).catch(() => {
             return { index: binArrayIndexes[i], bins: [] } as BinArray;
-          }),
-        ),
+          })
+        )
       );
 
       // Validate bin arrays and build range
@@ -92,7 +92,7 @@ export class SwapService extends LiquidityBookAbstract {
           amountAfterTransferFee,
           binRange,
           pairInfo,
-          swapForY,
+          swapForY
         );
 
         return {
@@ -104,7 +104,7 @@ export class SwapService extends LiquidityBookAbstract {
           amountAfterTransferFee,
           binRange,
           pairInfo,
-          swapForY,
+          swapForY
         );
 
         return {
@@ -126,7 +126,7 @@ export class SwapService extends LiquidityBookAbstract {
         pair.toBuffer(),
         new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
       ],
-      this.lbProgram.programId,
+      this.lbProgram.programId
     )[0];
 
     return binArray;
@@ -136,7 +136,7 @@ export class SwapService extends LiquidityBookAbstract {
     amount: bigint,
     bins: BinArrayRange,
     pairInfo: DLMMPairAccount,
-    swapForY: boolean,
+    swapForY: boolean
   ) {
     try {
       let amountIn = BigInt(0);
@@ -149,7 +149,7 @@ export class SwapService extends LiquidityBookAbstract {
         pairInfo,
         activeId,
         () => this.connection.getSlot(),
-        slot => this.connection.getBlockTime(slot),
+        (slot) => this.connection.getBlockTime(slot)
       );
 
       while (amountOutLeft > BigInt(0)) {
@@ -163,7 +163,7 @@ export class SwapService extends LiquidityBookAbstract {
 
         const fee = FeeCalculator.getTotalFee(
           pairInfo,
-          this.volatilityManager.getVolatilityAccumulator(),
+          this.volatilityManager.getVolatilityAccumulator()
         );
 
         const {
@@ -203,7 +203,7 @@ export class SwapService extends LiquidityBookAbstract {
     amount: bigint,
     bins: BinArrayRange,
     pairInfo: DLMMPairAccount,
-    swapForY: boolean,
+    swapForY: boolean
   ) {
     try {
       let amountOut = BigInt(0);
@@ -216,7 +216,7 @@ export class SwapService extends LiquidityBookAbstract {
         pairInfo,
         activeId,
         () => this.connection.getSlot(),
-        slot => this.connection.getBlockTime(slot),
+        (slot) => this.connection.getBlockTime(slot)
       );
 
       while (amountInLeft > BigInt(0)) {
@@ -230,7 +230,7 @@ export class SwapService extends LiquidityBookAbstract {
 
         const fee = FeeCalculator.getTotalFee(
           pairInfo,
-          this.volatilityManager.getVolatilityAccumulator(),
+          this.volatilityManager.getVolatilityAccumulator()
         );
 
         const {
@@ -400,7 +400,7 @@ export class SwapService extends LiquidityBookAbstract {
         amountIn,
         params.swapForY,
         params.tokenBaseDecimal,
-        params.tokenQuoteDecimal,
+        params.tokenQuoteDecimal
       );
 
       const priceImpact = getPriceImpact(amountOut, maxAmountOut);
@@ -422,7 +422,7 @@ export class SwapService extends LiquidityBookAbstract {
     amount: bigint,
     swapForY: boolean = false,
     decimalBase: number = 9,
-    decimalQuote: number = 9,
+    decimalQuote: number = 9
   ): Promise<{ maxAmountOut: bigint; price: number }> {
     try {
       let amountIn = amount;
@@ -435,7 +435,7 @@ export class SwapService extends LiquidityBookAbstract {
 
       const feePrice = FeeCalculator.getTotalFee(
         pair,
-        this.volatilityManager.getVolatilityAccumulator(),
+        this.volatilityManager.getVolatilityAccumulator()
       );
       const activePrice = getPriceFromId(binStep, activeId, 9, 9);
       const price = getPriceFromId(binStep, activeId, decimalBase, decimalQuote);
