@@ -5,7 +5,7 @@ import {
   PublicKey,
 } from "@solana/web3.js";
 import * as spl from "@solana/spl-token";
-import { CCU_LIMIT, UNIT_PRICE_DEFAULT } from "../constants";
+import { CCU_LIMIT } from "../constants";
 
 /**
  * Add compute budget instructions to a transaction
@@ -69,17 +69,4 @@ export const addCloseAccountInstruction = (
   transaction.add(
     spl.createCloseAccountInstruction(associatedUserVault, payer, payer)
   );
-};
-
-/**
- * Get default compute unit price with buffer
- * @param gasPrice - Optional gas price from network
- * @param bufferGas - Optional gas buffer multiplier
- * @returns Compute unit price
- */
-export const getComputeUnitPrice = (
-  gasPrice?: number,
-  bufferGas: number = 1
-): number => {
-  return Math.max(gasPrice ?? 0, UNIT_PRICE_DEFAULT * bufferGas);
 };

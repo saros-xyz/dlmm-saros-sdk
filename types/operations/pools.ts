@@ -1,4 +1,5 @@
 import { PublicKey, Transaction } from "@solana/web3.js";
+import { PoolMetadata } from "../info";
 
 // Pool creation operations
 export interface CreatePairWithConfigParams {
@@ -46,4 +47,20 @@ export interface GetUserVaultInfoParams {
 export interface UserPositionsParams {
   payer: PublicKey;
   pair: PublicKey;
+}
+
+// Quote operations
+export interface QuoteParams {
+  amount: number;
+  metadata: PoolMetadata;
+  optional: {
+    isExactInput: boolean;
+    swapForY: boolean;
+    slippage: number;
+  };
+}
+
+// Pool metadata operations
+export interface GetPoolMetadataParams {
+  pair: string;
 }

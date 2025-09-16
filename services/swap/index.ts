@@ -1,114 +1,57 @@
-import { BN, Idl, Program, utils } from "@coral-xyz/anchor";
-import { Bin, BinArray } from "../types";
-
-import { Connection, PublicKey } from "@solana/web3.js";
+import { BN, utils } from "@coral-xyz/anchor";
+import { PublicKey, Transaction } from "@solana/web3.js";
+import { LiquidityBookAbstract } from "../base/abstract";
+import { FeeCalculator } from "./fees";
+import { VolatilityManager } from "./volatility";
+import { BinArrayRange } from "./bin-manager";
+import { SwapExecutor } from "./execution";
 import {
   BIN_ARRAY_SIZE,
   SCALE_OFFSET,
-  VARIABLE_FEE_PRECISION,
-  PRECISION_BIGINT,
-  MAX_BASIS_POINTS_BIGINT,
-} from "../constants";
+} from "../../constants";
+import {
+  DLMMPairAccount,
+  GetTokenOutputParams,
+  GetTokenOutputResponse,
+  SwapParams,
+  Bin,
+  BinArray,
+  ILiquidityBookConfig,
+} from "../../types";
+import { getPriceFromId } from "../../utils/price";
 import {
   getAmountInByPrice,
   getAmountOutByPrice,
-  getPriceFromId,
-} from "../utils/price";
-import {
-  GetBinArrayParams,
-  GetTokenOutputParams,
-  DLMMPairAccount,
-} from "../types";
+  getPriceImpact,
+  getMinOutputWithSlippage,
+  getMaxInputWithSlippage,
+} from "./calculations";
 
-class LBError extends Error {
-  static BinNotFound = new LBError("Bin not found");
-  static BinArrayIndexMismatch = new LBError("Bin array index mismatch");
+// Classes moved to separate files:
+// - LBError → ./errors.ts
+// - BinArrayRange → ./bin-manager.ts
+// - SwapExecutor → ./execution.ts
 
-  constructor(message: string) {
-    super(message);
-    this.name = "LBError";
-  }
-}
+export class SwapService extends LiquidityBookAbstract {
+  private volatilityManager: VolatilityManager;
+  private swapExecutor: SwapExecutor;
 
-class BinArrayRange {
-  private readonly bins: { [binId: number]: Bin };
-  constructor(
-    binArrayPrevious: BinArray,
-    binArrayCurrent: BinArray,
-    binArrayNext: BinArray
-  ) {
-    if (
-      binArrayCurrent.index !== binArrayPrevious.index + 1 ||
-      binArrayNext.index !== binArrayCurrent.index + 1
-    ) {
-      throw LBError.BinArrayIndexMismatch;
-    }
-
-    this.bins = {};
-
-    const addBins = (binArray: BinArray) => {
-      binArray.bins.forEach((bin, index) => {
-        const binId = binArray.index * BIN_ARRAY_SIZE + index;
-        this.bins[binId] = bin;
-      });
-    };
-
-    addBins(binArrayPrevious);
-    addBins(binArrayCurrent);
-    addBins(binArrayNext);
-  }
-
-  getBinMut(binId: number) {
-    const bin = this.bins[binId];
-    return bin;
-  }
-
-  getAllBins() {
-    return Object.values(this.bins);
-  }
-}
-
-export class LBSwapService {
-  lbProgram!: Program<Idl>;
-  volatilityAccumulator: number;
-  volatilityReference: number;
-  timeLastUpdated: number;
-  referenceId: number;
-  connection: Connection;
-
-  constructor(lbProgram: Program<Idl>, connection: Connection) {
-    this.lbProgram = lbProgram;
-    this.connection = connection;
-    this.volatilityAccumulator = 0;
-    this.volatilityReference = 0;
-    this.referenceId = 0;
-    this.timeLastUpdated = 0;
-  }
-
-  static fromLbConfig(lbProgram: Program<Idl>, connection: Connection) {
-    return new LBSwapService(lbProgram, connection);
-  }
-
-  getBinArray(params: GetBinArrayParams) {
-    const { binArrayIndex, pair } = params;
-
-    const binArray = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode("bin_array")),
-        pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, "le", 4),
-      ],
-      this.lbProgram.programId
-    )[0];
-
-    return binArray;
+  constructor(config: ILiquidityBookConfig) {
+    super(config);
+    this.volatilityManager = new VolatilityManager();
+    this.swapExecutor = new SwapExecutor(
+      this.lbProgram,
+      this.hooksProgram,
+      this.connection,
+      this.getTokenProgram.bind(this)
+    );
   }
 
   public async calculateInOutAmount(params: GetTokenOutputParams) {
     const { amount, swapForY, pair, isExactInput } = params;
     try {
       //@ts-ignore
-      const pairInfo: Pair = await this.lbProgram.account.pair.fetch(pair);
+      const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
       if (!pairInfo) throw new Error("Pair not found");
 
       const currentBinArrayIndex = Math.floor(
@@ -120,7 +63,7 @@ export class LBSwapService {
         currentBinArrayIndex + 1,
       ];
       const binArrayAddresses = binArrayIndexes.map((idx) =>
-        this.getBinArray({
+        this.getBinArrayAddress({
           binArrayIndex: idx,
           pair,
         })
@@ -187,10 +130,22 @@ export class LBSwapService {
     }
   }
 
-  /**
-   * @description Calculate the input amount for the swap. isExactInput = false
-   */
-  public async calculateAmountIn(
+  private getBinArrayAddress(params: { binArrayIndex: number; pair: PublicKey }): PublicKey {
+    const { binArrayIndex, pair } = params;
+
+    const binArray = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from(utils.bytes.utf8.encode("bin_array")),
+        pair.toBuffer(),
+        new BN(binArrayIndex).toArrayLike(Buffer, "le", 4),
+      ],
+      this.lbProgram.programId
+    )[0];
+
+    return binArray;
+  }
+
+  private async calculateAmountIn(
     amount: bigint,
     bins: BinArrayRange,
     pairInfo: DLMMPairAccount,
@@ -203,18 +158,23 @@ export class LBSwapService {
       let activeId = pairInfo.activeId;
       let totalBinUsed = 0;
 
-      await this.updateReferences(pairInfo, activeId);
+      await this.volatilityManager.updateReferences(
+        pairInfo,
+        activeId,
+        () => this.connection.getSlot(),
+        (slot) => this.connection.getBlockTime(slot)
+      );
 
       while (amountOutLeft > BigInt(0)) {
         totalBinUsed++;
-        this.updateVolatilityAccumulator(pairInfo, activeId);
+        this.volatilityManager.updateVolatilityAccumulator(pairInfo, activeId);
 
         const activeBin = bins.getBinMut(activeId);
         if (!activeBin) {
           break;
         }
 
-        const fee = this.getTotalFee(pairInfo);
+        const fee = FeeCalculator.getTotalFee(pairInfo, this.volatilityManager.getVolatilityAccumulator());
 
         const {
           amountInWithFees,
@@ -249,10 +209,7 @@ export class LBSwapService {
     }
   }
 
-  /**
-   * @description Calculate the output amount for the swap. isExactInput = true
-   */
-  public async calculateAmountOut(
+  private async calculateAmountOut(
     amount: bigint,
     bins: BinArrayRange,
     pairInfo: DLMMPairAccount,
@@ -265,18 +222,23 @@ export class LBSwapService {
       let activeId = pairInfo.activeId;
       let totalBinUsed = 0;
 
-      await this.updateReferences(pairInfo, activeId);
+      await this.volatilityManager.updateReferences(
+        pairInfo,
+        activeId,
+        () => this.connection.getSlot(),
+        (slot) => this.connection.getBlockTime(slot)
+      );
 
       while (amountInLeft > BigInt(0)) {
         totalBinUsed++;
-        this.updateVolatilityAccumulator(pairInfo, activeId);
+        this.volatilityManager.updateVolatilityAccumulator(pairInfo, activeId);
 
         const activeBin = bins.getBinMut(activeId);
         if (!activeBin) {
           break;
         }
 
-        const fee = this.getTotalFee(pairInfo);
+        const fee = FeeCalculator.getTotalFee(pairInfo, this.volatilityManager.getVolatilityAccumulator());
 
         const {
           amountInWithFees,
@@ -310,7 +272,7 @@ export class LBSwapService {
     }
   }
 
-  public swapExactOutput(params: {
+  private swapExactOutput(params: {
     binStep: number;
     activeId: number;
     amountOutLeft: bigint;
@@ -346,9 +308,7 @@ export class LBSwapService {
     const amountOut =
       amountOutLeft > binReserveOutBigInt ? binReserveOutBigInt : amountOutLeft;
 
-    /** @notice assume base token and quote token have the same decimals to get the price */
     const price = getPriceFromId(binStep, activeId, 9, 9);
-    // Encode price as bigint with SCALE_OFFSET
     const priceScaled = BigInt(
       Math.round(Number(price) * Math.pow(2, SCALE_OFFSET))
     );
@@ -360,9 +320,9 @@ export class LBSwapService {
       "up"
     );
 
-    const feeAmount = this.getFeeForAmount(amountInWithoutFee, fee);
+    const feeAmount = FeeCalculator.getFeeForAmount(amountInWithoutFee, fee);
     const amountIn = amountInWithoutFee + feeAmount;
-    const protocolFeeAmount = this.getProtocolFee(
+    const protocolFeeAmount = FeeCalculator.getProtocolFee(
       feeAmount,
       protocolShareBigInt
     );
@@ -375,7 +335,7 @@ export class LBSwapService {
     };
   }
 
-  public swapExactInput(params: {
+  private swapExactInput(params: {
     binStep: number;
     activeId: number;
     amountInLeft: bigint;
@@ -409,14 +369,11 @@ export class LBSwapService {
 
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
 
-    /** @notice assume base token and quote token have the same decimals to get the price */
     const price = getPriceFromId(binStep, activeId, 9, 9);
-    // Encode price as bigint with SCALE_OFFSET
     const priceScaled = BigInt(
       Math.round(Number(price) * Math.pow(2, SCALE_OFFSET))
     );
 
-    // Calculate maxAmountIn (input needed to take all output in bin, before fee)
     let maxAmountIn = getAmountInByPrice(
       binReserveOutBigInt,
       priceScaled,
@@ -424,8 +381,7 @@ export class LBSwapService {
       "up"
     );
 
-    // Add fee to get total input needed (ceil)
-    const maxFeeAmount = this.getFeeForAmount(maxAmountIn, fee);
+    const maxFeeAmount = FeeCalculator.getFeeForAmount(maxAmountIn, fee);
     maxAmountIn += maxFeeAmount;
 
     let amountOut = BigInt(0);
@@ -437,7 +393,7 @@ export class LBSwapService {
       amountIn = maxAmountIn - feeAmount;
       amountOut = binReserveOutBigInt;
     } else {
-      feeAmount = this.getFeeAmount(amountInLeft, fee);
+      feeAmount = FeeCalculator.getFeeAmount(amountInLeft, fee);
       amountIn = amountInLeft - feeAmount;
       amountOut = getAmountOutByPrice(amountIn, priceScaled, swapForY, "down");
       if (amountOut > binReserveOutBigInt) {
@@ -447,7 +403,7 @@ export class LBSwapService {
 
     const protocolFeeAmount =
       protocolShare > BigInt(0)
-        ? this.getProtocolFee(feeAmount, protocolShareBigInt)
+        ? FeeCalculator.getProtocolFee(feeAmount, protocolShareBigInt)
         : BigInt(0);
 
     return {
@@ -458,114 +414,90 @@ export class LBSwapService {
     };
   }
 
-  public async updateReferences(pairInfo: DLMMPairAccount, activeId: number) {
-    this.referenceId = pairInfo.dynamicFeeParameters.idReference;
-    this.timeLastUpdated = pairInfo.dynamicFeeParameters.timeLastUpdated.toNumber();
-    this.volatilityReference =
-      pairInfo.dynamicFeeParameters.volatilityReference;
-
-    const slot = await this.connection.getSlot(); // Lấy slot hiện tại
-    const blockTimeStamp = await this.connection.getBlockTime(slot);
-
-    if (blockTimeStamp) {
-      const timeDelta = blockTimeStamp - this.timeLastUpdated;
-
-      if (timeDelta > pairInfo.staticFeeParameters.filterPeriod) {
-        this.referenceId = activeId;
-
-        if (timeDelta >= pairInfo.staticFeeParameters.decayPeriod) {
-          this.volatilityReference = 0;
-        } else {
-          return this.updateVolatilityReference(pairInfo);
-        }
-      }
-
-      this.timeLastUpdated = blockTimeStamp;
-    }
-
-    return this.updateVolatilityAccumulator(pairInfo, activeId);
-  }
-
-  public updateVolatilityReference(pairInfo: DLMMPairAccount) {
-    this.volatilityReference =
-      (pairInfo.dynamicFeeParameters.volatilityAccumulator *
-        pairInfo.staticFeeParameters.reductionFactor) /
-      10_000;
-  }
-
-  public updateVolatilityAccumulator(
-    pairInfo: DLMMPairAccount,
-    activeId: number
-  ) {
-    const deltaId = Math.abs(activeId - this.referenceId);
-    const volatilityAccumulator = deltaId * 10000 + this.volatilityReference;
-
-    const maxVolatilityAccumulator =
-      pairInfo.staticFeeParameters.maxVolatilityAccumulator;
-
-    if (volatilityAccumulator > maxVolatilityAccumulator) {
-      this.volatilityAccumulator = maxVolatilityAccumulator;
-    } else {
-      this.volatilityAccumulator = volatilityAccumulator;
-    }
-  }
-
-  public getVariableFee(pairInfo: DLMMPairAccount): bigint {
-    const variableFeeControl = BigInt(
-      pairInfo.staticFeeParameters.variableFeeControl
-    );
-    if (variableFeeControl > BigInt(0)) {
-      const prod = BigInt(
-        Math.floor(this.volatilityAccumulator * pairInfo.binStep)
-      );
-      const variableFee =
-        (prod * prod * variableFeeControl +
-          BigInt(VARIABLE_FEE_PRECISION) -
-          BigInt(1)) /
-        BigInt(VARIABLE_FEE_PRECISION);
-      return variableFee;
-    }
-    return variableFeeControl;
-  }
-
-  public getBaseFee(binStep: number, baseFactor: number): bigint {
-    return BigInt(binStep) * BigInt(baseFactor) * BigInt(10);
-  }
-
-  public getFeeForAmount(amount: bigint, fee: bigint) {
-    const denominator = PRECISION_BIGINT - fee;
-    const feeForAmount = (amount * fee + denominator - BigInt(1)) / denominator;
-
-    return feeForAmount;
-  }
-
-  public getFeeAmount(amount: bigint, fee: bigint) {
-    const feeAmount =
-      (amount * fee + PRECISION_BIGINT - BigInt(1)) / PRECISION_BIGINT;
-
-    return feeAmount;
-  }
-
-  public getProtocolFee(fee: bigint, protocolShare: bigint) {
-    const protocolFee = (fee * protocolShare) / MAX_BASIS_POINTS_BIGINT;
-
-    return protocolFee;
-  }
-
-  public getTotalFee(pairInfo: DLMMPairAccount) {
-    return (
-      this.getBaseFee(
-        pairInfo.binStep,
-        pairInfo.staticFeeParameters.baseFactor
-      ) + this.getVariableFee(pairInfo)
-    );
-  }
-
-  public moveActiveId(pairId: number, swapForY: boolean) {
+  private moveActiveId(pairId: number, swapForY: boolean): number {
     if (swapForY) {
       return pairId - 1;
     } else {
       return pairId + 1;
     }
+  }
+
+  public async getQuote(
+    params: GetTokenOutputParams
+  ): Promise<GetTokenOutputResponse> {
+    try {
+      const data = await this.calculateInOutAmount(params);
+      const { amountIn, amountOut } = data;
+
+      let maxAmountIn = amountIn;
+      let minAmountOut = amountOut;
+
+      if (params.isExactInput) {
+        minAmountOut = getMinOutputWithSlippage(amountOut, params.slippage);
+      } else {
+        maxAmountIn = getMaxInputWithSlippage(amountIn, params.slippage);
+      }
+
+      const { maxAmountOut } = await this.getMaxAmountOutWithFee(
+        params.pair,
+        amountIn,
+        params.swapForY,
+        params.tokenBaseDecimal,
+        params.tokenQuoteDecimal
+      );
+
+      const priceImpact = getPriceImpact(amountOut, maxAmountOut);
+
+      return {
+        amountIn: amountIn,
+        amountOut: amountOut,
+        amount: params.isExactInput ? maxAmountIn : minAmountOut,
+        otherAmountOffset: params.isExactInput ? minAmountOut : maxAmountIn,
+        priceImpact: priceImpact,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async getMaxAmountOutWithFee(
+    pairAddress: PublicKey,
+    amount: bigint,
+    swapForY: boolean = false,
+    decimalBase: number = 9,
+    decimalQuote: number = 9
+  ): Promise<{ maxAmountOut: bigint; price: number }> {
+    try {
+      let amountIn = amount;
+      //@ts-ignore
+      const pair: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pairAddress);
+
+      if (!pair) throw new Error("Pair not found");
+
+      const { activeId, binStep } = pair;
+
+      const feePrice = FeeCalculator.getTotalFee(pair, this.volatilityManager.getVolatilityAccumulator());
+      const activePrice = getPriceFromId(binStep, activeId, 9, 9);
+      const price = getPriceFromId(
+        binStep,
+        activeId,
+        decimalBase,
+        decimalQuote
+      );
+
+      const feeAmount = FeeCalculator.getFeeAmount(amountIn, feePrice);
+      amountIn = amountIn - feeAmount;
+      const maxAmountOut = swapForY
+        ? (amountIn * BigInt(activePrice)) >> BigInt(SCALE_OFFSET)
+        : (amountIn << BigInt(SCALE_OFFSET)) / BigInt(activePrice);
+
+      return { maxAmountOut, price };
+    } catch {
+      return { maxAmountOut: 0n, price: 0 };
+    }
+  }
+
+  public async swap(params: SwapParams): Promise<Transaction> {
+    return this.swapExecutor.executeSwap(params);
   }
 }
