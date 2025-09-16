@@ -3,7 +3,7 @@ import { SwapService } from './swap/index';
 import { PositionService } from './positions/index';
 import { PoolService } from './pools/index';
 import { BinArrayManager } from './pools/bins';
-import { getPairVaultInfo, GetPairVaultInfoParams, getUserVaultInfo } from '../utils/vaults';
+import { getPairVaultInfo, GetPairVaultInfoParams, getUserVaultInfo, GetUserVaultInfoParams } from '../utils/vaults';
 import {
   ILiquidityBookConfig,
   SwapParams,
@@ -21,7 +21,6 @@ import {
   PoolMetadata,
   DLMMPairAccount,
   PositionAccount,
-  GetUserVaultInfoParams,
   QuoteParams,
   GetBinsArrayInfoParams,
 } from '../types';
@@ -113,8 +112,18 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return this.poolService.listenNewPoolAddress(postTxFunction);
   }
 
-  public async quote(params: QuoteParams) {
-    return this.poolService.quote(params);
+  public async quote(params: QuoteParams ): Promise<GetTokenOutputResponse> {
+    return this.swapService.getQuote({
+    amount: BigInt(params.amount),
+    isExactInput: params.optional.isExactInput,
+    pair: new PublicKey(params.metadata.poolAddress),
+    slippage: params.optional.slippage,
+    swapForY: params.optional.swapForY,
+    tokenBase: new PublicKey(params.metadata.baseToken.mintAddress),
+    tokenBaseDecimal: params.metadata.baseToken.decimals,
+    tokenQuote: new PublicKey(params.metadata.quoteToken.mintAddress),
+    tokenQuoteDecimal: params.metadata.quoteToken.decimals,
+  });
   }
 
   // Legacy compatibility methods (delegated to appropriate services)

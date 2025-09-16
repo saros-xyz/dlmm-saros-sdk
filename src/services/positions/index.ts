@@ -627,7 +627,8 @@ export class PositionService extends LiquidityBookAbstract {
 
     let positions = [];
     try {
-      const arrPositionPdaChunked: PublicKey[][] = chunk(arrPositionPda, 10);
+      // getMultipleAccountsInfo allows up to 100 accounts at once
+      const arrPositionPdaChunked: PublicKey[][] = chunk(arrPositionPda, 100);
       const results: any[] = [];
       for (const item of arrPositionPdaChunked) {
         const accountsInfo = await connection.getMultipleAccountsInfo(item);

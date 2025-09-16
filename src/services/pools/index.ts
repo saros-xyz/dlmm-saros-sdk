@@ -5,7 +5,6 @@ import { Buffer } from 'buffer';
 import bs58 from 'bs58';
 import { LiquidityBookAbstract } from '../base/abstract';
 import { BinArrayManager } from './bins';
-import { SwapService } from '../swap';
 import { BIN_ARRAY_SIZE } from '../../constants';
 import {
   CreatePairWithConfigParams,
@@ -303,32 +302,5 @@ export class PoolService extends LiquidityBookAbstract {
         '';
     }
     return pairAddress;
-  }
-
-  public async quote(params: {
-    amount: number;
-    metadata: PoolMetadata;
-    optional: {
-      isExactInput: boolean;
-      swapForY: boolean;
-      slippage: number;
-    };
-  }) {
-    const { amount, metadata, optional } = params;
-
-    // Use SwapService to get a quote
-    const swapService = new SwapService({ mode: this.mode });
-
-    return await swapService.getQuote({
-      amount: BigInt(amount),
-      isExactInput: optional.isExactInput,
-      pair: new PublicKey(metadata.poolAddress),
-      slippage: optional.slippage,
-      swapForY: optional.swapForY,
-      tokenBase: new PublicKey(metadata.baseToken.mintAddress),
-      tokenBaseDecimal: metadata.baseToken.decimals,
-      tokenQuote: new PublicKey(metadata.quoteToken.mintAddress),
-      tokenQuoteDecimal: metadata.quoteToken.decimals,
-    });
   }
 }

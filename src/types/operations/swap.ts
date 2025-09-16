@@ -1,4 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
+import { PoolMetadata } from '../info';
 
 // Swap operation parameters
 export interface SwapParams {
@@ -33,4 +34,16 @@ export interface GetTokenOutputResponse {
   priceImpact: number;
   amount: bigint;
   otherAmountOffset: bigint;
+}
+
+
+// Quote operations
+export interface QuoteParams {
+  amount: number;
+  metadata: PoolMetadata;
+  optional: {
+    isExactInput: boolean;
+    swapForY: boolean;
+    slippage: number;
+  };
 }
