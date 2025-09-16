@@ -1,5 +1,5 @@
-import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import * as spl from "@solana/spl-token";
+import { Connection, PublicKey, Transaction } from '@solana/web3.js';
+import * as spl from '@solana/spl-token';
 
 export interface GetPairVaultInfoParams {
   tokenAddress: PublicKey;
@@ -9,11 +9,11 @@ export interface GetPairVaultInfoParams {
 }
 
 // GetUserVaultInfoParams is already exported from types
-import { GetUserVaultInfoParams } from "../types";
+import { GetUserVaultInfoParams } from '../types';
 
 export async function getTokenProgram(
   address: PublicKey,
-  connection: Connection
+  connection: Connection,
 ): Promise<PublicKey> {
   const account = await connection.getParsedAccountInfo(address);
   const owner = account.value?.owner.toBase58();
@@ -25,7 +25,7 @@ export async function getTokenProgram(
 
 export async function getPairVaultInfo(
   params: GetPairVaultInfoParams,
-  connection: Connection
+  connection: Connection,
 ): Promise<PublicKey> {
   const { tokenAddress, pair, payer, transaction } = params;
 
@@ -36,7 +36,7 @@ export async function getPairVaultInfo(
     tokenMint,
     pair,
     true,
-    tokenProgram
+    tokenProgram,
   );
 
   if (transaction && payer) {
@@ -48,7 +48,7 @@ export async function getPairVaultInfo(
         associatedPairVault,
         pair,
         tokenMint,
-        tokenProgram
+        tokenProgram,
       );
       transaction.add(pairVaultInstructions);
     }
@@ -59,7 +59,7 @@ export async function getPairVaultInfo(
 
 export async function getUserVaultInfo(
   params: GetUserVaultInfoParams,
-  connection: Connection
+  connection: Connection,
 ): Promise<PublicKey> {
   const { tokenAddress, payer, transaction } = params;
   const tokenProgram = await getTokenProgram(tokenAddress, connection);
@@ -67,7 +67,7 @@ export async function getUserVaultInfo(
     tokenAddress,
     payer,
     true,
-    tokenProgram
+    tokenProgram,
   );
 
   if (transaction) {
@@ -79,7 +79,7 @@ export async function getUserVaultInfo(
         associatedUserVault,
         payer,
         tokenAddress,
-        tokenProgram
+        tokenProgram,
       );
       transaction.add(userVaultInstructions);
     }

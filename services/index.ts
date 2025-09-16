@@ -1,13 +1,9 @@
-import { LiquidityBookAbstract } from "./base/abstract";
-import { SwapService } from "./swap/index";
-import { PositionService } from "./positions/index";
-import { PoolService } from "./pools/index";
-import { BinArrayManager } from "./pools/bins";
-import {
-  getPairVaultInfo,
-  GetPairVaultInfoParams,
-  getUserVaultInfo,
-} from "../utils/vaults";
+import { LiquidityBookAbstract } from './base/abstract';
+import { SwapService } from './swap/index';
+import { PositionService } from './positions/index';
+import { PoolService } from './pools/index';
+import { BinArrayManager } from './pools/bins';
+import { getPairVaultInfo, GetPairVaultInfoParams, getUserVaultInfo } from '../utils/vaults';
 import {
   ILiquidityBookConfig,
   SwapParams,
@@ -29,8 +25,8 @@ import {
   QuoteParams,
   GetBinsArrayInfoParams,
   GetPoolMetadataParams,
-} from "../types";
-import { PublicKey, Transaction } from "@solana/web3.js";
+} from '../types';
+import { PublicKey, Transaction } from '@solana/web3.js';
 
 export class LiquidityBookServices extends LiquidityBookAbstract {
   bufferGas?: number;
@@ -50,9 +46,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return this.swapService.swap(params);
   }
 
-  public async getQuote(
-    params: GetTokenOutputParams
-  ): Promise<GetTokenOutputResponse> {
+  public async getQuote(params: GetTokenOutputParams): Promise<GetTokenOutputResponse> {
     return this.swapService.getQuote(params);
   }
 
@@ -61,21 +55,19 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     amount: bigint,
     swapForY: boolean = false,
     decimalBase: number = 9,
-    decimalQuote: number = 9
+    decimalQuote: number = 9,
   ): Promise<{ maxAmountOut: bigint; price: number }> {
     return this.swapService.getMaxAmountOutWithFee(
       pairAddress,
       amount,
       swapForY,
       decimalBase,
-      decimalQuote
+      decimalQuote,
     );
   }
 
   // Position Service Methods
-  public async getPositionAccount(
-    position: PublicKey
-  ): Promise<PositionAccount> {
+  public async getPositionAccount(position: PublicKey): Promise<PositionAccount> {
     return this.positionService.getPositionAccount(position);
   }
 
@@ -83,28 +75,21 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return this.positionService.createPosition(params);
   }
 
-  public async addLiquidityIntoPosition(
-    params: AddLiquidityIntoPositionParams
-  ) {
+  public async addLiquidityIntoPosition(params: AddLiquidityIntoPositionParams) {
     return this.positionService.addLiquidityIntoPosition(params);
   }
 
   public async removeMultipleLiquidity(
-    params: RemoveMultipleLiquidityParams
+    params: RemoveMultipleLiquidityParams,
   ): Promise<RemoveMultipleLiquidityResponse> {
     return this.positionService.removeMultipleLiquidity(params);
   }
 
-  public async getBinsReserveInformation(
-    params: GetBinsReserveParams
-  ): Promise<BinReserveInfo[]> {
+  public async getBinsReserveInformation(params: GetBinsReserveParams): Promise<BinReserveInfo[]> {
     return this.positionService.getBinsReserveInformation(params);
   }
 
-  public async getUserPositions({
-    payer,
-    pair,
-  }: UserPositionsParams): Promise<PositionInfo[]> {
+  public async getUserPositions({ payer, pair }: UserPositionsParams): Promise<PositionInfo[]> {
     return this.positionService.getUserPositions({ payer, pair });
   }
 
@@ -117,9 +102,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return this.poolService.createPairWithConfig(params);
   }
 
-  public async getPoolMetadata(
-    params: GetPoolMetadataParams
-  ): Promise<PoolMetadata> {
+  public async getPoolMetadata(params: GetPoolMetadataParams): Promise<PoolMetadata> {
     return this.poolService.getPoolMetadata(params.pair);
   }
 
@@ -127,9 +110,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return this.poolService.getAllPoolAddresses();
   }
 
-  public async listenNewPoolAddress(
-    postTxFunction: (address: string) => Promise<void>
-  ) {
+  public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
     return this.poolService.listenNewPoolAddress(postTxFunction);
   }
 
@@ -147,7 +128,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return BinArrayManager.getBinArrayAddress(
       params.binArrayIndex,
       params.pair,
-      this.lbProgram.programId
+      this.lbProgram.programId,
     );
   }
 

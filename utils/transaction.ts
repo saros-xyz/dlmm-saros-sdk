@@ -1,11 +1,6 @@
-import {
-  ComputeBudgetProgram,
-  SystemProgram,
-  Transaction,
-  PublicKey,
-} from "@solana/web3.js";
-import * as spl from "@solana/spl-token";
-import { CCU_LIMIT } from "../constants";
+import { ComputeBudgetProgram, SystemProgram, Transaction, PublicKey } from '@solana/web3.js';
+import * as spl from '@solana/spl-token';
+import { CCU_LIMIT } from '../constants';
 
 /**
  * Add compute budget instructions to a transaction
@@ -16,17 +11,17 @@ import { CCU_LIMIT } from "../constants";
 export const addComputeBudgetInstructions = (
   transaction: Transaction,
   unitPrice: number,
-  computeLimit: number = CCU_LIMIT
+  computeLimit: number = CCU_LIMIT,
 ): void => {
   transaction.add(
     ComputeBudgetProgram.setComputeUnitLimit({
       units: computeLimit,
-    })
+    }),
   );
   transaction.add(
     ComputeBudgetProgram.setComputeUnitPrice({
       microLamports: unitPrice,
-    })
+    }),
   );
 };
 
@@ -41,16 +36,16 @@ export const addSolTransferInstructions = (
   transaction: Transaction,
   payer: PublicKey,
   associatedUserVault: PublicKey,
-  amount: bigint | number
+  amount: bigint | number,
 ): void => {
-  const lamports = typeof amount === "bigint" ? Number(amount) : amount;
+  const lamports = typeof amount === 'bigint' ? Number(amount) : amount;
 
   transaction.add(
     SystemProgram.transfer({
       fromPubkey: payer,
       toPubkey: associatedUserVault,
       lamports,
-    })
+    }),
   );
   transaction.add(spl.createSyncNativeInstruction(associatedUserVault));
 };
@@ -64,9 +59,7 @@ export const addSolTransferInstructions = (
 export const addCloseAccountInstruction = (
   transaction: Transaction,
   associatedUserVault: PublicKey,
-  payer: PublicKey
+  payer: PublicKey,
 ): void => {
-  transaction.add(
-    spl.createCloseAccountInstruction(associatedUserVault, payer, payer)
-  );
+  transaction.add(spl.createCloseAccountInstruction(associatedUserVault, payer, payer));
 };

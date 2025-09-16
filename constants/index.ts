@@ -1,15 +1,15 @@
-import { PublicKey } from "@solana/web3.js";
-import { MODE } from "../types";
+import { PublicKey } from '@solana/web3.js';
+import { MODE } from '../types';
 
 export const RPC_CONFIG = {
   [MODE.TESTNET]: {
-    rpc: "https://api.testnet.solana.com",
+    rpc: 'https://api.testnet.solana.com',
   },
   [MODE.DEVNET]: {
-    rpc: "https://api.devnet.solana.com",
+    rpc: 'https://api.devnet.solana.com',
   },
   [MODE.MAINNET]: {
-    rpc: "https://api.mainnet-beta.solana.com",
+    rpc: 'https://api.mainnet-beta.solana.com',
   },
 };
 
@@ -27,6 +27,4 @@ export const BIN_ARRAY_INDEX = ACTIVE_ID / BIN_ARRAY_SIZE - 1;
 export const PRECISION_BIGINT = BigInt(1_000_000_000);
 export const MAX_BASIS_POINTS_BIGINT = BigInt(MAX_BASIS_POINTS);
 
-export const WRAP_SOL_PUBKEY = new PublicKey(
-  "So11111111111111111111111111111111111111112"
-);
+export const WRAP_SOL_PUBKEY = new PublicKey('So11111111111111111111111111111111111111112');

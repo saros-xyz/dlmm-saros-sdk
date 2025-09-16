@@ -1,19 +1,16 @@
-import { BN } from "@coral-xyz/anchor";
-import { PublicKey, Transaction } from "@solana/web3.js";
-import * as spl from "@solana/spl-token";
-import {
-  BIN_ARRAY_SIZE,
-  WRAP_SOL_PUBKEY,
-} from "../../constants";
-import { SwapParams, DLMMPairAccount } from "../../types";
-import { addSolTransferInstructions, addCloseAccountInstruction } from "../../utils/transaction";
+import { BN } from '@coral-xyz/anchor';
+import { PublicKey, Transaction } from '@solana/web3.js';
+import * as spl from '@solana/spl-token';
+import { BIN_ARRAY_SIZE, WRAP_SOL_PUBKEY } from '../../constants';
+import { SwapParams, DLMMPairAccount } from '../../types';
+import { addSolTransferInstructions, addCloseAccountInstruction } from '../../utils/transaction';
 
 export class SwapExecutor {
   constructor(
     private lbProgram: any,
     private hooksProgram: any,
     private connection: any,
-    private getTokenProgram: (address: PublicKey) => Promise<PublicKey>
+    private getTokenProgram: (address: PublicKey) => Promise<PublicKey>,
   ) {}
 
   public async executeSwap(params: SwapParams): Promise<Transaction> {
@@ -30,7 +27,7 @@ export class SwapExecutor {
     } = params;
 
     const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
-    if (!pairInfo) throw new Error("Pair not found");
+    if (!pairInfo) throw new Error('Pair not found');
 
     const currentBinArrayIndex = Math.floor(pairInfo.activeId / BIN_ARRAY_SIZE);
 
@@ -41,24 +38,20 @@ export class SwapExecutor {
     ];
 
     const binArrayAddresses = await Promise.all(
-      surroundingIndexes.map(
-        async (idx) => this.getBinArrayAddress({
+      surroundingIndexes.map(async idx =>
+        this.getBinArrayAddress({
           binArrayIndex: idx,
           pair,
-        })
-      )
+        }),
+      ),
     );
 
-    const binArrayAccountsInfo = await this.connection.getMultipleAccountsInfo(
-      binArrayAddresses
-    );
+    const binArrayAccountsInfo = await this.connection.getMultipleAccountsInfo(binArrayAddresses);
 
-    const validIndexes = surroundingIndexes.filter(
-      (_, i) => binArrayAccountsInfo[i]
-    );
+    const validIndexes = surroundingIndexes.filter((_, i) => binArrayAccountsInfo[i]);
 
     if (validIndexes.length < 2) {
-      throw new Error("No valid bin arrays found for the pair");
+      throw new Error('No valid bin arrays found for the pair');
     }
 
     let binArrayLowerIndex: number;
@@ -98,28 +91,28 @@ export class SwapExecutor {
       tokenMintX,
       pair,
       true,
-      tokenProgramX
+      tokenProgramX,
     );
 
     const associatedPairVaultY = spl.getAssociatedTokenAddressSync(
       tokenMintY,
       pair,
       true,
-      tokenProgramY
+      tokenProgramY,
     );
 
     const associatedUserVaultX = spl.getAssociatedTokenAddressSync(
       tokenMintX,
       payer,
       true,
-      tokenProgramX
+      tokenProgramX,
     );
 
     const associatedUserVaultY = spl.getAssociatedTokenAddressSync(
       tokenMintY,
       payer,
       true,
-      tokenProgramY
+      tokenProgramY,
     );
 
     // Create user vault accounts if they don't exist
@@ -131,18 +124,15 @@ export class SwapExecutor {
       tokenProgramX,
       tokenProgramY,
       associatedUserVaultX,
-      associatedUserVaultY
+      associatedUserVaultY,
     );
 
     // Handle wrapped SOL transfers
-    if (
-      tokenMintY.equals(WRAP_SOL_PUBKEY) ||
-      tokenMintX.equals(WRAP_SOL_PUBKEY)
-    ) {
+    if (tokenMintY.equals(WRAP_SOL_PUBKEY) || tokenMintX.equals(WRAP_SOL_PUBKEY)) {
       const isNativeY = tokenMintY.equals(WRAP_SOL_PUBKEY);
       const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
 
-      if (isNativeY && !swapForY || !isNativeY && swapForY) {
+      if ((isNativeY && !swapForY) || (!isNativeY && swapForY)) {
         addSolTransferInstructions(tx, payer, associatedUserVault, amount);
       }
     }
@@ -153,7 +143,7 @@ export class SwapExecutor {
         new BN(amount.toString()),
         new BN(otherAmountOffset.toString()),
         swapForY,
-        isExactInput ? { exactInput: {} } : { exactOutput: {} }
+        isExactInput ? { exactInput: {} } : { exactOutput: {} },
       )
       .accountsPartial({
         pair: pair,
@@ -181,10 +171,7 @@ export class SwapExecutor {
     tx.add(swapInstructions);
 
     // Handle wrapped SOL account closing
-    if (
-      tokenMintY.equals(WRAP_SOL_PUBKEY) ||
-      tokenMintX.equals(WRAP_SOL_PUBKEY)
-    ) {
+    if (tokenMintY.equals(WRAP_SOL_PUBKEY) || tokenMintX.equals(WRAP_SOL_PUBKEY)) {
       const isNativeY = tokenMintY.equals(WRAP_SOL_PUBKEY);
       const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
       if ((isNativeY && swapForY) || (!isNativeY && !swapForY)) {
@@ -200,11 +187,11 @@ export class SwapExecutor {
 
     const binArray = PublicKey.findProgramAddressSync(
       [
-        Buffer.from("bin_array", "utf8"),
+        Buffer.from('bin_array', 'utf8'),
         pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, "le", 4),
+        new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
       ],
-      this.lbProgram.programId
+      this.lbProgram.programId,
     )[0];
 
     return binArray;
@@ -218,7 +205,7 @@ export class SwapExecutor {
     tokenProgramX: PublicKey,
     tokenProgramY: PublicKey,
     associatedUserVaultX: PublicKey,
-    associatedUserVaultY: PublicKey
+    associatedUserVaultY: PublicKey,
   ): Promise<void> {
     const infoUserVaultX = await this.connection.getAccountInfo(associatedUserVaultX);
     if (!infoUserVaultX) {
@@ -227,7 +214,7 @@ export class SwapExecutor {
         associatedUserVaultX,
         payer,
         tokenMintX,
-        tokenProgramX
+        tokenProgramX,
       );
       tx.add(userVaultXInstructions);
     }
@@ -239,7 +226,7 @@ export class SwapExecutor {
         associatedUserVaultY,
         payer,
         tokenMintY,
-        tokenProgramY
+        tokenProgramY,
       );
       tx.add(userVaultYInstructions);
     }

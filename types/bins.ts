@@ -1,5 +1,5 @@
 export interface Bin {
-  reserveX: bigint; 
+  reserveX: bigint;
   reserveY: bigint;
   totalSupply: bigint;
 }
@@ -7,4 +7,4 @@ export interface Bin {
 export interface BinArray {
   bins: Bin[];
   index: number;
-};
+}

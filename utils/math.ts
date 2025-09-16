@@ -1,6 +1,6 @@
 export const divRem = (numerator: number, denominator: number) => {
   if (denominator === 0) {
-    throw new Error("Division by zero");
+    throw new Error('Division by zero');
   }
 
   // Calculate quotient and remainder

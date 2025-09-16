@@ -1,16 +1,12 @@
 // BN import removed as it's not used in this file
-import { Bin, BinArray } from "../../types";
-import { BIN_ARRAY_SIZE } from "../../constants";
-import { SwapServiceError } from "./errors";
+import { Bin, BinArray } from '../../types';
+import { BIN_ARRAY_SIZE } from '../../constants';
+import { SwapServiceError } from './errors';
 
 export class BinArrayRange {
   private readonly bins: { [binId: number]: Bin };
 
-  constructor(
-    binArrayPrevious: BinArray,
-    binArrayCurrent: BinArray,
-    binArrayNext: BinArray
-  ) {
+  constructor(binArrayPrevious: BinArray, binArrayCurrent: BinArray, binArrayNext: BinArray) {
     if (
       binArrayCurrent.index !== binArrayPrevious.index + 1 ||
       binArrayNext.index !== binArrayCurrent.index + 1

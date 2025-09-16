@@ -1,20 +1,20 @@
-import { BN, utils } from "@coral-xyz/anchor";
-import { PublicKey, Transaction } from "@solana/web3.js";
-import { BIN_ARRAY_SIZE } from "../../constants";
+import { BN, utils } from '@coral-xyz/anchor';
+import { PublicKey, Transaction } from '@solana/web3.js';
+import { BIN_ARRAY_SIZE } from '../../constants';
 
 export class BinArrayManager {
   public static getBinArrayAddress(
     binArrayIndex: number,
     pair: PublicKey,
-    programId: PublicKey
+    programId: PublicKey,
   ): PublicKey {
     const binArray = PublicKey.findProgramAddressSync(
       [
-        Buffer.from(utils.bytes.utf8.encode("bin_array")),
+        Buffer.from(utils.bytes.utf8.encode('bin_array')),
         pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, "le", 4),
+        new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
       ],
-      programId
+      programId,
     )[0];
 
     return binArray;
@@ -30,7 +30,7 @@ export class BinArrayManager {
     payer: PublicKey,
     transaction: Transaction,
     connection: any,
-    lbProgram: any
+    lbProgram: any,
   ): Promise<void> {
     const binArray = this.getBinArrayAddress(binArrayIndex, pair, lbProgram.programId);
     const binArrayInfo = await connection.getAccountInfo(binArray);

@@ -1,20 +1,20 @@
-import { BN, utils } from "@coral-xyz/anchor";
-import { PublicKey, Transaction, TransactionMessage } from "@solana/web3.js";
-import * as spl from "@solana/spl-token";
-import { Buffer } from "buffer";
-import bs58 from "bs58";
-import { LiquidityBookAbstract } from "../base/abstract";
-import { BinArrayManager } from "./bins";
-import { SwapService } from "../swap";
-import { BIN_ARRAY_SIZE, WRAP_SOL_PUBKEY } from "../../constants";
+import { BN, utils } from '@coral-xyz/anchor';
+import { PublicKey, Transaction, TransactionMessage } from '@solana/web3.js';
+import * as spl from '@solana/spl-token';
+import { Buffer } from 'buffer';
+import bs58 from 'bs58';
+import { LiquidityBookAbstract } from '../base/abstract';
+import { BinArrayManager } from './bins';
+import { SwapService } from '../swap';
+import { BIN_ARRAY_SIZE } from '../../constants';
 import {
   CreatePairWithConfigParams,
   DLMMPairAccount,
   PoolMetadata,
   ILiquidityBookConfig,
-} from "../../types";
-import { getIdFromPrice, getPriceFromId } from "../../utils/price";
-import LiquidityBookIDL from "../../constants/idl/liquidity_book.json";
+} from '../../types';
+import { getIdFromPrice } from '../../utils/price';
+import LiquidityBookIDL from '../../constants/idl/liquidity_book.json';
 
 export class PoolService extends LiquidityBookAbstract {
   constructor(config: ILiquidityBookConfig) {
@@ -32,12 +32,7 @@ export class PoolService extends LiquidityBookAbstract {
     const tokenX = new PublicKey(tokenBase.mintAddress);
     const tokenY = new PublicKey(tokenQuote.mintAddress);
 
-    const id = getIdFromPrice(
-      ratePrice || 1,
-      binStep,
-      tokenBase.decimal,
-      tokenQuote.decimal
-    );
+    const id = getIdFromPrice(ratePrice || 1, binStep, tokenBase.decimal, tokenQuote.decimal);
 
     let binArrayIndex = id / BIN_ARRAY_SIZE;
 
@@ -49,31 +44,31 @@ export class PoolService extends LiquidityBookAbstract {
 
     const binStepConfig = PublicKey.findProgramAddressSync(
       [
-        Buffer.from(utils.bytes.utf8.encode("bin_step_config")),
+        Buffer.from(utils.bytes.utf8.encode('bin_step_config')),
         this.lbConfig.toBuffer(),
         new Uint8Array([binStep]),
       ],
-      this.lbProgram.programId
+      this.lbProgram.programId,
     )[0];
 
     const quoteAssetBadge = PublicKey.findProgramAddressSync(
       [
-        Buffer.from(utils.bytes.utf8.encode("quote_asset_badge")),
+        Buffer.from(utils.bytes.utf8.encode('quote_asset_badge')),
         this.lbConfig.toBuffer(),
         tokenY.toBuffer(),
       ],
-      this.lbProgram.programId
+      this.lbProgram.programId,
     )[0];
 
     const pair = PublicKey.findProgramAddressSync(
       [
-        Buffer.from(utils.bytes.utf8.encode("pair")),
+        Buffer.from(utils.bytes.utf8.encode('pair')),
         this.lbConfig.toBuffer(),
         tokenX.toBuffer(),
         tokenY.toBuffer(),
         new Uint8Array([binStep]),
       ],
-      this.lbProgram.programId
+      this.lbProgram.programId,
     )[0];
 
     const initializePairConfigTx = await this.lbProgram.methods
@@ -94,13 +89,13 @@ export class PoolService extends LiquidityBookAbstract {
     const binArrayLower = BinArrayManager.getBinArrayAddress(
       binArrayIndex,
       pair,
-      this.lbProgram.programId
+      this.lbProgram.programId,
     );
 
     const binArrayUpper = BinArrayManager.getBinArrayAddress(
       binArrayIndex + 1,
       pair,
-      this.lbProgram.programId
+      this.lbProgram.programId,
     );
 
     const initializeBinArrayLowerConfigTx = await this.lbProgram.methods
@@ -129,12 +124,10 @@ export class PoolService extends LiquidityBookAbstract {
 
   public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
     const connection = this.connection;
-    const pairInfo: DLMMPairAccount = await this.getPairAccount(
-      new PublicKey(pair)
-    );
+    const pairInfo: DLMMPairAccount = await this.getPairAccount(new PublicKey(pair));
 
     if (!pairInfo) {
-      throw new Error("Pair not found");
+      throw new Error('Pair not found');
     }
 
     const basePairVault = await this.getPairVaultInfo({
@@ -150,17 +143,17 @@ export class PoolService extends LiquidityBookAbstract {
       connection.getTokenAccountBalance(basePairVault).catch(() => ({
         value: {
           uiAmount: 0,
-          amount: "0",
+          amount: '0',
           decimals: 0,
-          uiAmountString: "0",
+          uiAmountString: '0',
         },
       })),
       connection.getTokenAccountBalance(quotePairVault).catch(() => ({
         value: {
           uiAmount: 0,
-          amount: "0",
+          amount: '0',
           decimals: 0,
-          uiAmountString: "0",
+          uiAmountString: '0',
         },
       })),
     ]);
@@ -177,8 +170,7 @@ export class PoolService extends LiquidityBookAbstract {
         decimals: quoteReserve.value.decimals,
         reserve: quoteReserve.value.amount,
       },
-      tradeFee:
-        (pairInfo.staticFeeParameters.baseFactor * pairInfo.binStep) / 1e6,
+      tradeFee: (pairInfo.staticFeeParameters.baseFactor * pairInfo.binStep) / 1e6,
       extra: {
         hook: pairInfo.hook?.toString(),
       },
@@ -200,13 +192,11 @@ export class PoolService extends LiquidityBookAbstract {
       tokenMint,
       pair,
       true,
-      tokenProgram
+      tokenProgram,
     );
 
     if (transaction && payer) {
-      const infoPairVault = await this.connection.getAccountInfo(
-        associatedPairVault
-      );
+      const infoPairVault = await this.connection.getAccountInfo(associatedPairVault);
 
       if (!infoPairVault) {
         const pairVaultYInstructions = spl.createAssociatedTokenAccountInstruction(
@@ -214,7 +204,7 @@ export class PoolService extends LiquidityBookAbstract {
           associatedPairVault,
           pair,
           tokenMint,
-          tokenProgram
+          tokenProgram,
         );
         transaction.add(pairVaultYInstructions);
       }
@@ -226,29 +216,22 @@ export class PoolService extends LiquidityBookAbstract {
   public async getAllPoolAddresses(): Promise<string[]> {
     const programId = this.getDexProgramId();
     const connection = this.connection;
-    const pairAccount = LiquidityBookIDL.accounts.find(
-      (acc) => acc.name === "Pair"
-    );
-    const pairAccountDiscriminator = pairAccount
-      ? pairAccount.discriminator
-      : undefined;
+    const pairAccount = LiquidityBookIDL.accounts.find(acc => acc.name === 'Pair');
+    const pairAccountDiscriminator = pairAccount ? pairAccount.discriminator : undefined;
 
     if (!pairAccountDiscriminator) {
-      throw new Error("Pair account not found");
+      throw new Error('Pair account not found');
     }
 
-    const accounts = await connection.getProgramAccounts(
-      new PublicKey(programId),
-      {
-        filters: [
-          {
-            memcmp: { offset: 0, bytes: bs58.encode(pairAccountDiscriminator) },
-          },
-        ],
-      }
-    );
+    const accounts = await connection.getProgramAccounts(new PublicKey(programId), {
+      filters: [
+        {
+          memcmp: { offset: 0, bytes: bs58.encode(pairAccountDiscriminator) },
+        },
+      ],
+    });
     if (accounts.length === 0) {
-      throw new Error("Pair not found");
+      throw new Error('Pair not found');
     }
     const poolAdresses = accounts.reduce((addresses: string[], account) => {
       if (account.account.owner.toString() !== programId.toString()) {
@@ -264,27 +247,25 @@ export class PoolService extends LiquidityBookAbstract {
     return poolAdresses;
   }
 
-  public async listenNewPoolAddress(
-    postTxFunction: (address: string) => Promise<void>
-  ) {
+  public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
     const LB_PROGRAM_ID = this.getDexProgramId();
     this.connection.onLogs(
       LB_PROGRAM_ID,
-      (logInfo) => {
+      logInfo => {
         if (!logInfo.err) {
           const logs = logInfo.logs || [];
           for (const log of logs) {
-            if (log.includes("Instruction: InitializePair")) {
+            if (log.includes('Instruction: InitializePair')) {
               const signature = logInfo.signature;
 
-              this.getPairAddressFromLogs(signature).then((address) => {
+              this.getPairAddressFromLogs(signature).then(address => {
                 postTxFunction(address);
               });
             }
           }
         }
       },
-      "finalized"
+      'finalized',
     );
   }
 
@@ -293,21 +274,19 @@ export class PoolService extends LiquidityBookAbstract {
       maxSupportedTransactionVersion: 0,
     });
     if (!parsedTransaction) {
-      throw new Error("Transaction not found");
+      throw new Error('Transaction not found');
     }
 
     const compiledMessage = parsedTransaction.transaction.message;
     const message = TransactionMessage.decompile(compiledMessage);
     const instructions = message.instructions;
     const initializePairStruct = LiquidityBookIDL.instructions.find(
-      (item) => item.name === "initialize_pair"
+      item => item.name === 'initialize_pair',
     )!;
 
-    const initializePairDescrimator = Buffer.from(
-      initializePairStruct.discriminator
-    );
+    const initializePairDescrimator = Buffer.from(initializePairStruct.discriminator);
 
-    let pairAddress = "";
+    let pairAddress = '';
 
     for (const instruction of instructions) {
       const descimatorInstruction = instruction.data.subarray(0, 8);
@@ -320,9 +299,8 @@ export class PoolService extends LiquidityBookAbstract {
         };
       });
       pairAddress =
-        accounts.find(
-          (item: { name: string; address: string }) => item.name === "pair"
-        )?.address || "";
+        accounts.find((item: { name: string; address: string }) => item.name === 'pair')?.address ||
+        '';
     }
     return pairAddress;
   }

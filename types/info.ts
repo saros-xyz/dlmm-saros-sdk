@@ -1,5 +1,5 @@
-import { BN } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
+import { BN } from '@coral-xyz/anchor';
+import { PublicKey } from '@solana/web3.js';
 
 export interface PoolMetadata {
   poolAddress: string;
@@ -12,11 +12,11 @@ export interface PoolMetadata {
 }
 
 export interface TokenInfo {
-    mintAddress: string;
-    decimals: number;
-    reserve: string;
-    // TODO: consider adding quote price to response
-    // currentPrice?: string 
+  mintAddress: string;
+  decimals: number;
+  reserve: string;
+  // TODO: consider adding quote price to response
+  // currentPrice?: string
 }
 
 export interface BinReserveInfo {

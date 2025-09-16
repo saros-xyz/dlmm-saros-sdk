@@ -1,5 +1,5 @@
-import { PublicKey, Transaction } from "@solana/web3.js";
-import { RemoveLiquidityType } from "../config";
+import { PublicKey, Transaction } from '@solana/web3.js';
+import { RemoveLiquidityType } from '../config';
 
 // Add liquidity operations
 export interface AddLiquidityIntoPositionParams {

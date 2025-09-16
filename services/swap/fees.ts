@@ -1,23 +1,13 @@
-import { DLMMPairAccount } from "../../types";
-import {
-  VARIABLE_FEE_PRECISION,
-  PRECISION_BIGINT,
-  MAX_BASIS_POINTS_BIGINT,
-} from "../../constants";
+import { DLMMPairAccount } from '../../types';
+import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT } from '../../constants';
 
 export class FeeCalculator {
   public static getVariableFee(pairInfo: DLMMPairAccount, volatilityAccumulator: number): bigint {
-    const variableFeeControl = BigInt(
-      pairInfo.staticFeeParameters.variableFeeControl
-    );
+    const variableFeeControl = BigInt(pairInfo.staticFeeParameters.variableFeeControl);
     if (variableFeeControl > BigInt(0)) {
-      const prod = BigInt(
-        Math.floor(volatilityAccumulator * pairInfo.binStep)
-      );
+      const prod = BigInt(Math.floor(volatilityAccumulator * pairInfo.binStep));
       const variableFee =
-        (prod * prod * variableFeeControl +
-          BigInt(VARIABLE_FEE_PRECISION) -
-          BigInt(1)) /
+        (prod * prod * variableFeeControl + BigInt(VARIABLE_FEE_PRECISION) - BigInt(1)) /
         BigInt(VARIABLE_FEE_PRECISION);
       return variableFee;
     }
@@ -35,8 +25,7 @@ export class FeeCalculator {
   }
 
   public static getFeeAmount(amount: bigint, fee: bigint): bigint {
-    const feeAmount =
-      (amount * fee + PRECISION_BIGINT - BigInt(1)) / PRECISION_BIGINT;
+    const feeAmount = (amount * fee + PRECISION_BIGINT - BigInt(1)) / PRECISION_BIGINT;
     return feeAmount;
   }
 
@@ -45,15 +34,10 @@ export class FeeCalculator {
     return protocolFee;
   }
 
-  public static getTotalFee(
-    pairInfo: DLMMPairAccount,
-    volatilityAccumulator: number
-  ): bigint {
+  public static getTotalFee(pairInfo: DLMMPairAccount, volatilityAccumulator: number): bigint {
     return (
-      this.getBaseFee(
-        pairInfo.binStep,
-        pairInfo.staticFeeParameters.baseFactor
-      ) + this.getVariableFee(pairInfo, volatilityAccumulator)
+      this.getBaseFee(pairInfo.binStep, pairInfo.staticFeeParameters.baseFactor) +
+      this.getVariableFee(pairInfo, volatilityAccumulator)
     );
   }
 }

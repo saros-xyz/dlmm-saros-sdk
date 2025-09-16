@@ -1,4 +1,4 @@
-import { DLMMPairAccount } from "../../types";
+import { DLMMPairAccount } from '../../types';
 
 export class VolatilityManager {
   private volatilityAccumulator: number = 0;
@@ -10,12 +10,11 @@ export class VolatilityManager {
     pairInfo: DLMMPairAccount,
     activeId: number,
     getCurrentSlot: () => Promise<number>,
-    getBlockTime: (slot: number) => Promise<number | null>
+    getBlockTime: (slot: number) => Promise<number | null>,
   ): Promise<void> {
     this.referenceId = pairInfo.dynamicFeeParameters.idReference;
     this.timeLastUpdated = pairInfo.dynamicFeeParameters.timeLastUpdated.toNumber();
-    this.volatilityReference =
-      pairInfo.dynamicFeeParameters.volatilityReference;
+    this.volatilityReference = pairInfo.dynamicFeeParameters.volatilityReference;
 
     const slot = await getCurrentSlot();
     const blockTimeStamp = await getBlockTime(slot);
@@ -46,15 +45,11 @@ export class VolatilityManager {
       10_000;
   }
 
-  public updateVolatilityAccumulator(
-    pairInfo: DLMMPairAccount,
-    activeId: number
-  ): void {
+  public updateVolatilityAccumulator(pairInfo: DLMMPairAccount, activeId: number): void {
     const deltaId = Math.abs(activeId - this.referenceId);
     const volatilityAccumulator = deltaId * 10000 + this.volatilityReference;
 
-    const maxVolatilityAccumulator =
-      pairInfo.staticFeeParameters.maxVolatilityAccumulator;
+    const maxVolatilityAccumulator = pairInfo.staticFeeParameters.maxVolatilityAccumulator;
 
     if (volatilityAccumulator > maxVolatilityAccumulator) {
       this.volatilityAccumulator = maxVolatilityAccumulator;

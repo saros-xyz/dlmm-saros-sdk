@@ -1,13 +1,10 @@
-import {
-  ACTIVE_ID,
-  MAX_BASIS_POINTS,
-} from "../constants";
+import { ACTIVE_ID, MAX_BASIS_POINTS } from '../constants';
 
 export const getPriceFromId = (
   bin_step: number,
   bin_id: number,
   baseTokenDecimal: number,
-  quoteTokenDecimal: number
+  quoteTokenDecimal: number,
 ): number => {
   // Use same base calculation as getIdFromPrice for consistency
   const base = 1 + bin_step / MAX_BASIS_POINTS;
@@ -21,11 +18,11 @@ export const getIdFromPrice = (
   price: number,
   binStep: number,
   baseTokenDecimal: number,
-  quoteTokenDecimal: number
+  quoteTokenDecimal: number,
 ): number => {
-  if (price <= 0) throw new Error("Price must be greater than 0");
+  if (price <= 0) throw new Error('Price must be greater than 0');
   if (binStep <= 0 || binStep > MAX_BASIS_POINTS)
-    throw new Error("Bin step invalid. (0 < binStep <= 10000)");
+    throw new Error('Bin step invalid. (0 < binStep <= 10000)');
 
   const decimalPow = Math.pow(10, quoteTokenDecimal - baseTokenDecimal);
 
@@ -43,4 +40,3 @@ export const getIdFromPrice = (
 // - getAmountOutByPrice → services/swap/calculations.ts
 // - getMinOutputWithSlippage → services/swap/calculations.ts
 // - getMaxInputWithSlippage → services/swap/calculations.ts
-  

@@ -1,13 +1,17 @@
 {
   "name": "@saros-finance/dlmm-sdk",
   "version": "1.4.0",
+  "type": "module",
   "description": "Saros DLMM (Dynamic Liquidity Market Maker) - the engine that powers the Internet Capital Market on Solana.",
   "main": "dist/index.js",
   "scripts": {
     "start": "tsdx watch --entry index.ts",
     "build": "tsdx build --entry index.ts",
-    "lint": "tsdx lint .",
-    "prepare": "tsdx build --entry index.ts",
+    "lint": "eslint . --ext .ts --fix",
+    "lint:check": "eslint . --ext .ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "fix": "prettier --write . && eslint . --ext .ts --fix",
     "test": "vitest"
   },
   "author": "Saros Finance",
@@ -29,7 +33,8 @@
     "@typescript-eslint/eslint-plugin": "^8.44.0",
     "@typescript-eslint/parser": "^8.44.0",
     "eslint": "^9.35.0",
-    "eslint-config-google": "^0.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
