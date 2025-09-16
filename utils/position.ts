@@ -270,9 +270,9 @@ export function createUniformDistribution(
   }
 
   if (shape === LiquidityShape.BidAsk) {
-    //MAX_BASIS_POINTS = 10000
-    //binRange = [min, max]
-    //activeid = 0
+    // MAX_BASIS_POINTS = 10_000
+    // binRange = [min, max]
+    // activeid = 0
 
     const activeBin = 0;
 

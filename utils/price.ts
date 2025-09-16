@@ -32,11 +32,3 @@ export const getIdFromPrice = (
 
   return binId;
 };
-
-// Functions moved to service-specific files:
-// - getPriceImpact → services/swap/calculations.ts
-// - getGasPrice → services/positions/gas.ts
-// - getAmountInByPrice → services/swap/calculations.ts
-// - getAmountOutByPrice → services/swap/calculations.ts
-// - getMinOutputWithSlippage → services/swap/calculations.ts
-// - getMaxInputWithSlippage → services/swap/calculations.ts

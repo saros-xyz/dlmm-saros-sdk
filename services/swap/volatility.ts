@@ -1,3 +1,4 @@
+import { MAX_BASIS_POINTS } from '../../constants';
 import { DLMMPairAccount } from '../../types';
 
 export class VolatilityManager {
@@ -42,12 +43,12 @@ export class VolatilityManager {
     this.volatilityReference =
       (pairInfo.dynamicFeeParameters.volatilityAccumulator *
         pairInfo.staticFeeParameters.reductionFactor) /
-      10_000;
+      MAX_BASIS_POINTS;
   }
 
   public updateVolatilityAccumulator(pairInfo: DLMMPairAccount, activeId: number): void {
     const deltaId = Math.abs(activeId - this.referenceId);
-    const volatilityAccumulator = deltaId * 10000 + this.volatilityReference;
+    const volatilityAccumulator = deltaId * MAX_BASIS_POINTS + this.volatilityReference;
 
     const maxVolatilityAccumulator = pairInfo.staticFeeParameters.maxVolatilityAccumulator;
 

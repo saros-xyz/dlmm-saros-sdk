@@ -23,11 +23,6 @@ import {
   getMaxInputWithSlippage,
 } from './calculations';
 
-// Classes moved to separate files:
-// - LBError → ./errors.ts
-// - BinArrayRange → ./bin-manager.ts
-// - SwapExecutor → ./execution.ts
-
 export class SwapService extends LiquidityBookAbstract {
   private volatilityManager: VolatilityManager;
   private swapExecutor: SwapExecutor;
