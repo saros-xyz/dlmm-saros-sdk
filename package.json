@@ -7,6 +7,7 @@
   "scripts": {
     "start": "tsdx watch --entry index.ts",
     "build": "tsdx build --entry index.ts",
+    "prepare": "tsdx build --entry index.ts",
     "lint": "eslint . --ext .ts --fix",
     "lint:check": "eslint . --ext .ts",
     "format": "prettier --write .",
