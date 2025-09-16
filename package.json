@@ -3,7 +3,16 @@
   "version": "1.4.0",
   "type": "module",
   "description": "Saros DLMM (Dynamic Liquidity Market Maker) - the engine that powers the Internet Capital Market on Solana.",
-  "main": "dist/index.js",
+   "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
     "start": "vite build --watch",
     "build": "vite build",
