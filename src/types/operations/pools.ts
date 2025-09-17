@@ -1,7 +1,8 @@
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 
 // Pool creation operations
-export interface CreatePairWithConfigParams {
+// TODO: rename to 'CreatePoolParams'
+export interface CreatePoolParams {
   tokenBase: {
     decimal: number;
     mintAddress: string;
@@ -16,21 +17,16 @@ export interface CreatePairWithConfigParams {
 }
 
 // Bin array operations
-export interface GetBinArrayParams {
-  binArrayIndex: number;
-  pair: PublicKey;
-  payer?: PublicKey;
-  transaction?: Transaction;
-}
+// these 2 currently unused
+// export interface GetBinArrayParams {
+//   binArrayIndex: number;
+//   pair: PublicKey;
+//   payer?: PublicKey;
+//   transaction?: Transaction;
+// }
 
-export interface GetBinsArrayInfoParams {
-  binArrayIndex: number;
-  pair: PublicKey;
-  payer: PublicKey;
-}
-
-export interface GetBinsReserveParams {
-  position: PublicKey;
-  pair: PublicKey;
-  payer: PublicKey;
-}
+// export interface GetBinsArrayInfoParams {
+//   binArrayIndex: number;
+//   pair: PublicKey;
+//   payer: PublicKey;
+// }
