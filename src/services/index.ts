@@ -15,7 +15,7 @@ import {
   BinReserveInfo,
   UserPositionsParams,
   PositionInfo,
-  CreatePairWithConfigParams as CreatePoolParams,
+  CreatePoolParams,
   PoolMetadata,
   DLMMPairAccount,
 } from '../types';

@@ -1,18 +1,13 @@
 import { BN, utils } from '@coral-xyz/anchor';
 import { PublicKey, Transaction, TransactionMessage } from '@solana/web3.js';
-import * as spl from '@solana/spl-token';
 import { Buffer } from 'buffer';
 import bs58 from 'bs58';
 import { LiquidityBookAbstract } from '../base/abstract';
 import { BinArrayManager } from './bins';
 import { BIN_ARRAY_SIZE } from '../../constants';
-import {
-  CreatePairWithConfigParams,
-  DLMMPairAccount,
-  PoolMetadata,
-  ILiquidityBookConfig,
-} from '../../types';
+import { CreatePoolParams, DLMMPairAccount, PoolMetadata, ILiquidityBookConfig } from '../../types';
 import { getIdFromPrice } from '../../utils/price';
+import { getPairVaultInfo } from '../../utils/vaults';
 import LiquidityBookIDL from '../../constants/idl/liquidity_book.json';
 import { PoolServiceError } from './errors';
 
@@ -28,7 +23,7 @@ export class PoolService extends LiquidityBookAbstract {
     return pairInfo;
   }
 
-  public async createPairWithConfig(params: CreatePairWithConfigParams) {
+  public async createPairWithConfig(params: CreatePoolParams) {
     const { tokenBase, tokenQuote, binStep, ratePrice, payer } = params;
 
     const tokenX = new PublicKey(tokenBase.mintAddress);
@@ -131,14 +126,20 @@ export class PoolService extends LiquidityBookAbstract {
       throw new Error('Pair not found');
     }
 
-    const basePairVault = await this.getPairVaultInfo({
-      tokenAddress: new PublicKey(pairInfo.tokenMintX),
-      pair: new PublicKey(pair),
-    });
-    const quotePairVault = await this.getPairVaultInfo({
-      tokenAddress: new PublicKey(pairInfo.tokenMintY),
-      pair: new PublicKey(pair),
-    });
+    const basePairVault = await getPairVaultInfo(
+      {
+        tokenAddress: new PublicKey(pairInfo.tokenMintX),
+        pair: new PublicKey(pair),
+      },
+      this.connection
+    );
+    const quotePairVault = await getPairVaultInfo(
+      {
+        tokenAddress: new PublicKey(pairInfo.tokenMintY),
+        pair: new PublicKey(pair),
+      },
+      this.connection
+    );
 
     const [baseReserve, quoteReserve] = await Promise.all([
       this.connection.getTokenAccountBalance(basePairVault).catch(() => ({
@@ -176,42 +177,6 @@ export class PoolService extends LiquidityBookAbstract {
         hook: pairInfo.hook?.toString(),
       },
     };
-  }
-
-  private async getPairVaultInfo(params: {
-    tokenAddress: PublicKey;
-    pair: PublicKey;
-    payer?: PublicKey;
-    transaction?: Transaction;
-  }) {
-    const { tokenAddress, pair, payer, transaction } = params;
-
-    const tokenMint = new PublicKey(tokenAddress);
-    const tokenProgram = await this.getTokenProgram(tokenMint);
-
-    const associatedPairVault = spl.getAssociatedTokenAddressSync(
-      tokenMint,
-      pair,
-      true,
-      tokenProgram
-    );
-
-    if (transaction && payer) {
-      const infoPairVault = await this.connection.getAccountInfo(associatedPairVault);
-
-      if (!infoPairVault) {
-        const pairVaultYInstructions = spl.createAssociatedTokenAccountInstruction(
-          payer,
-          associatedPairVault,
-          pair,
-          tokenMint,
-          tokenProgram
-        );
-        transaction.add(pairVaultYInstructions);
-      }
-    }
-
-    return associatedPairVault;
   }
 
   public async getAllPoolAddresses(): Promise<string[]> {
