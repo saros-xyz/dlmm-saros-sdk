@@ -1,5 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 
+// TODO: create single interface for optional params
+// for both swap and quote
 export interface SwapOptions {
   isExactInput?: boolean;
 }

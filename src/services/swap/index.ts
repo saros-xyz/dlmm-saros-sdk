@@ -62,6 +62,7 @@ export class SwapService extends LiquidityBookAbstract {
       );
 
       // Fetch bin arrays in batch, fallback to empty if not found
+      // TODO: return errror instead of empty bin array if not found
       const binArrays: BinArray[] = await Promise.all(
         binArrayAddresses.map((address, i) =>
           //@ts-ignore
@@ -77,6 +78,8 @@ export class SwapService extends LiquidityBookAbstract {
         .getAllBins()
         .reduce((acc, cur) => acc.add(new BN(cur.totalSupply.toString())), new BN(0));
       if (totalSupply.isZero()) {
+        // no liquidity
+        // TODO: throw error instead?
         return {
           amountIn: BigInt(0),
           amountOut: BigInt(0),
@@ -213,6 +216,7 @@ export class SwapService extends LiquidityBookAbstract {
       await this.volatilityManager.updateReferences(
         pairInfo,
         activeId,
+        // can we pass the values directly instead of functions?
         () => this.connection.getSlot(),
         (slot) => this.connection.getBlockTime(slot)
       );
