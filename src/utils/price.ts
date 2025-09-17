@@ -1,14 +1,18 @@
 import { ACTIVE_ID, MAX_BASIS_POINTS } from '../constants';
+import { PoolServiceError } from '../services/pools/errors';
 
 export const getPriceFromId = (
-  bin_step: number,
-  bin_id: number,
+  binStep: number,
+  binId: number,
   baseTokenDecimal: number,
   quoteTokenDecimal: number
 ): number => {
-  // Use same base calculation as getIdFromPrice for consistency
-  const base = 1 + bin_step / MAX_BASIS_POINTS;
-  const exponent = bin_id - ACTIVE_ID;
+  if (binStep <= 0 || binStep > MAX_BASIS_POINTS) {
+    throw PoolServiceError.InvalidBinStep;
+  }
+
+  const base = 1 + binStep / MAX_BASIS_POINTS;
+  const exponent = binId - ACTIVE_ID;
   const decimalPow = Math.pow(10, baseTokenDecimal - quoteTokenDecimal);
 
   return Math.pow(base, exponent) * decimalPow;
@@ -20,9 +24,12 @@ export const getIdFromPrice = (
   baseTokenDecimal: number,
   quoteTokenDecimal: number
 ): number => {
-  if (price <= 0) throw new Error('Price must be greater than 0');
-  if (binStep <= 0 || binStep > MAX_BASIS_POINTS)
-    throw new Error('Bin step invalid. (0 < binStep <= 10000)');
+  if (price <= 0) {
+    throw PoolServiceError.InvalidPrice;
+  }
+  if (binStep <= 0 || binStep > MAX_BASIS_POINTS) {
+    throw PoolServiceError.InvalidBinStep;
+  }
 
   const decimalPow = Math.pow(10, quoteTokenDecimal - baseTokenDecimal);
 

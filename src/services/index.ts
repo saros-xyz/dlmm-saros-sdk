@@ -1,9 +1,8 @@
-import { LiquidityBookAbstract } from './base/abstract';
+import { SarosBaseService, SarosConfig } from './base';
 import { SwapService } from './swap/index';
 import { PositionService } from './positions/index';
 import { PoolService } from './pools/index';
 import {
-  ILiquidityBookConfig,
   SwapParams,
   QuoteParams,
   QuoteResponse,
@@ -11,24 +10,24 @@ import {
   AddLiquidityIntoPositionParams,
   RemoveMultipleLiquidityParams,
   RemoveMultipleLiquidityResponse,
-  GetBinsReserveParams,
-  BinReserveInfo,
-  UserPositionsParams,
+  GetUserPositionsParams,
   PositionInfo,
   CreatePoolParams,
   PoolMetadata,
   DLMMPairAccount,
+  GetPoolLiquidityParams,
+  PoolLiquidityData,
 } from '../types';
 import { Transaction } from '@solana/web3.js';
 import { PoolServiceError } from './pools/errors';
 
-export class LiquidityBookServices extends LiquidityBookAbstract {
+export class LiquidityBookServices extends SarosBaseService {
   bufferGas?: number;
   private swapService: SwapService;
   private positionService: PositionService;
   private poolService: PoolService;
 
-  constructor(config: ILiquidityBookConfig) {
+  constructor(config: SarosConfig) {
     super(config);
     this.swapService = new SwapService(config);
     this.positionService = new PositionService(config);
@@ -55,13 +54,13 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
   //
   public async createPosition(params: CreatePositionParams) {
     // get pair info first to verify pool exists and pass to createPosition
-    const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.pair);
+    const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
     return this.positionService.createPosition(params, pairInfo);
   }
 
   public async addLiquidityIntoPosition(params: AddLiquidityIntoPositionParams) {
     // same here
-    const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.pair);
+    const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
     return this.positionService.addLiquidityIntoPosition(params, pairInfo);
   }
 
@@ -71,12 +70,11 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     return this.positionService.removeMultipleLiquidity(params);
   }
 
-  public async getBinsReserveInformation(params: GetBinsReserveParams): Promise<BinReserveInfo[]> {
-    return this.positionService.getBinsReserveInformation(params);
-  }
-
-  public async getUserPositions({ payer, pair }: UserPositionsParams): Promise<PositionInfo[]> {
-    return this.positionService.getUserPositions({ payer, pair });
+  /**
+   * Get all user positions in a specific pool
+   */
+  public async getUserPositions(params: GetUserPositionsParams): Promise<PositionInfo[]> {
+    return this.positionService.getUserPositions(params);
   }
 
   //
@@ -96,5 +94,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
   public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
     return this.poolService.listenNewPoolAddress(postTxFunction);
+  }
+
+  // ** NEW: Get all bins with liquidity for a given pool
+  public async getPoolLiquidity(params: GetPoolLiquidityParams): Promise<PoolLiquidityData> {
+    return this.poolService.getPoolLiquidity(params);
   }
 }

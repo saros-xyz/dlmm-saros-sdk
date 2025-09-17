@@ -2,17 +2,25 @@ import { BN, utils } from '@coral-xyz/anchor';
 import { PublicKey, Transaction, TransactionMessage } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import bs58 from 'bs58';
-import { LiquidityBookAbstract } from '../base/abstract';
+import { SarosBaseService, SarosConfig } from '../base';
 import { BinArrayManager } from './bins';
 import { BIN_ARRAY_SIZE } from '../../constants';
-import { CreatePoolParams, DLMMPairAccount, PoolMetadata, ILiquidityBookConfig } from '../../types';
-import { getIdFromPrice } from '../../utils/price';
+import {
+  CreatePoolParams,
+  DLMMPairAccount,
+  PoolMetadata,
+  GetPoolLiquidityParams,
+  PoolLiquidityData,
+  BinLiquidityData,
+  Bin,
+} from '../../types';
+import { getIdFromPrice, getPriceFromId } from '../../utils/price';
 import { getPairVaultInfo } from '../../utils/vaults';
 import LiquidityBookIDL from '../../constants/idl/liquidity_book.json';
 import { PoolServiceError } from './errors';
 
-export class PoolService extends LiquidityBookAbstract {
-  constructor(config: ILiquidityBookConfig) {
+export class PoolService extends SarosBaseService {
+  constructor(config: SarosConfig) {
     super(config);
   }
 
@@ -24,12 +32,12 @@ export class PoolService extends LiquidityBookAbstract {
   }
 
   public async createPairWithConfig(params: CreatePoolParams) {
-    const { tokenBase, tokenQuote, binStep, ratePrice, payer } = params;
+    const { baseToken, quoteToken, binStep, ratePrice, payer } = params;
 
-    const tokenX = new PublicKey(tokenBase.mintAddress);
-    const tokenY = new PublicKey(tokenQuote.mintAddress);
+    const tokenX = new PublicKey(baseToken.mintAddress);
+    const tokenY = new PublicKey(quoteToken.mintAddress);
 
-    const id = getIdFromPrice(ratePrice || 1, binStep, tokenBase.decimal, tokenQuote.decimal);
+    const id = getIdFromPrice(ratePrice, binStep, baseToken.decimals, quoteToken.decimals);
 
     let binArrayIndex = id / BIN_ARRAY_SIZE;
 
@@ -128,14 +136,14 @@ export class PoolService extends LiquidityBookAbstract {
 
     const basePairVault = await getPairVaultInfo(
       {
-        tokenAddress: new PublicKey(pairInfo.tokenMintX),
+        tokenMint: new PublicKey(pairInfo.tokenMintX),
         pair: new PublicKey(pair),
       },
       this.connection
     );
     const quotePairVault = await getPairVaultInfo(
       {
-        tokenAddress: new PublicKey(pairInfo.tokenMintY),
+        tokenMint: new PublicKey(pairInfo.tokenMintY),
         pair: new PublicKey(pair),
       },
       this.connection
@@ -273,5 +281,83 @@ export class PoolService extends LiquidityBookAbstract {
         '';
     }
     return pairAddress;
+  }
+
+  public async getPoolLiquidity(params: GetPoolLiquidityParams): Promise<PoolLiquidityData> {
+    // fetch 1 bin array on each side of active by default
+    const { poolAddress, arrayRange = 1 } = params;
+
+    // Get basic pool information
+    const [metadata, pairAccount] = await Promise.all([
+      this.getPoolMetadata(poolAddress.toString()),
+      this.getPoolAccount(poolAddress),
+    ]);
+
+    const activeBin = pairAccount.activeId;
+    const binStep = pairAccount.binStep;
+    const activeBinArrayIndex = BinArrayManager.calculateBinArrayIndex(activeBin);
+
+    // Fetch bin arrays around the active bin
+    const binArrayIndices: number[] = [];
+    for (let i = -Math.floor(arrayRange / 2); i <= Math.floor(arrayRange / 2); i++) {
+      binArrayIndices.push(activeBinArrayIndex + i);
+    }
+
+    // Fetch all bin arrays
+    const binArrayPromises = binArrayIndices.map(async (index) => {
+      try {
+        const binArrayAddress = BinArrayManager.getBinArrayAddress(
+          index,
+          poolAddress,
+          this.getDexProgramId()
+        );
+        //@ts-ignore
+        const binArrayAccount = await this.lbProgram.account.binArray.fetch(binArrayAddress);
+        return { index, bins: binArrayAccount.bins };
+      } catch {
+        // Bin array doesn't exist, return empty
+        return { index, bins: [] };
+      }
+    });
+
+    const binArrayResults = await Promise.all(binArrayPromises);
+
+    // Process all bins with liquidity
+    const binLiquidityData: BinLiquidityData[] = [];
+
+    binArrayResults.forEach(({ index: arrayIndex, bins }) => {
+      bins.forEach((bin: Bin, binIndex: number) => {
+        if (bin.reserveX > 0n || bin.reserveY > 0n) {
+          const binId = arrayIndex * BIN_ARRAY_SIZE + binIndex;
+
+          const binPrice = getPriceFromId(
+            binStep,
+            binId,
+            metadata.baseToken.decimals,
+            metadata.quoteToken.decimals
+          );
+
+          // Convert reserves to human readable amounts
+          const baseReserve = Number(bin.reserveX) / Math.pow(10, metadata.baseToken.decimals);
+          const quoteReserve = Number(bin.reserveY) / Math.pow(10, metadata.quoteToken.decimals);
+
+          binLiquidityData.push({
+            binId,
+            price: binPrice,
+            baseReserve,
+            quoteReserve,
+          });
+        }
+      });
+    });
+
+    // Sort bins by binId
+    binLiquidityData.sort((a, b) => a.binId - b.binId);
+
+    return {
+      activeBin,
+      binStep,
+      bins: binLiquidityData,
+    };
   }
 }

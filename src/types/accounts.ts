@@ -1,9 +1,10 @@
 import { PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 
-// Raw Anchor account types
-// TODO: create remaining account types
-// consider using auto-generation from IDL (codeama)
+/**
+ * Raw on-chain pair account structure - mirrors Anchor program state
+ * Referred to as "Pool" in the SDK
+ */
 export interface DLMMPairAccount {
   bump: number[];
   liquidityBookConfig: PublicKey;
@@ -34,6 +35,9 @@ export interface DLMMPairAccount {
   hook: PublicKey | null;
 }
 
+/**
+ * Raw on-chain position account structure - mirrors Anchor program state
+ */
 export interface PositionAccount {
   pair: PublicKey;
   positionMint: PublicKey;

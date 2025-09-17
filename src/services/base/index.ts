@@ -1,20 +1,28 @@
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Commitment, Connection, ConnectionConfig, PublicKey } from '@solana/web3.js';
 import { AnchorProvider, Idl, Program, Wallet } from '@coral-xyz/anchor';
 import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { ILiquidityBookConfig, MODE } from '../../types';
 import { RPC_CONFIG } from '../../constants';
 import LiquidityBookIDL from '../../constants/idl/liquidity_book.json';
 import MdmaIDL from '../../constants/idl/mdma_hook.json';
 import LiquidityBookIDLDevnet from '../../constants/idl_devnet/liquidity_book.json';
 import MdmaIDLDevnet from '../../constants/idl_devnet/mdma_hook.json';
+import { MODE } from '../../types/config';
 
-export abstract class LiquidityBookAbstract {
+export interface SarosConfig {
+  mode: MODE;
+  options?: {
+    rpcUrl: string;
+    commitmentOrConfig?: Commitment | ConnectionConfig;
+  };
+}
+
+export abstract class SarosBaseService {
   connection: Connection;
   lbProgram!: Program<Idl>;
   hooksProgram!: Program<Idl>;
   mode!: MODE;
 
-  constructor(config: ILiquidityBookConfig) {
+  constructor(config: SarosConfig) {
     // Initialize RPC connection
     this.connection = new Connection(
       config.options?.rpcUrl || RPC_CONFIG[config.mode].rpc,

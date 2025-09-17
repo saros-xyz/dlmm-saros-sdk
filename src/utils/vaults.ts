@@ -2,14 +2,14 @@ import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 
 export interface GetPairVaultInfoParams {
-  tokenAddress: PublicKey;
+  tokenMint: PublicKey;
   pair: PublicKey;
   payer?: PublicKey;
   transaction?: Transaction;
 }
 
 export interface GetUserVaultInfoParams {
-  tokenAddress: PublicKey;
+  tokenMint: PublicKey;
   payer: PublicKey;
   transaction?: Transaction;
 }
@@ -30,9 +30,8 @@ export async function getPairVaultInfo(
   params: GetPairVaultInfoParams,
   connection: Connection
 ): Promise<PublicKey> {
-  const { tokenAddress, pair, payer, transaction } = params;
+  const { tokenMint, pair, payer, transaction } = params;
 
-  const tokenMint = new PublicKey(tokenAddress);
   const tokenProgram = await getTokenProgram(tokenMint, connection);
 
   const associatedPairVault = spl.getAssociatedTokenAddressSync(
@@ -64,10 +63,10 @@ export async function getUserVaultInfo(
   params: GetUserVaultInfoParams,
   connection: Connection
 ): Promise<PublicKey> {
-  const { tokenAddress, payer, transaction } = params;
-  const tokenProgram = await getTokenProgram(tokenAddress, connection);
+  const { tokenMint, payer, transaction } = params;
+  const tokenProgram = await getTokenProgram(tokenMint, connection);
   const associatedUserVault = spl.getAssociatedTokenAddressSync(
-    tokenAddress,
+    tokenMint,
     payer,
     true,
     tokenProgram
@@ -81,7 +80,7 @@ export async function getUserVaultInfo(
         payer,
         associatedUserVault,
         payer,
-        tokenAddress,
+        tokenMint,
         tokenProgram
       );
       transaction.add(userVaultInstructions);

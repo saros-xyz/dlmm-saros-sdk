@@ -1,6 +1,6 @@
 import { BN, utils } from '@coral-xyz/anchor';
 import { PublicKey, Transaction } from '@solana/web3.js';
-import { LiquidityBookAbstract } from '../base/abstract';
+import { SarosBaseService, SarosConfig } from '../base';
 import { FeeCalculator } from './fees';
 import { VolatilityManager } from './volatility';
 import { BinArrayRange } from './bin-manager';
@@ -12,7 +12,6 @@ import {
   QuoteResponse,
   SwapParams,
   BinArray,
-  ILiquidityBookConfig,
   PoolMetadata,
 } from '../../types';
 import { getPriceFromId } from '../../utils/price';
@@ -26,11 +25,11 @@ import {
 import { PoolServiceError } from '../pools/errors';
 import { SwapServiceError } from './errors';
 
-export class SwapService extends LiquidityBookAbstract {
+export class SwapService extends SarosBaseService {
   private volatilityManager: VolatilityManager;
   private swapExecutor: SwapExecutor;
 
-  constructor(config: ILiquidityBookConfig) {
+  constructor(config: SarosConfig) {
     super(config);
     this.volatilityManager = new VolatilityManager();
     this.swapExecutor = new SwapExecutor(

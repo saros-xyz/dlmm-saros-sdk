@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { LiquidityBookServices } from '../src';
 import { MODE } from '../src/types';
+import { PublicKey } from '@solana/web3.js';
 
 const lbServices = new LiquidityBookServices({
   mode: MODE.MAINNET,
   options: {
-    rpcUrl: 'https://api.mainnet-beta.solana.com',
+    rpcUrl: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
   },
 });
 
@@ -57,54 +58,91 @@ describe('getAllPoolAddresses', () => {
   });
 });
 
-// describe('getPairAccount', () => {
-//   it('should fetch and validate pair account type for USDC/USDT Pool', async () => {
-//     const poolId = '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk'; // USDC/USDT
-//     const pairAccount = await lbServices.getPoolAccount(new PublicKey(poolId));
+describe('getPoolLiquidity', () => {
+  it('should return liquidity data with active bin and bins', async () => {
+    const poolId = '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk'; // USDC/USDT
+    const liquidityData = await lbServices.getPoolLiquidity({
+      poolAddress: new PublicKey(poolId),
+      arrayRange: 3,
+    });
 
-//     expect(pairAccount).toBeDefined();
-//     expect(pairAccount.bump).toBeInstanceOf(Array);
-//     expect(pairAccount.bump.length).toBe(1);
-//     expect(typeof pairAccount.binStep).toBe('number');
-//     expect(pairAccount.binStepSeed).toBeInstanceOf(Array);
-//     expect(pairAccount.tokenMintX).toBeInstanceOf(PublicKey);
-//     expect(pairAccount.tokenMintY).toBeInstanceOf(PublicKey);
-//     expect(typeof pairAccount.activeId).toBe('number');
+    expect(liquidityData.activeBin).toBeDefined();
+    expect(liquidityData.binStep).toBeGreaterThan(0);
+    expect(liquidityData.bins.length).toBeGreaterThan(0);
 
-//     // Validate staticFeeParameters structure
-//     expect(pairAccount.staticFeeParameters).toBeDefined();
-//     expect(typeof pairAccount.staticFeeParameters.baseFactor).toBe('number');
-//     expect(typeof pairAccount.staticFeeParameters.filterPeriod).toBe('number');
-//     expect(typeof pairAccount.staticFeeParameters.decayPeriod).toBe('number');
-//     expect(typeof pairAccount.staticFeeParameters.reductionFactor).toBe('number');
-//     expect(typeof pairAccount.staticFeeParameters.variableFeeControl).toBe('number');
-//     expect(typeof pairAccount.staticFeeParameters.maxVolatilityAccumulator).toBe('number');
-//     expect(typeof pairAccount.staticFeeParameters.protocolShare).toBe('number');
-//     expect(pairAccount.staticFeeParameters.space).toBeInstanceOf(Array);
-//     expect(pairAccount.staticFeeParameters.space.length).toBe(2);
+    // Should contain the active bin in the bins array
+    const activeBin = liquidityData.bins.find((bin) => bin.binId === liquidityData.activeBin);
+    expect(activeBin).toBeDefined();
+  });
 
-//     // Validate dynamicFeeParameters structure
-//     expect(pairAccount.dynamicFeeParameters).toBeDefined();
-//     expect(pairAccount.dynamicFeeParameters.timeLastUpdated).toBeDefined(); // BN object
-//     expect(typeof pairAccount.dynamicFeeParameters.volatilityAccumulator).toBe('number');
-//     expect(typeof pairAccount.dynamicFeeParameters.volatilityReference).toBe('number');
-//     expect(typeof pairAccount.dynamicFeeParameters.idReference).toBe('number');
-//     expect(pairAccount.dynamicFeeParameters.space).toBeInstanceOf(Array);
-//     expect(pairAccount.dynamicFeeParameters.space.length).toBe(4);
+  it('should work with default arrayRange parameter', async () => {
+    const poolId = '8vZHTVMdYvcPFUoHBEbcFyfSKnjWtvbNgYpXg1aiC2uS'; // SOL/USDC
+    const liquidityData = await lbServices.getPoolLiquidity({
+      poolAddress: new PublicKey(poolId),
+    });
 
-//     // Validate protocol fees are BN objects
-//     expect(pairAccount.protocolFeesX).toBeDefined();
-//     expect(pairAccount.protocolFeesY).toBeDefined();
+    expect(liquidityData.activeBin).toBeDefined();
+    expect(liquidityData.bins.length).toBeGreaterThan(0);
+  });
 
-//     // Hook can be null or PublicKey
-//     if (pairAccount.hook !== null) {
-//       expect(pairAccount.hook).toBeInstanceOf(PublicKey);
-//     }
-//   });
+  it('should handle different arrayRange values correctly', async () => {
+    const poolId = '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk'; // USDC/USDT
 
-//   it('should throw error for invalid pair address', async () => {
-//     const invalidPairId = '11111111111111111111111111111111'; // Invalid address
+    const range1 = await lbServices.getPoolLiquidity({
+      poolAddress: new PublicKey(poolId),
+      arrayRange: 1,
+    });
 
-//     await expect(lbServices.getPairAccount(new PublicKey(invalidPairId))).rejects.toThrow();
-//   });
-// });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const range5 = await lbServices.getPoolLiquidity({
+      poolAddress: new PublicKey(poolId),
+      arrayRange: 5,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const range10 = await lbServices.getPoolLiquidity({
+      poolAddress: new PublicKey(poolId),
+      arrayRange: 10,
+    });
+
+    // All should return valid data
+    expect(range1.bins.length).toBeGreaterThan(0);
+    expect(range5.bins.length).toBeGreaterThan(0);
+    expect(range10.bins.length).toBeGreaterThan(0);
+
+    // Active bin should be consistent across all ranges
+    expect(range1.activeBin).toBe(range5.activeBin);
+    expect(range5.activeBin).toBe(range10.activeBin);
+
+    // Larger ranges should generally return more bins (or at least same amount)
+    expect(range5.bins.length).toBeGreaterThanOrEqual(range1.bins.length);
+    expect(range10.bins.length).toBeGreaterThanOrEqual(range5.bins.length);
+
+    // Calculate total reserves across all bins for each range
+    const range1TotalBase = range1.bins.reduce((sum, bin) => sum + bin.baseReserve, 0);
+    const range5TotalBase = range5.bins.reduce((sum, bin) => sum + bin.baseReserve, 0);
+    const range10TotalBase = range10.bins.reduce((sum, bin) => sum + bin.baseReserve, 0);
+
+    const range1TotalQuote = range1.bins.reduce((sum, bin) => sum + bin.quoteReserve, 0);
+    const range5TotalQuote = range5.bins.reduce((sum, bin) => sum + bin.quoteReserve, 0);
+    const range10TotalQuote = range10.bins.reduce((sum, bin) => sum + bin.quoteReserve, 0);
+
+    // Larger ranges should capture more total liquidity
+    expect(range5TotalBase).toBeGreaterThanOrEqual(range1TotalBase);
+    expect(range10TotalBase).toBeGreaterThanOrEqual(range5TotalBase);
+    expect(range5TotalQuote).toBeGreaterThanOrEqual(range1TotalQuote);
+    expect(range10TotalQuote).toBeGreaterThanOrEqual(range5TotalQuote);
+  });
+
+  it('should reject invalid pool addresses', async () => {
+    const invalidPoolId = '11111111111111111111111111111111';
+
+    await expect(
+      lbServices.getPoolLiquidity({
+        poolAddress: new PublicKey(invalidPoolId),
+      })
+    ).rejects.toThrow();
+  });
+});

@@ -1,40 +1,36 @@
 import { PublicKey } from '@solana/web3.js';
 
-// TODO: create single interface for optional params
-// for both swap and quote
-export interface SwapOptions {
-  isExactInput?: boolean;
-}
-
-// Swap operation parameters
 export interface SwapParams {
+  // TODO: consider rename to inputToken/outputToken - tokenMintX/Y is unclear which is which
   tokenMintX: PublicKey;
   tokenMintY: PublicKey;
   amount: bigint;
-  // what is otherAmountOffset? Why is the user required to provide it?
+  /** Slippage protection threshold - unclear naming, consider minAmountOut/maxAmountIn */
   otherAmountOffset: bigint;
+  /** Direction: true = X to Y, false = Y to X */
   swapForY: boolean;
   isExactInput: boolean;
   pair: PublicKey;
   hook: PublicKey;
   payer: PublicKey;
-  // why is slippage not a parameter for swap?
 }
 
-// Quote/output calculation parameters
 export interface QuoteParams {
   pair: PublicKey;
   amount: bigint;
+  /** Direction: true = X to Y, false = Y to X */
   swapForY: boolean;
   isExactInput: boolean;
+  /** Slippage percentage (0-100) */
   slippage: number;
 }
 
-// Quote/output calculation response
 export interface QuoteResponse {
   amountIn: bigint;
   amountOut: bigint;
+  /** Price impact as percentage */
   priceImpact: number;
   amount: bigint;
+  /** Slippage-adjusted threshold - unclear naming, consider minAmountOut/maxAmountIn */
   otherAmountOffset: bigint;
 }

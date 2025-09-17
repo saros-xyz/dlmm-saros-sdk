@@ -1,15 +1,3 @@
-import { Commitment, ConnectionConfig } from '@solana/web3.js';
-
-// Main config interface
-export interface ILiquidityBookConfig {
-  mode: MODE;
-  options?: {
-    rpcUrl: string;
-    commitmentOrConfig?: Commitment | ConnectionConfig;
-  };
-}
-
-// Enums
 export enum MODE {
   TESTNET = 'testnet',
   DEVNET = 'devnet',

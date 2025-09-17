@@ -1,10 +1,10 @@
 import { BN } from '@coral-xyz/anchor';
-import { BinReserveInfo, RemoveLiquidityType } from '../../types';
+import { PositionBinReserve, RemoveLiquidityType } from '../../types';
 import { FIXED_LENGTH } from '../../constants';
 
 export class LiquidityHelper {
   public static calculateRemovedShares(
-    reserveXY: BinReserveInfo[],
+    reserveXY: PositionBinReserve[],
     type: RemoveLiquidityType,
     start: number,
     end: number
@@ -12,7 +12,7 @@ export class LiquidityHelper {
     let removedShares: BN[] = [];
 
     if (type === RemoveLiquidityType.All) {
-      removedShares = reserveXY.map((reserve: BinReserveInfo) => {
+      removedShares = reserveXY.map((reserve: PositionBinReserve) => {
         const binId = reserve.binId;
         if (binId >= Number(start) && binId <= Number(end)) {
           return new BN(reserve.liquidityShare.toString());
@@ -22,7 +22,7 @@ export class LiquidityHelper {
     }
 
     if (type === RemoveLiquidityType.BaseToken) {
-      removedShares = reserveXY.map((reserve: BinReserveInfo) => {
+      removedShares = reserveXY.map((reserve: PositionBinReserve) => {
         if (reserve.reserveX > 0n && reserve.reserveY === 0n) {
           return new BN(reserve.liquidityShare.toString());
         }
@@ -31,7 +31,7 @@ export class LiquidityHelper {
     }
 
     if (type === RemoveLiquidityType.QuoteToken) {
-      removedShares = reserveXY.map((reserve: BinReserveInfo) => {
+      removedShares = reserveXY.map((reserve: PositionBinReserve) => {
         if (reserve.reserveY > 0n && reserve.reserveX === 0n) {
           return new BN(reserve.liquidityShare.toString());
         }
@@ -43,10 +43,10 @@ export class LiquidityHelper {
   }
 
   public static getAvailableShares(
-    reserveXY: BinReserveInfo[],
+    reserveXY: PositionBinReserve[],
     type: RemoveLiquidityType
-  ): BinReserveInfo[] {
-    return reserveXY.filter((item: BinReserveInfo) =>
+  ): PositionBinReserve[] {
+    return reserveXY.filter((item: PositionBinReserve) =>
       type === RemoveLiquidityType.All
         ? item.liquidityShare > 0n
         : type === RemoveLiquidityType.QuoteToken
@@ -59,7 +59,7 @@ export class LiquidityHelper {
     type: RemoveLiquidityType,
     start: number,
     end: number,
-    availableShares: BinReserveInfo[]
+    availableShares: PositionBinReserve[]
   ): boolean {
     return (
       (type === RemoveLiquidityType.All && end - start + 1 >= availableShares.length) ||

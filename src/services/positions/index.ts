@@ -3,7 +3,7 @@ import { PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import cloneDeep from 'lodash/cloneDeep';
 import { chunk } from 'lodash';
-import { LiquidityBookAbstract } from '../base/abstract';
+import { SarosBaseService, SarosConfig } from '../base';
 import { LiquidityHelper } from './liquidity';
 import {
   BIN_ARRAY_INDEX,
@@ -13,17 +13,15 @@ import {
 } from '../../constants';
 import {
   AddLiquidityIntoPositionParams,
-  BinReserveInfo,
+  PositionBinReserve,
   CreatePositionParams,
-  GetBinsReserveParams,
   RemoveMultipleLiquidityParams,
   RemoveMultipleLiquidityResponse,
-  UserPositionsParams,
+  GetUserPositionsParams,
   BinArray,
   PositionAccount,
   PositionInfo,
   DLMMPairAccount,
-  ILiquidityBookConfig,
 } from '../../types';
 import {
   addComputeBudgetInstructions,
@@ -33,10 +31,10 @@ import {
 import { getGasPrice, getComputeUnitPrice } from './gas';
 import { getUserVaultInfo, getPairVaultInfo } from '../../utils/vaults';
 
-export class PositionService extends LiquidityBookAbstract {
+export class PositionService extends SarosBaseService {
   bufferGas?: number;
 
-  constructor(config: ILiquidityBookConfig) {
+  constructor(config: SarosConfig) {
     super(config);
   }
 
@@ -118,7 +116,11 @@ export class PositionService extends LiquidityBookAbstract {
     return binArray;
   }
 
-  public async getBinsReserveInformation(params: GetBinsReserveParams): Promise<BinReserveInfo[]> {
+  private async getBinsReserveInformation(params: {
+    position: PublicKey;
+    pair: PublicKey;
+    payer: PublicKey;
+  }): Promise<PositionBinReserve[]> {
     const { position, pair, payer } = params;
     const positionInfo = await this.getPositionAccount(position);
     const firstBinId = positionInfo.lowerBinId;
@@ -176,7 +178,7 @@ export class PositionService extends LiquidityBookAbstract {
   }
 
   async createPosition(params: CreatePositionParams, pairInfo: DLMMPairAccount) {
-    const { payer, relativeBinIdLeft, relativeBinIdRight, pair, positionMint, transaction } =
+    const { payer, relativeBinIdLeft, relativeBinIdRight, poolAddress, positionMint, transaction } =
       params;
     // const tokenProgramX = await this.getTokenProgram(pairInfo.tokenMintX);
     // const tokenProgramY = await this.getTokenProgram(pairInfo.tokenMintY);
@@ -201,14 +203,14 @@ export class PositionService extends LiquidityBookAbstract {
 
     await this.getBinArray({
       binArrayIndex: binArrayIndexLower,
-      pair,
+      pair: poolAddress,
       payer,
     });
 
     if (binArrayIndexLower !== binArrayIndexUpper) {
       await this.getBinArray({
         binArrayIndex: binArrayIndexUpper,
-        pair,
+        pair: poolAddress,
         payer,
       });
     }
@@ -216,7 +218,7 @@ export class PositionService extends LiquidityBookAbstract {
     const initializePositionTx = await this.lbProgram.methods
       .createPosition(new BN(relativeBinIdLeft), new BN(relativeBinIdRight))
       .accountsPartial({
-        pair,
+        pair: poolAddress,
         position: position,
         positionMint: positionMint,
         positionTokenAccount: positionVault,
@@ -237,7 +239,7 @@ export class PositionService extends LiquidityBookAbstract {
     const {
       positionMint,
       payer,
-      pair,
+      poolAddress,
       binArrayLower,
       binArrayUpper,
       transaction,
@@ -251,23 +253,23 @@ export class PositionService extends LiquidityBookAbstract {
 
     const associatedPairVaultX = await getPairVaultInfo(
       {
-        tokenAddress: pairInfo.tokenMintX,
-        pair,
+        tokenMint: pairInfo.tokenMintX,
+        pair: poolAddress,
       },
       this.connection
     );
 
     const associatedPairVaultY = await getPairVaultInfo(
       {
-        tokenAddress: pairInfo.tokenMintY,
-        pair,
+        tokenMint: pairInfo.tokenMintY,
+        pair: poolAddress,
       },
       this.connection
     );
 
     const associatedUserVaultX = await getUserVaultInfo(
       {
-        tokenAddress: pairInfo.tokenMintX,
+        tokenMint: pairInfo.tokenMintX,
         payer,
       },
       this.connection
@@ -275,7 +277,7 @@ export class PositionService extends LiquidityBookAbstract {
 
     const associatedUserVaultY = await getUserVaultInfo(
       {
-        tokenAddress: pairInfo.tokenMintY,
+        tokenMint: pairInfo.tokenMintY,
         payer,
       },
       this.connection
@@ -307,7 +309,11 @@ export class PositionService extends LiquidityBookAbstract {
     const unitPrice = getComputeUnitPrice(unitSPrice, this.bufferGas);
 
     const hook = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('hook')), this.hooksConfig.toBuffer(), pair.toBuffer()],
+      [
+        Buffer.from(utils.bytes.utf8.encode('hook')),
+        this.hooksConfig.toBuffer(),
+        poolAddress.toBuffer(),
+      ],
       this.hooksProgram.programId
     )[0];
 
@@ -330,7 +336,7 @@ export class PositionService extends LiquidityBookAbstract {
         liquidityDistribution
       )
       .accountsPartial({
-        pair: pair,
+        pair: poolAddress,
         position: position,
         binArrayLower: binArrayLower,
         binArrayUpper: binArrayUpper,
@@ -350,7 +356,7 @@ export class PositionService extends LiquidityBookAbstract {
         positionMint,
       })
       .remainingAccounts([
-        { pubkey: pair, isWritable: false, isSigner: false },
+        { pubkey: poolAddress, isWritable: false, isSigner: false },
         { pubkey: binArrayLower, isWritable: false, isSigner: false },
         { pubkey: binArrayUpper, isWritable: false, isSigner: false },
       ])
@@ -364,7 +370,7 @@ export class PositionService extends LiquidityBookAbstract {
   public async removeMultipleLiquidity(
     params: RemoveMultipleLiquidityParams
   ): Promise<RemoveMultipleLiquidityResponse> {
-    const { maxPositionList, payer, type, pair, tokenMintX, tokenMintY } = params;
+    const { maxPositionList, payer, type, poolAddress: pair, tokenMintX, tokenMintY } = params;
 
     const tokenProgramX = await this.getTokenProgram(tokenMintX);
     const tokenProgramY = await this.getTokenProgram(tokenMintY);
@@ -373,7 +379,7 @@ export class PositionService extends LiquidityBookAbstract {
 
     const associatedPairVaultX = await getPairVaultInfo(
       {
-        tokenAddress: tokenMintX,
+        tokenMint: tokenMintX,
         pair,
         payer,
         transaction: txCreateAccount,
@@ -383,7 +389,7 @@ export class PositionService extends LiquidityBookAbstract {
 
     const associatedPairVaultY = await getPairVaultInfo(
       {
-        tokenAddress: tokenMintY,
+        tokenMint: tokenMintY,
         pair,
         payer,
         transaction: txCreateAccount,
@@ -393,7 +399,7 @@ export class PositionService extends LiquidityBookAbstract {
 
     const associatedUserVaultX = await getUserVaultInfo(
       {
-        tokenAddress: tokenMintX,
+        tokenMint: tokenMintX,
         payer,
         transaction: txCreateAccount,
       },
@@ -402,7 +408,7 @@ export class PositionService extends LiquidityBookAbstract {
 
     const associatedUserVaultY = await getUserVaultInfo(
       {
-        tokenAddress: tokenMintY,
+        tokenMint: tokenMintY,
         payer,
         transaction: txCreateAccount,
       },
@@ -602,7 +608,10 @@ export class PositionService extends LiquidityBookAbstract {
     };
   }
 
-  public async getUserPositions({ payer, pair }: UserPositionsParams): Promise<PositionInfo[]> {
+  public async getUserPositions({
+    payer,
+    poolAddress: pair,
+  }: GetUserPositionsParams): Promise<PositionInfo[]> {
     const tokenAccounts = await this.connection.getParsedTokenAccountsByOwner(payer, {
       programId: spl.TOKEN_2022_PROGRAM_ID,
     });
