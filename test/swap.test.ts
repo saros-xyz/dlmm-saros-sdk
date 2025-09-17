@@ -18,10 +18,6 @@ describe('getQuote with bigint support', () => {
       pair: new PublicKey('9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk'),
       swapForY: true,
       isExactInput: true,
-      tokenBase: new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
-      tokenBaseDecimal: 6,
-      tokenQuote: new PublicKey('Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'),
-      tokenQuoteDecimal: 6,
       slippage: 10,
     });
 
