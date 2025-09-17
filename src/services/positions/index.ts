@@ -1,7 +1,6 @@
 import { BN, utils } from '@coral-xyz/anchor';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
-import cloneDeep from 'lodash/cloneDeep';
 import { chunk } from 'lodash';
 import { SarosBaseService, SarosConfig } from '../base';
 import { LiquidityHelper } from './liquidity';
@@ -24,12 +23,12 @@ import {
   DLMMPairAccount,
 } from '../../types';
 import {
-  addComputeBudgetInstructions,
   addSolTransferInstructions,
   addCloseAccountInstruction,
+  addOptimalComputeBudget,
 } from '../../utils/transaction';
-import { getGasPrice, getComputeUnitPrice } from './gas';
 import { getUserVaultInfo, getPairVaultInfo } from '../../utils/vaults';
+import { BinArrayManager } from '../pools/bins';
 
 export class PositionService extends SarosBaseService {
   bufferGas?: number;
@@ -48,72 +47,43 @@ export class PositionService extends SarosBaseService {
     pair: PublicKey;
     payer: PublicKey;
   }): Promise<BinArray> {
-    const { binArrayIndex, pair, payer } = params;
-    let resultIndex = binArrayIndex;
-    let result = [];
+    const { binArrayIndex, pair } = params;
 
-    const binArray = await this.getBinArray({
-      binArrayIndex,
-      pair,
-      payer,
-    });
-    //@ts-ignore
-    const { bins } = await this.lbProgram.account.binArray.fetch(binArray);
     try {
-      const binArrayOther = await this.getBinArray({
-        binArrayIndex: binArrayIndex + 1,
+      const currentBinArray = BinArrayManager.getBinArrayAddress(
+        binArrayIndex,
         pair,
-        payer,
-      });
+        this.lbProgram.programId
+      );
       //@ts-ignore
-      const res = await this.lbProgram.account.binArray.fetch(binArrayOther);
+      const { bins: currentBins } = await this.lbProgram.account.binArray.fetch(currentBinArray);
 
-      result = [...bins, ...res.bins];
-    } catch {
-      const binArrayOther = await this.getBinArray({
-        binArrayIndex: binArrayIndex - 1,
-        pair,
-        payer,
-      });
-      //@ts-ignore
-      const res = await this.lbProgram.account.binArray.fetch(binArrayOther);
-      result = [...res.bins, ...bins];
-      resultIndex -= 1;
-    }
-
-    return { bins: result, index: resultIndex };
-  }
-
-  private async getBinArray(params: {
-    binArrayIndex: number;
-    pair: PublicKey;
-    payer?: PublicKey;
-    transaction?: Transaction;
-  }): Promise<PublicKey> {
-    const { binArrayIndex, pair, payer, transaction } = params;
-
-    const binArray = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('bin_array')),
-        pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
-      ],
-      this.lbProgram.programId
-    )[0];
-
-    if (transaction && payer) {
-      const binArrayInfo = await this.connection.getAccountInfo(binArray);
-
-      if (!binArrayInfo) {
-        const initializebinArrayConfigTx = await this.lbProgram.methods
-          .initializeBinArray(binArrayIndex)
-          .accountsPartial({ pair: pair, binArray: binArray, user: payer })
-          .instruction();
-        transaction.add(initializebinArrayConfigTx);
+      try {
+        const nextBinArray = BinArrayManager.getBinArrayAddress(
+          binArrayIndex + 1,
+          pair,
+          this.lbProgram.programId
+        );
+        //@ts-ignore
+        const { bins: nextBins } = await this.lbProgram.account.binArray.fetch(nextBinArray);
+        return { bins: [...currentBins, ...nextBins], index: binArrayIndex };
+      } catch {
+        try {
+          const prevBinArray = BinArrayManager.getBinArrayAddress(
+            binArrayIndex - 1,
+            pair,
+            this.lbProgram.programId
+          );
+          //@ts-ignore
+          const { bins: prevBins } = await this.lbProgram.account.binArray.fetch(prevBinArray);
+          return { bins: [...prevBins, ...currentBins], index: binArrayIndex - 1 };
+        } catch {
+          return { bins: currentBins, index: binArrayIndex };
+        }
       }
+    } catch (error) {
+      throw new Error(`Failed to get bin array info for index ${binArrayIndex}: ${error}`);
     }
-
-    return binArray;
   }
 
   private async getBinsReserveInformation(params: {
@@ -124,7 +94,7 @@ export class PositionService extends SarosBaseService {
     const { position, pair, payer } = params;
     const positionInfo = await this.getPositionAccount(position);
     const firstBinId = positionInfo.lowerBinId;
-    const binArrayIndex = Math.floor(firstBinId / BIN_ARRAY_SIZE);
+    const binArrayIndex = BinArrayManager.calculateBinArrayIndex(firstBinId);
 
     const { bins, index } = await this.getBinArrayInfo({
       binArrayIndex,
@@ -180,14 +150,12 @@ export class PositionService extends SarosBaseService {
   async createPosition(params: CreatePositionParams, pairInfo: DLMMPairAccount) {
     const { payer, relativeBinIdLeft, relativeBinIdRight, poolAddress, positionMint, transaction } =
       params;
-    // const tokenProgramX = await this.getTokenProgram(pairInfo.tokenMintX);
-    // const tokenProgramY = await this.getTokenProgram(pairInfo.tokenMintY);
     const activeBinId = pairInfo.activeId;
     const lowerBinId = activeBinId + relativeBinIdLeft;
     const upperBinId = activeBinId + relativeBinIdRight;
 
-    const binArrayIndexLower = Math.floor(lowerBinId / BIN_ARRAY_SIZE);
-    const binArrayIndexUpper = Math.floor(upperBinId / BIN_ARRAY_SIZE);
+    const binArrayIndexLower = BinArrayManager.calculateBinArrayIndex(lowerBinId);
+    const binArrayIndexUpper = BinArrayManager.calculateBinArrayIndex(upperBinId);
 
     const position = PublicKey.findProgramAddressSync(
       [Buffer.from(utils.bytes.utf8.encode('position')), positionMint.toBuffer()],
@@ -200,19 +168,24 @@ export class PositionService extends SarosBaseService {
       true,
       spl.TOKEN_2022_PROGRAM_ID
     );
-
-    await this.getBinArray({
-      binArrayIndex: binArrayIndexLower,
-      pair: poolAddress,
+    await BinArrayManager.addInitializeBinArrayInstruction(
+      binArrayIndexLower,
+      poolAddress,
       payer,
-    });
+      transaction,
+      this.connection,
+      this.lbProgram
+    );
 
     if (binArrayIndexLower !== binArrayIndexUpper) {
-      await this.getBinArray({
-        binArrayIndex: binArrayIndexUpper,
-        pair: poolAddress,
+      await BinArrayManager.addInitializeBinArrayInstruction(
+        binArrayIndexUpper,
+        poolAddress,
         payer,
-      });
+        transaction,
+        this.connection,
+        this.lbProgram
+      );
     }
 
     const initializePositionTx = await this.lbProgram.methods
@@ -304,10 +277,6 @@ export class PositionService extends SarosBaseService {
       }
     }
 
-    const unitSPrice = await getGasPrice(this.connection).catch(() => undefined);
-
-    const unitPrice = getComputeUnitPrice(unitSPrice, this.bufferGas);
-
     const hook = PublicKey.findProgramAddressSync(
       [
         Buffer.from(utils.bytes.utf8.encode('hook')),
@@ -362,7 +331,7 @@ export class PositionService extends SarosBaseService {
       ])
       .instruction();
 
-    addComputeBudgetInstructions(transaction, unitPrice);
+    await addOptimalComputeBudget(transaction, this.connection, this.bufferGas);
 
     transaction.add(addLiquidityInstructions);
   }
@@ -440,14 +409,10 @@ export class PositionService extends SarosBaseService {
       txCreateAccount.add(hookTokenYInstructions);
     }
 
-    const unitSPrice = await getGasPrice(this.connection).catch(() => undefined);
-
-    const unitPrice = getComputeUnitPrice(unitSPrice, this.bufferGas);
-
     const positionClosed: Record<string, string>[] = [];
     const txs = await Promise.all(
       maxPositionList.map(async ({ position, start, end, positionMint }) => {
-        const binArrayIndex = Math.floor(start / BIN_ARRAY_SIZE);
+        const binArrayIndex = BinArrayManager.calculateBinArrayIndex(start);
 
         const { index } = await this.getBinArrayInfo({
           binArrayIndex,
@@ -455,20 +420,20 @@ export class PositionService extends SarosBaseService {
           payer,
         });
 
-        const binArrayLower = await this.getBinArray({
-          binArrayIndex: index,
+        const binArrayLower = BinArrayManager.getBinArrayAddress(
+          index,
           pair,
-          payer,
-        });
+          this.lbProgram.programId
+        );
 
-        const binArrayUpper = await this.getBinArray({
-          binArrayIndex: index + 1,
+        const binArrayUpper = BinArrayManager.getBinArrayAddress(
+          index + 1,
           pair,
-          payer,
-        });
+          this.lbProgram.programId
+        );
 
         const tx = new Transaction();
-        addComputeBudgetInstructions(tx, unitPrice);
+        await addOptimalComputeBudget(tx, this.connection, this.bufferGas);
 
         const positionVault = spl.getAssociatedTokenAddressSync(
           new PublicKey(positionMint),
@@ -477,19 +442,17 @@ export class PositionService extends SarosBaseService {
           spl.TOKEN_2022_PROGRAM_ID
         );
 
-        const reserveXY = cloneDeep(
-          await this.getBinsReserveInformation({
-            position: new PublicKey(position),
-            pair,
-            payer,
-          })
-        );
+        const reserveXY = await this.getBinsReserveInformation({
+          position: new PublicKey(position),
+          pair,
+          payer,
+        });
 
         const hookBinArrayLower = PublicKey.findProgramAddressSync(
           [
             Buffer.from(utils.bytes.utf8.encode('bin_array')),
             hook.toBuffer(),
-            new BN(BIN_ARRAY_INDEX).toArrayLike(Buffer, 'le', 4),
+            new BN(BIN_ARRAY_INDEX).toArrayLike(Buffer, 'le', 4), // should this use index instead?
           ],
           this.hooksProgram.programId
         )[0];
@@ -498,7 +461,7 @@ export class PositionService extends SarosBaseService {
           [
             Buffer.from(utils.bytes.utf8.encode('bin_array')),
             hook.toBuffer(),
-            new BN(BIN_ARRAY_INDEX + 1).toArrayLike(Buffer, 'le', 4),
+            new BN(BIN_ARRAY_INDEX + 1).toArrayLike(Buffer, 'le', 4), // should this use index instead?
           ],
           this.hooksProgram.programId
         )[0];
