@@ -36,24 +36,22 @@ export class BinArrayManager {
     const binArrayInfo = await connection.getAccountInfo(binArray);
 
     if (!binArrayInfo) {
-      const initializebinArrayConfigTx = await lbProgram.methods
-        .initializeBinArray(binArrayIndex)
+      const initializeBinArrayConfigTx = await lbProgram.methods
+        .initializeBinArray(new BN(binArrayIndex))
         .accountsPartial({ pair: pair, binArray: binArray, user: payer })
         .instruction();
-      transaction.add(initializebinArrayConfigTx);
+      transaction.add(initializeBinArrayConfigTx);
     }
   }
 
-  public static calculateBinArrayRange(activeId: number): {
-    lower: number;
-    current: number;
-    upper: number;
-  } {
-    const currentBinArrayIndex = this.calculateBinArrayIndex(activeId);
-    return {
-      lower: currentBinArrayIndex - 1,
-      current: currentBinArrayIndex,
-      upper: currentBinArrayIndex + 1,
-    };
+  public static calculateBinArrayRange(activeId: number, arrayRange: number = 1): number[] {
+    const activeBinArrayIndex = this.calculateBinArrayIndex(activeId);
+    const indices: number[] = [];
+
+    for (let i = -Math.floor(arrayRange / 2); i <= Math.floor(arrayRange / 2); i++) {
+      indices.push(activeBinArrayIndex + i);
+    }
+
+    return indices;
   }
 }

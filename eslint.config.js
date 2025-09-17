@@ -17,8 +17,14 @@ export default [
       '@typescript-eslint': tsPlugin,
     },
     rules: {
-      // Code quality rules only (no formatting)
-      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
     },
   },
   {

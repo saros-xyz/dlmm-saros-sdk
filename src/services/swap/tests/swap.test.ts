@@ -1,6 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import { describe, it, expect } from 'vitest';
-import { SarosDLMM, MODE } from '../src';
+import { SarosDLMM } from '../..';
+import { MODE } from '../../../types';
 
 const lbServices = new SarosDLMM({
   mode: MODE.MAINNET,

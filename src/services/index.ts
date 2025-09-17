@@ -19,7 +19,6 @@ import {
   PoolLiquidityData,
 } from '../types';
 import { Transaction } from '@solana/web3.js';
-import { PoolServiceError } from './pools/errors';
 
 export class SarosDLMM extends SarosBaseService {
   bufferGas?: number;
@@ -44,8 +43,6 @@ export class SarosDLMM extends SarosBaseService {
   public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
     // fetch pool metadata and pass to getQuote instead of requiring user to do it
     const poolMetadata = await this.getPoolMetadata(params.pair.toString());
-    if (!poolMetadata) throw PoolServiceError.PoolNotFound;
-
     return this.swapService.getQuote(params, poolMetadata);
   }
 
