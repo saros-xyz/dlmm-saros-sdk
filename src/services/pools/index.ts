@@ -32,6 +32,7 @@ export class PoolService extends SarosBaseService {
       return pairInfo;
     } catch (_error) {
       throw PoolServiceError.PoolNotFound;
+    }
   }
 
   public async createPairWithConfig(params: CreatePoolParams) {
