@@ -1,8 +1,8 @@
 import { PublicKey } from '@solana/web3.js';
 import { describe, it, expect } from 'vitest';
-import { LiquidityBookServices, MODE } from '../src';
+import { SarosDLMM, MODE } from '../src';
 
-const lbServices = new LiquidityBookServices({
+const lbServices = new SarosDLMM({
   mode: MODE.MAINNET,
   options: {
     rpcUrl: 'https://api.mainnet-beta.solana.com',

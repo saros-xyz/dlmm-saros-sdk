@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { LiquidityBookServices } from '../src';
+import { SarosDLMM } from '../src';
 import { MODE } from '../src/types';
 import { PublicKey } from '@solana/web3.js';
 
-const lbServices = new LiquidityBookServices({
+const lbServices = new SarosDLMM({
   mode: MODE.MAINNET,
   options: {
     rpcUrl: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',

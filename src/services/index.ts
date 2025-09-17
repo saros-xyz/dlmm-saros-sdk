@@ -21,7 +21,7 @@ import {
 import { Transaction } from '@solana/web3.js';
 import { PoolServiceError } from './pools/errors';
 
-export class LiquidityBookServices extends SarosBaseService {
+export class SarosDLMM extends SarosBaseService {
   bufferGas?: number;
   private swapService: SwapService;
   private positionService: PositionService;

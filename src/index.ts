@@ -1,9 +1,8 @@
-// Explicitly export the public API of the SDK
-// single entry point LiquidityBookServices class
-// along with all public types and enums
+// Explicit exports for the SDK
+// New single entry point: SarosDLMM + public types and enums
 
 // Main SDK class
-export { LiquidityBookServices } from './services';
+export { SarosDLMM } from './services';
 
 // Public enums (values)
 export { MODE, LiquidityShape, RemoveLiquidityType } from './types';
