@@ -158,7 +158,6 @@ export class PositionService extends SarosBaseService {
     const lowerBinId = activeBinId + binIdLeft;
     const upperBinId = activeBinId + binIdRight;
 
-
     const transaction = new Transaction();
 
     const binArrayIndexLower = BinArrayManager.calculateBinArrayIndex(lowerBinId);
@@ -212,7 +211,10 @@ export class PositionService extends SarosBaseService {
     return transaction;
   }
 
-  async addLiquidityToPosition(params: AddLiquidityToPositionParams, pairInfo: DLMMPairAccount): Promise<Transaction> {
+  async addLiquidityToPosition(
+    params: AddLiquidityToPositionParams,
+    pairInfo: DLMMPairAccount
+  ): Promise<Transaction> {
     const {
       positionMint,
       payer,
