@@ -3,7 +3,7 @@ import { PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { chunk } from 'lodash';
 import { SarosBaseService, SarosConfig } from '../base';
-import { LiquidityHelper } from './liquidity';
+import { LiquidityManager } from './liquidity';
 import {
   BIN_ARRAY_INDEX,
   BIN_ARRAY_SIZE,
@@ -11,11 +11,11 @@ import {
   WRAP_SOL_PUBKEY,
 } from '../../constants';
 import {
-  AddLiquidityIntoPositionParams,
+  AddLiquidityToPositionParams,
   PositionBinReserve,
   CreatePositionParams,
-  RemoveMultipleLiquidityParams,
-  RemoveMultipleLiquidityResponse,
+  RemoveLiquidityParams,
+  RemoveLiquidityResponse,
   GetUserPositionsParams,
   BinArray,
   PositionAccount,
@@ -29,6 +29,7 @@ import {
 } from '../../utils/transaction';
 import { getUserVaultInfo, getPairVaultInfo } from '../../utils/vaults';
 import { BinArrayManager } from '../pools/bins';
+import { createUniformDistribution } from './bin-distribution';
 
 export class PositionService extends SarosBaseService {
   bufferGas?: number;
@@ -148,11 +149,11 @@ export class PositionService extends SarosBaseService {
   }
 
   async createPosition(params: CreatePositionParams, pairInfo: DLMMPairAccount) {
-    const { payer, relativeBinIdLeft, relativeBinIdRight, poolAddress, positionMint, transaction } =
-      params;
+    const { payer, binRange, poolAddress, positionMint, transaction } = params;
+    const [binIdLeft, binIdRight] = binRange;
     const activeBinId = pairInfo.activeId;
-    const lowerBinId = activeBinId + relativeBinIdLeft;
-    const upperBinId = activeBinId + relativeBinIdRight;
+    const lowerBinId = activeBinId + binIdLeft;
+    const upperBinId = activeBinId + binIdRight;
 
     const binArrayIndexLower = BinArrayManager.calculateBinArrayIndex(lowerBinId);
     const binArrayIndexUpper = BinArrayManager.calculateBinArrayIndex(upperBinId);
@@ -189,7 +190,7 @@ export class PositionService extends SarosBaseService {
     }
 
     const initializePositionTx = await this.lbProgram.methods
-      .createPosition(new BN(relativeBinIdLeft), new BN(relativeBinIdRight))
+      .createPosition(new BN(binIdLeft), new BN(binIdRight))
       .accountsPartial({
         pair: poolAddress,
         position: position,
@@ -205,20 +206,16 @@ export class PositionService extends SarosBaseService {
     return { position: position.toString() };
   }
 
-  async addLiquidityIntoPosition(
-    params: AddLiquidityIntoPositionParams,
-    pairInfo: DLMMPairAccount
-  ) {
+  async addLiquidityToPosition(params: AddLiquidityToPositionParams, pairInfo: DLMMPairAccount) {
     const {
       positionMint,
       payer,
       poolAddress,
-      binArrayLower,
-      binArrayUpper,
       transaction,
-      liquidityDistribution,
-      amountX,
-      amountY,
+      baseAmount,
+      quoteAmount,
+      liquidityShape,
+      binRange,
     } = params;
 
     const tokenProgramX = await this.getTokenProgram(pairInfo.tokenMintX);
@@ -256,13 +253,38 @@ export class PositionService extends SarosBaseService {
       this.connection
     );
 
+    // Generate distribution from shape
+    const liquidityDistribution = createUniformDistribution({
+      shape: liquidityShape,
+      binRange: binRange,
+    });
+
+    // Calculate bin arrays internally
+    const activeBinId = pairInfo.activeId;
+    const lowerBinId = activeBinId + params.binRange[0];
+    const upperBinId = activeBinId + params.binRange[1];
+
+    const binArrayIndexLower = BinArrayManager.calculateBinArrayIndex(lowerBinId);
+    const binArrayIndexUpper = BinArrayManager.calculateBinArrayIndex(upperBinId);
+
+    const binArrayLower = BinArrayManager.getBinArrayAddress(
+      binArrayIndexLower,
+      params.poolAddress,
+      this.lbProgram.programId
+    );
+    const binArrayUpper = BinArrayManager.getBinArrayAddress(
+      binArrayIndexUpper,
+      params.poolAddress,
+      this.lbProgram.programId
+    );
+
     if (
       pairInfo.tokenMintY.equals(WRAP_SOL_PUBKEY) ||
       pairInfo.tokenMintX.equals(WRAP_SOL_PUBKEY)
     ) {
       const isNativeY = pairInfo.tokenMintY.equals(WRAP_SOL_PUBKEY);
 
-      const totalAmount = isNativeY ? amountY : amountX;
+      const totalAmount = isNativeY ? quoteAmount : baseAmount;
       const totalLiquid = liquidityDistribution.reduce((prev, curr) => {
         const currAmount = isNativeY ? curr.distributionY : curr.distributionX;
         return prev + currAmount;
@@ -300,8 +322,8 @@ export class PositionService extends SarosBaseService {
 
     const addLiquidityInstructions = await this.lbProgram.methods
       .increasePosition(
-        new BN(amountX.toString()),
-        new BN(amountY.toString()),
+        new BN(baseAmount.toString()),
+        new BN(quoteAmount.toString()),
         liquidityDistribution
       )
       .accountsPartial({
@@ -336,10 +358,8 @@ export class PositionService extends SarosBaseService {
     transaction.add(addLiquidityInstructions);
   }
 
-  public async removeMultipleLiquidity(
-    params: RemoveMultipleLiquidityParams
-  ): Promise<RemoveMultipleLiquidityResponse> {
-    const { maxPositionList, payer, type, poolAddress: pair, tokenMintX, tokenMintY } = params;
+  public async removeLiquidity(params: RemoveLiquidityParams): Promise<RemoveLiquidityResponse> {
+    const { positions, payer, type, poolAddress: pair, tokenMintX, tokenMintY } = params;
 
     const tokenProgramX = await this.getTokenProgram(tokenMintX);
     const tokenProgramY = await this.getTokenProgram(tokenMintY);
@@ -411,7 +431,7 @@ export class PositionService extends SarosBaseService {
 
     const positionClosed: Record<string, string>[] = [];
     const txs = await Promise.all(
-      maxPositionList.map(async ({ position, start, end, positionMint }) => {
+      positions.map(async ({ position, start, end, positionMint }) => {
         const binArrayIndex = BinArrayManager.calculateBinArrayIndex(start);
 
         const { index } = await this.getBinArrayInfo({
@@ -475,11 +495,9 @@ export class PositionService extends SarosBaseService {
           this.hooksProgram.programId
         )[0];
 
-        const removedShares = LiquidityHelper.calculateRemovedShares(reserveXY, type, start, end);
-
-        const availableShares = LiquidityHelper.getAvailableShares(reserveXY, type);
-
-        const isClosePosition = LiquidityHelper.shouldClosePosition(
+        const removedShares = LiquidityManager.calculateRemovedShares(reserveXY, type, start, end);
+        const availableShares = LiquidityManager.getAvailableShares(reserveXY, type);
+        const isClosePosition = LiquidityManager.shouldClosePosition(
           type,
           start,
           end,

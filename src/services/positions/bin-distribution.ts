@@ -1,16 +1,13 @@
-import { MAX_BASIS_POINTS, BIN_ARRAY_SIZE, FIXED_LENGTH, ACTIVE_ID } from '../constants';
-import { LiquidityShape, Distribution, PositionAccount } from '../types';
-import { divRem } from './math';
+import { MAX_BASIS_POINTS } from '../../constants';
+import { LiquidityShape, Distribution } from '../../types';
+import { divRem } from '../../utils/math';
 
 interface CreateLiquidityDistributionParams {
   shape: LiquidityShape;
   binRange: [number, number];
 }
 
-// these functions were never used outside of README example.
-// They should be used to create a simplified 'addLiquidity' function allowing LiquidityShape as input.
-// TODO: Example in: simple.ts - needs to be tested and exposed via SDK (core.ts)
-const getCurveDistributionFromBinRange = (binRange: number[]) => {
+const getCurveDistributionFromBinRange = (binRange: [number, number]) => {
   const activeId = 0;
 
   // init return values
@@ -425,65 +422,3 @@ export function createUniformDistribution(
 
   throw new Error(`Unsupported liquidity shape: ${shape}`);
 }
-
-export const getMaxPosition = (range: [number, number], activeId: number) => {
-  const leftRangeIndex = Math.floor(activeId / 16);
-  const rangeFromIndex = [
-    Math.floor((activeId + range[0]) / 16),
-    Math.floor((activeId + range[1]) / 16),
-  ];
-
-  const positions = Array.from(
-    { length: rangeFromIndex[1] - rangeFromIndex[0] + 1 },
-    (_, index) => {
-      return rangeFromIndex[0] + index - leftRangeIndex;
-    }
-  );
-
-  return positions;
-};
-
-export const getMaxBinArray = (range: [number, number], activeId: number) => {
-  const arrayIndex = [activeId + range[0], activeId + range[1]];
-
-  const binIndex = [
-    Math.floor(arrayIndex[0] / BIN_ARRAY_SIZE),
-    Math.floor(arrayIndex[1] / BIN_ARRAY_SIZE),
-  ];
-
-  // check if binArrayLower, binArrayUpper is the same
-  if (binIndex[1] === binIndex[0]) {
-    binIndex[1] += 1;
-  }
-
-  const binArrayIndexLen = binIndex[1] - binIndex[0] - 1;
-  const binArrayList = Array.from({ length: binArrayIndexLen + 1 }, (_, i) => {
-    const index = binIndex[0] + i * 2;
-    return {
-      binArrayLowerIndex: index,
-      binArrayUpperIndex: index + 1,
-    };
-  });
-
-  return binArrayList;
-};
-
-export const getBinRange = (index: number, activeId: number) => {
-  const firstBinId = Math.floor(activeId % 16);
-
-  const firstArray = [-firstBinId, -firstBinId + 16 - 1];
-  const range = [firstArray[0] + index * FIXED_LENGTH, firstArray[1] + index * FIXED_LENGTH];
-  return {
-    range,
-    binLower: activeId + range[0],
-    binUpper: activeId + range[1] - 1,
-  };
-};
-
-export const findPosition =
-  (index: number, activeBin = ACTIVE_ID) =>
-  (position: PositionAccount) => {
-    const { binLower, binUpper } = getBinRange(index, activeBin);
-
-    return position.lowerBinId <= binLower && position.upperBinId >= binUpper;
-  };

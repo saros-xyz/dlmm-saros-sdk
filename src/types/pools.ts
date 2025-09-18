@@ -31,10 +31,10 @@ export interface TokenInfoWithReserve extends TokenInfo {
 
 export interface GetPoolLiquidityParams {
   poolAddress: PublicKey;
-  /** 
+  /**
    * Number of bin arrays to fetch symmetrically around the active bin.
    * Default is 1, which fetches the active bin array only.
-   */  
+   */
   numberOfBinArrays?: number;
 }
 

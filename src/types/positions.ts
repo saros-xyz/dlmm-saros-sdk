@@ -1,6 +1,6 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
-import { RemoveLiquidityType } from './config';
+import { LiquidityShape, RemoveLiquidityType } from './config';
 
 export interface GetUserPositionsParams {
   payer: PublicKey;
@@ -17,32 +17,27 @@ export interface PositionInfo {
 
 export interface CreatePositionParams {
   payer: PublicKey;
-  // TODO: consider rename to leftBinId/rightBinId - remove "relative" for clarity
-  relativeBinIdLeft: number;
-  relativeBinIdRight: number;
   poolAddress: PublicKey;
   positionMint: PublicKey;
   transaction: Transaction;
+  binRange: [number, number]; // [minBin, maxBin] relative to active bin
 }
 
 // TODO: consider shortening to AddLiquidityParams - "IntoPosition" is redundant
-export interface AddLiquidityIntoPositionParams {
+export interface AddLiquidityToPositionParams {
   positionMint: PublicKey;
   payer: PublicKey;
   poolAddress: PublicKey;
   transaction: Transaction;
-  liquidityDistribution: Distribution[];
-  // TODO: consider rename to match swap convention (tokenMintX/Y amounts)
-  amountY: bigint;
-  amountX: bigint;
-  binArrayLower: PublicKey;
-  binArrayUpper: PublicKey;
+  liquidityShape: LiquidityShape;
+  binRange: [number, number]; // [minBin, maxBin] relative to active bin
+  baseAmount: bigint; // renamed from amountX
+  quoteAmount: bigint; // renamed from amountY
+  // Removed: liquidityDistribution, binArrayLower, binArrayUpper (calculated internally)
 }
 
-// TODO: consider shortening to RemoveLiquidityParams - "Multiple" is implementation detail
-export interface RemoveMultipleLiquidityParams {
-  // TODO: consider rename to positions - "maxPositionList" is unclear
-  maxPositionList: {
+export interface RemoveLiquidityParams {
+  positions: {
     position: string;
     start: number;
     end: number;
@@ -56,7 +51,7 @@ export interface RemoveMultipleLiquidityParams {
   activeId: number;
 }
 
-export interface RemoveMultipleLiquidityResponse {
+export interface RemoveLiquidityResponse {
   txs: Transaction[];
   txCreateAccount?: Transaction;
   txCloseAccount?: Transaction;

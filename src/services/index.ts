@@ -7,9 +7,9 @@ import {
   QuoteParams,
   QuoteResponse,
   CreatePositionParams,
-  AddLiquidityIntoPositionParams,
-  RemoveMultipleLiquidityParams,
-  RemoveMultipleLiquidityResponse,
+  AddLiquidityToPositionParams,
+  RemoveLiquidityParams,
+  RemoveLiquidityResponse,
   GetUserPositionsParams,
   PositionInfo,
   CreatePoolParams,
@@ -33,38 +33,40 @@ export class SarosDLMM extends SarosBaseService {
     this.poolService = new PoolService(config);
   }
 
-  //
-  // SWAP Methods
-  //
-  public async swap(params: SwapParams): Promise<Transaction> {
-    return this.swapService.swap(params);
-  }
-
+  /**
+   * Get a quote for a swap
+   */
   public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
-    // fetch pool metadata and pass to getQuote instead of requiring user to do it
     const poolMetadata = await this.getPoolMetadata(params.pair.toString());
     return this.swapService.getQuote(params, poolMetadata);
   }
 
-  //
-  // POSITION Methods
-  //
+  /**
+   * Execute a swap transaction
+   */
+  public async swap(params: SwapParams): Promise<Transaction> {
+    return this.swapService.swap(params);
+  }
+
+  /**
+   *  Create a new position in a specific pool
+   */
   public async createPosition(params: CreatePositionParams) {
-    // get pair info first to verify pool exists and pass to createPosition
     const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
     return this.positionService.createPosition(params, pairInfo);
   }
 
-  public async addLiquidityIntoPosition(params: AddLiquidityIntoPositionParams) {
-    // same here
+  /**   * Add liquidity to an existing position
+   */
+  public async addLiquidityToPosition(params: AddLiquidityToPositionParams) {
     const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
-    return this.positionService.addLiquidityIntoPosition(params, pairInfo);
+    return this.positionService.addLiquidityToPosition(params, pairInfo);
   }
 
-  public async removeMultipleLiquidity(
-    params: RemoveMultipleLiquidityParams
-  ): Promise<RemoveMultipleLiquidityResponse> {
-    return this.positionService.removeMultipleLiquidity(params);
+  /**   * Remove liquidity from one or more positions
+   */
+  public async removeLiquidity(params: RemoveLiquidityParams): Promise<RemoveLiquidityResponse> {
+    return this.positionService.removeLiquidity(params);
   }
 
   /**
@@ -74,21 +76,27 @@ export class SarosDLMM extends SarosBaseService {
     return this.positionService.getUserPositions(params);
   }
 
-  //
-  // POOL Methods
-  //
+  /**
+   * Create a new pool. Requires a new pair with unique binStep and ratePrice.
+   */
   public async createPool(params: CreatePoolParams) {
     return this.poolService.createPairWithConfig(params);
   }
 
+  /**   * Fetch metadata for a specific pool
+   */
   public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
     return this.poolService.getPoolMetadata(pair);
   }
 
+  /**   * Get list of all Saros DLMM pool addresses
+   */
   public async getAllPoolAddresses(): Promise<string[]> {
     return this.poolService.getAllPoolAddresses();
   }
 
+  /**   * Listen for new pool addresses being created and call postTxFunction with the new address
+   */
   public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
     return this.poolService.listenNewPoolAddress(postTxFunction);
   }

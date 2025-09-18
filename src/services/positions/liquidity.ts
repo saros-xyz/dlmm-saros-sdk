@@ -2,7 +2,7 @@ import { BN } from '@coral-xyz/anchor';
 import { PositionBinReserve, RemoveLiquidityType } from '../../types';
 import { FIXED_LENGTH } from '../../constants';
 
-export class LiquidityHelper {
+export class LiquidityManager {
   public static calculateRemovedShares(
     reserveXY: PositionBinReserve[],
     type: RemoveLiquidityType,
