@@ -1,6 +1,5 @@
 import { Commitment, Connection, ConnectionConfig, PublicKey } from '@solana/web3.js';
 import { AnchorProvider, Idl, Program, Wallet } from '@coral-xyz/anchor';
-import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { RPC_CONFIG } from '../../constants';
 import LiquidityBookIDL from '../../constants/idl/liquidity_book.json';
 import MdmaIDL from '../../constants/idl/mdma_hook.json';
@@ -44,13 +43,6 @@ export abstract class SarosBaseService {
       this.lbProgram = new Program(LiquidityBookIDL as Idl, provider);
       this.hooksProgram = new Program(MdmaIDL as Idl, provider);
     }
-  }
-
-  protected async getTokenProgram(address: PublicKey): Promise<PublicKey> {
-    const account = await this.connection.getParsedAccountInfo(address);
-    const owner = account.value?.owner.toBase58();
-
-    return owner === TOKEN_PROGRAM_ID.toBase58() ? TOKEN_PROGRAM_ID : TOKEN_2022_PROGRAM_ID;
   }
 
   public getDexName(): string {

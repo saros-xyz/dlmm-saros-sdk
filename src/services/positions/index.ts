@@ -27,8 +27,8 @@ import {
   addCloseAccountInstruction,
   addOptimalComputeBudget,
 } from '../../utils/transaction';
-import { getUserVaultInfo, getPairVaultInfo } from '../../utils/vaults';
-import { BinArrayManager } from '../pools/bins';
+import { getUserVaultInfo, getPairVaultInfo, getTokenProgram } from '../../utils/vaults';
+import { BinArrayManager } from '../pools/bin-manager';
 import { createUniformDistribution } from './bin-distribution';
 
 export class PositionService extends SarosBaseService {
@@ -226,8 +226,8 @@ export class PositionService extends SarosBaseService {
       binRange,
     } = params;
 
-    const tokenProgramX = await this.getTokenProgram(pairInfo.tokenMintX);
-    const tokenProgramY = await this.getTokenProgram(pairInfo.tokenMintY);
+    const tokenProgramX = await getTokenProgram(pairInfo.tokenMintX, this.connection);
+    const tokenProgramY = await getTokenProgram(pairInfo.tokenMintY, this.connection);
 
     const associatedPairVaultX = await getPairVaultInfo(
       {
@@ -402,8 +402,8 @@ export class PositionService extends SarosBaseService {
       })
     );
 
-    const tokenProgramX = await this.getTokenProgram(tokenMintX);
-    const tokenProgramY = await this.getTokenProgram(tokenMintY);
+    const tokenProgramX = await getTokenProgram(tokenMintX, this.connection);
+    const tokenProgramY = await getTokenProgram(tokenMintY, this.connection);
 
     const setupTransaction = new Transaction();
 

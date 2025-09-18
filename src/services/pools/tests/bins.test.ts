@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PublicKey } from '@solana/web3.js';
 import { ACTIVE_ID, BIN_ARRAY_SIZE } from '../../../constants';
-import { BinArrayManager } from '../bins';
+import { BinArrayManager } from '../bin-manager';
 
 // Test constants
 const MOCK_PAIR = new PublicKey('9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk');

@@ -1,17 +1,18 @@
 import { BN } from '@coral-xyz/anchor';
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { BIN_ARRAY_SIZE, WRAP_SOL_PUBKEY } from '../../constants';
 import { SwapParams, DLMMPairAccount } from '../../types';
 import { addSolTransferInstructions, addCloseAccountInstruction } from '../../utils/transaction';
+import { getUserVaultInfo, getTokenProgram } from '../../utils/vaults';
 import { PoolServiceError } from '../pools/errors';
+import { BinArrayManager } from '../pools/bin-manager';
 
 export class SwapExecutor {
   constructor(
     private lbProgram: any,
     private hooksProgram: any,
-    private connection: any,
-    private getTokenProgram: (address: PublicKey) => Promise<PublicKey>
+    private connection: any
   ) {}
 
   public async executeSwap(params: SwapParams): Promise<Transaction> {
@@ -30,7 +31,7 @@ export class SwapExecutor {
     const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
     if (!pairInfo) throw PoolServiceError.PoolNotFound;
 
-    const currentBinArrayIndex = Math.floor(pairInfo.activeId / BIN_ARRAY_SIZE);
+    const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(pairInfo.activeId);
 
     const surroundingIndexes = [
       currentBinArrayIndex - 1,
@@ -40,10 +41,7 @@ export class SwapExecutor {
 
     const binArrayAddresses = await Promise.all(
       surroundingIndexes.map(async (idx) =>
-        this.getBinArrayAddress({
-          binArrayIndex: idx,
-          pair,
-        })
+        BinArrayManager.getBinArrayAddress(idx, pair, this.lbProgram.programId)
       )
     );
 
@@ -66,19 +64,21 @@ export class SwapExecutor {
         activeOffset < BIN_ARRAY_SIZE / 2 ? [first, second] : [second, third];
     }
 
-    const binArrayLower = this.getBinArrayAddress({
+    const binArrayLower = BinArrayManager.getBinArrayAddress(
+      binArrayLowerIndex,
       pair,
-      binArrayIndex: binArrayLowerIndex,
-    });
+      this.lbProgram.programId
+    );
 
-    const binArrayUpper = this.getBinArrayAddress({
+    const binArrayUpper = BinArrayManager.getBinArrayAddress(
+      binArrayUpperIndex,
       pair,
-      binArrayIndex: binArrayUpperIndex,
-    });
+      this.lbProgram.programId
+    );
 
     const [tokenProgramX, tokenProgramY] = await Promise.all([
-      this.getTokenProgram(tokenMintX),
-      this.getTokenProgram(tokenMintY),
+      getTokenProgram(tokenMintX, this.connection),
+      getTokenProgram(tokenMintY, this.connection),
     ]);
 
     const latestBlockHash = await this.connection.getLatestBlockhash();
@@ -102,30 +102,15 @@ export class SwapExecutor {
       tokenProgramY
     );
 
-    const associatedUserVaultX = spl.getAssociatedTokenAddressSync(
-      tokenMintX,
-      payer,
-      true,
-      tokenProgramX
+    // Use the centralized getUserVaultInfo function to create user vault accounts if needed
+    const associatedUserVaultX = await getUserVaultInfo(
+      { tokenMint: tokenMintX, payer, transaction: tx },
+      this.connection
     );
 
-    const associatedUserVaultY = spl.getAssociatedTokenAddressSync(
-      tokenMintY,
-      payer,
-      true,
-      tokenProgramY
-    );
-
-    // Create user vault accounts if they don't exist
-    await this.createUserVaultAccountsIfNeeded(
-      tx,
-      payer,
-      tokenMintX,
-      tokenMintY,
-      tokenProgramX,
-      tokenProgramY,
-      associatedUserVaultX,
-      associatedUserVaultY
+    const associatedUserVaultY = await getUserVaultInfo(
+      { tokenMint: tokenMintY, payer, transaction: tx },
+      this.connection
     );
 
     // Handle wrapped SOL transfers
@@ -181,55 +166,5 @@ export class SwapExecutor {
     }
 
     return tx;
-  }
-
-  private getBinArrayAddress(params: { binArrayIndex: number; pair: PublicKey }): PublicKey {
-    const { binArrayIndex, pair } = params;
-
-    const binArray = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from('bin_array', 'utf8'),
-        pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
-      ],
-      this.lbProgram.programId
-    )[0];
-
-    return binArray;
-  }
-
-  private async createUserVaultAccountsIfNeeded(
-    tx: Transaction,
-    payer: PublicKey,
-    tokenMintX: PublicKey,
-    tokenMintY: PublicKey,
-    tokenProgramX: PublicKey,
-    tokenProgramY: PublicKey,
-    associatedUserVaultX: PublicKey,
-    associatedUserVaultY: PublicKey
-  ): Promise<void> {
-    const infoUserVaultX = await this.connection.getAccountInfo(associatedUserVaultX);
-    if (!infoUserVaultX) {
-      const userVaultXInstructions = spl.createAssociatedTokenAccountInstruction(
-        payer,
-        associatedUserVaultX,
-        payer,
-        tokenMintX,
-        tokenProgramX
-      );
-      tx.add(userVaultXInstructions);
-    }
-
-    const infoUserVaultY = await this.connection.getAccountInfo(associatedUserVaultY);
-    if (!infoUserVaultY) {
-      const userVaultYInstructions = spl.createAssociatedTokenAccountInstruction(
-        payer,
-        associatedUserVaultY,
-        payer,
-        tokenMintY,
-        tokenProgramY
-      );
-      tx.add(userVaultYInstructions);
-    }
   }
 }

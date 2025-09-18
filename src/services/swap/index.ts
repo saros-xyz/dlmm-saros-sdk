@@ -1,11 +1,11 @@
-import { BN, utils } from '@coral-xyz/anchor';
+import { BN } from '@coral-xyz/anchor';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { SarosBaseService, SarosConfig } from '../base';
 import { FeeCalculator } from './fees';
 import { VolatilityManager } from './volatility';
-import { BinArrayRange } from './bin-manager';
+import { BinArrayRange } from './bin-range';
 import { SwapExecutor } from './execution';
-import { BIN_ARRAY_SIZE, MAX_BIN_CROSSINGS, SCALE_OFFSET } from '../../constants';
+import { MAX_BIN_CROSSINGS, SCALE_OFFSET } from '../../constants';
 import {
   DLMMPairAccount,
   QuoteParams,
@@ -24,6 +24,7 @@ import {
 } from './calculations';
 import { PoolServiceError } from '../pools/errors';
 import { SwapServiceError } from './errors';
+import { BinArrayManager } from '../pools/bin-manager';
 
 export class SwapService extends SarosBaseService {
   private volatilityManager: VolatilityManager;
@@ -32,12 +33,7 @@ export class SwapService extends SarosBaseService {
   constructor(config: SarosConfig) {
     super(config);
     this.volatilityManager = new VolatilityManager();
-    this.swapExecutor = new SwapExecutor(
-      this.lbProgram,
-      this.hooksProgram,
-      this.connection,
-      this.getTokenProgram.bind(this)
-    );
+    this.swapExecutor = new SwapExecutor(this.lbProgram, this.hooksProgram, this.connection);
   }
 
   private async calculateInOutAmount(params: QuoteParams) {
@@ -47,17 +43,14 @@ export class SwapService extends SarosBaseService {
       const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
       if (!pairInfo) throw PoolServiceError.PoolNotFound;
 
-      const currentBinArrayIndex = Math.floor(pairInfo.activeId / BIN_ARRAY_SIZE);
+      const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(pairInfo.activeId);
       const binArrayIndexes = [
         currentBinArrayIndex - 1,
         currentBinArrayIndex,
         currentBinArrayIndex + 1,
       ];
       const binArrayAddresses = binArrayIndexes.map((idx) =>
-        this.getBinArrayAddress({
-          binArrayIndex: idx,
-          pair,
-        })
+        BinArrayManager.getBinArrayAddress(idx, pair, this.lbProgram.programId)
       );
 
       // Fetch bin arrays in batch, fallback to empty if not found
@@ -115,21 +108,6 @@ export class SwapService extends SarosBaseService {
     } catch (error) {
       throw new Error(error as string);
     }
-  }
-
-  private getBinArrayAddress(params: { binArrayIndex: number; pair: PublicKey }): PublicKey {
-    const { binArrayIndex, pair } = params;
-
-    const binArray = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('bin_array')),
-        pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
-      ],
-      this.lbProgram.programId
-    )[0];
-
-    return binArray;
   }
 
   private async calculateAmountIn(

@@ -3,7 +3,7 @@ import { PublicKey, Transaction, TransactionMessage } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import bs58 from 'bs58';
 import { SarosBaseService, SarosConfig } from '../base';
-import { BinArrayManager } from './bins';
+import { BinArrayManager } from './bin-manager';
 import { BIN_ARRAY_SIZE } from '../../constants';
 import {
   CreatePoolParams,
