@@ -6,6 +6,8 @@ export { SarosDLMM } from './services';
 
 // Public enums (values)
 export { MODE, LiquidityShape, RemoveLiquidityType } from './types';
+ 
+export {getPriceFromId, getIdFromPrice} from "./utils/price"
 
 // Public types (type-only)
 export type {
