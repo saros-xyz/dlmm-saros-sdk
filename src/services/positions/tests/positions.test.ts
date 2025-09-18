@@ -13,22 +13,20 @@ const lbServices = new SarosDLMM({
   },
 });
 
-const TEST_POOLS = {
-  USDC_USDT: '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk',
-} as const;
-
+const USDC_USDT = '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk';
+// any wallet with a DLMM position open
 const TEST_WALLET = new PublicKey('4VGLP8wqFEHEoh8vjgYCMsUbZ6LtuYrxcJv226qCWNuT');
 
 describe('Position Operations', () => {
   it('fetches user positions for pool', async () => {
     const positions = await lbServices.getUserPositions({
       payer: TEST_WALLET,
-      poolAddress: new PublicKey(TEST_POOLS.USDC_USDT),
+      poolAddress: new PublicKey(USDC_USDT),
     });
 
     // console.log(positions);
     expect(Array.isArray(positions)).toBe(true);
-    expect(positions.length).toBeGreaterThan(0); // This wallet has positions
+    expect(positions.length).toBeGreaterThan(0);
 
     positions.forEach((position) => {
       expect(position.upperBinId).toBeGreaterThanOrEqual(position.lowerBinId);
@@ -38,7 +36,7 @@ describe('Position Operations', () => {
   it('handles wallet with no positions', async () => {
     const positions = await lbServices.getUserPositions({
       payer: new PublicKey('11111111111111111111111111111111'),
-      poolAddress: new PublicKey(TEST_POOLS.USDC_USDT),
+      poolAddress: new PublicKey(USDC_USDT),
     });
 
     expect(positions).toEqual([]);
@@ -48,24 +46,24 @@ describe('Position Operations', () => {
 describe('LiquidityHelper Logic', () => {
   const mockPositionReserves: PositionBinReserve[] = [
     {
-      reserveX: 1000000n, // 1 USDC (6 decimals)
-      reserveY: 0n,
+      baseReserve: 1000000n, // 1 USDC (6 decimals)
+      quoteReserve: 0n,
       totalSupply: 5000000n,
       binId: ACTIVE_ID,
       binPosition: 0,
       liquidityShare: 250000n,
     },
     {
-      reserveX: 0n,
-      reserveY: 1500000n, // 1.5 USDC
+      baseReserve: 0n,
+      quoteReserve: 1500000n, // 1.5 USDC
       totalSupply: 7500000n,
       binId: ACTIVE_ID + 1,
       binPosition: 1,
       liquidityShare: 375000n,
     },
     {
-      reserveX: 500000n, // 0.5 USDC
-      reserveY: 750000n, // 0.75 USDC
+      baseReserve: 500000n, // 0.5 USDC
+      quoteReserve: 750000n, // 0.75 USDC
       totalSupply: 2500000n,
       binId: ACTIVE_ID + 2,
       binPosition: 2,

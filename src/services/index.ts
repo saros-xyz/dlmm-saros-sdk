@@ -51,22 +51,26 @@ export class SarosDLMM extends SarosBaseService {
   /**
    *  Create a new position in a specific pool
    */
-  public async createPosition(params: CreatePositionParams) {
+  public async createPosition(params: CreatePositionParams): Promise<Transaction> {
     const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
     return this.positionService.createPosition(params, pairInfo);
   }
 
   /**   * Add liquidity to an existing position
    */
-  public async addLiquidityToPosition(params: AddLiquidityToPositionParams) {
+  public async addLiquidityToPosition(params: AddLiquidityToPositionParams): Promise<Transaction> {
     const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
     return this.positionService.addLiquidityToPosition(params, pairInfo);
   }
 
-  /**   * Remove liquidity from one or more positions
+  /**
+   * Remove liquidity from one or more positions.
+   * Execute transactions in order: setupTransaction → transactions → cleanupTransaction.
+   * closedPositions lists positions that will be fully closed and burned.
    */
   public async removeLiquidity(params: RemoveLiquidityParams): Promise<RemoveLiquidityResponse> {
-    return this.positionService.removeLiquidity(params);
+    const pairInfo = await this.poolService.getPoolAccount(params.poolAddress);
+    return this.positionService.removeLiquidity(params, pairInfo);
   }
 
   /**
@@ -101,7 +105,9 @@ export class SarosDLMM extends SarosBaseService {
     return this.poolService.listenNewPoolAddress(postTxFunction);
   }
 
-  // ** NEW: Get all bins with liquidity for a given pool
+  /**
+   * Get all bins with liquidity for a given pool. (new)
+   */
   public async getPoolLiquidity(params: GetPoolLiquidityParams): Promise<PoolLiquidityData> {
     return this.poolService.getPoolLiquidity(params);
   }

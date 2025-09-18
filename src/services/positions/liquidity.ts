@@ -23,7 +23,7 @@ export class LiquidityManager {
 
     if (type === RemoveLiquidityType.BaseToken) {
       removedShares = reserveXY.map((reserve: PositionBinReserve) => {
-        if (reserve.reserveX > 0n && reserve.reserveY === 0n) {
+        if (reserve.baseReserve > 0n && reserve.quoteReserve === 0n) {
           return new BN(reserve.liquidityShare.toString());
         }
         return new BN(0);
@@ -32,7 +32,7 @@ export class LiquidityManager {
 
     if (type === RemoveLiquidityType.QuoteToken) {
       removedShares = reserveXY.map((reserve: PositionBinReserve) => {
-        if (reserve.reserveY > 0n && reserve.reserveX === 0n) {
+        if (reserve.quoteReserve > 0n && reserve.baseReserve === 0n) {
           return new BN(reserve.liquidityShare.toString());
         }
         return new BN(0);
@@ -50,8 +50,8 @@ export class LiquidityManager {
       type === RemoveLiquidityType.All
         ? item.liquidityShare > 0n
         : type === RemoveLiquidityType.QuoteToken
-          ? item.reserveX > 0n
-          : item.reserveY > 0n
+          ? item.baseReserve > 0n
+          : item.quoteReserve > 0n
     );
   }
 
