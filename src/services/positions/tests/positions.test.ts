@@ -4,7 +4,7 @@ import { MODE, RemoveLiquidityType } from '../../../types';
 import { PublicKey } from '@solana/web3.js';
 import { LiquidityManager } from '../liquidity';
 import { ACTIVE_ID } from '../../../constants';
-import type { PositionBinReserve } from '../../../types';
+import type { PositionBinBalance } from '../../../types';
 
 const lbServices = new SarosDLMM({
   mode: MODE.MAINNET,
@@ -44,7 +44,7 @@ describe('Position Operations', () => {
 });
 
 describe('LiquidityHelper Logic', () => {
-  const mockPositionReserves: PositionBinReserve[] = [
+  const mockPositionReserves: PositionBinBalance[] = [
     {
       baseReserve: 1000000n, // 1 USDC (6 decimals)
       quoteReserve: 0n,

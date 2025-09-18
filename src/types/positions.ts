@@ -1,18 +1,9 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
-import { BN } from '@coral-xyz/anchor';
 import { LiquidityShape, RemoveLiquidityType } from './config';
 
 export interface GetUserPositionsParams {
   payer: PublicKey;
   poolAddress: PublicKey;
-}
-
-export interface PositionInfo {
-  positionMint: PublicKey;
-  position: string;
-  liquidityShares: BN[];
-  lowerBinId: number;
-  upperBinId: number;
 }
 
 export interface CreatePositionParams {
@@ -23,7 +14,7 @@ export interface CreatePositionParams {
   binRange: [number, number];
 }
 
-export interface AddLiquidityToPositionParams {
+export interface AddLiquidityByShapeParams {
   positionMint: PublicKey;
   payer: PublicKey;
   poolAddress: PublicKey;
@@ -50,7 +41,13 @@ export interface RemoveLiquidityResponse {
   closedPositions: string[];
 }
 
-export interface PositionBinReserve {
+export interface GetPositionBinBalancesParams {
+  position: PublicKey;
+  pair: PublicKey;
+  payer: PublicKey;
+}
+
+export interface PositionBinBalance {
   baseReserve: bigint;
   quoteReserve: bigint;
   totalSupply: bigint;

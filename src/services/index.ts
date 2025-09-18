@@ -7,16 +7,18 @@ import {
   QuoteParams,
   QuoteResponse,
   CreatePositionParams,
-  AddLiquidityToPositionParams,
+  AddLiquidityByShapeParams,
   RemoveLiquidityParams,
   RemoveLiquidityResponse,
   GetUserPositionsParams,
-  PositionInfo,
   CreatePoolParams,
   PoolMetadata,
   DLMMPairAccount,
   GetPoolLiquidityParams,
   PoolLiquidityData,
+  PositionAccount,
+  GetPositionBinBalancesParams,
+  PositionBinBalance,
 } from '../types';
 import { Transaction } from '@solana/web3.js';
 
@@ -56,11 +58,11 @@ export class SarosDLMM extends SarosBaseService {
     return this.positionService.createPosition(params, pairInfo);
   }
 
-  /**   * Add liquidity to an existing position
+  /** Add liquidity to an existing position
    */
-  public async addLiquidityToPosition(params: AddLiquidityToPositionParams): Promise<Transaction> {
+  public async addLiquidityByShape(params: AddLiquidityByShapeParams): Promise<Transaction> {
     const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
-    return this.positionService.addLiquidityToPosition(params, pairInfo);
+    return this.positionService.addLiquidityByShape(params, pairInfo);
   }
 
   /**
@@ -76,8 +78,17 @@ export class SarosDLMM extends SarosBaseService {
   /**
    * Get all user positions in a specific pool
    */
-  public async getUserPositions(params: GetUserPositionsParams): Promise<PositionInfo[]> {
+  public async getUserPositions(params: GetUserPositionsParams): Promise<PositionAccount[]> {
     return this.positionService.getUserPositions(params);
+  }
+
+  /**
+   * Get detailed token balances for each bin in a position
+   */
+  public async getPositionBinBalances(
+    params: GetPositionBinBalancesParams
+  ): Promise<PositionBinBalance[]> {
+    return await this.positionService.getPositionBinBalances(params);
   }
 
   /**

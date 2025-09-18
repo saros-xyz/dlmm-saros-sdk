@@ -2,7 +2,7 @@ import { DLMMPairAccount } from '../../types';
 import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT } from '../../constants';
 
 export class FeeCalculator {
-  public static getVariableFee(pairInfo: DLMMPairAccount, volatilityAccumulator: number): bigint {
+  private static getVariableFee(pairInfo: DLMMPairAccount, volatilityAccumulator: number): bigint {
     const variableFeeControl = BigInt(pairInfo.staticFeeParameters.variableFeeControl);
     if (variableFeeControl > BigInt(0)) {
       const prod = BigInt(Math.floor(volatilityAccumulator * pairInfo.binStep));
@@ -14,7 +14,7 @@ export class FeeCalculator {
     return variableFeeControl;
   }
 
-  public static getBaseFee(binStep: number, baseFactor: number): bigint {
+  private static getBaseFee(binStep: number, baseFactor: number): bigint {
     return BigInt(binStep) * BigInt(baseFactor) * BigInt(10);
   }
 

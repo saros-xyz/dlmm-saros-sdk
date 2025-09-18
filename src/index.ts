@@ -6,8 +6,8 @@ export { SarosDLMM } from './services';
 
 // Public enums (values)
 export { MODE, LiquidityShape, RemoveLiquidityType } from './types';
- 
-export {getPriceFromId, getIdFromPrice} from "./utils/price"
+
+export { getPriceFromId, getIdFromPrice } from './utils/price';
 
 // Public types (type-only)
 export type {
@@ -15,15 +15,15 @@ export type {
   QuoteParams,
   QuoteResponse,
   CreatePositionParams,
-  AddLiquidityToPositionParams,
+  AddLiquidityByShapeParams,
   RemoveLiquidityParams,
   RemoveLiquidityResponse,
   GetUserPositionsParams,
-  PositionInfo,
   CreatePoolParams,
   GetPoolLiquidityParams,
   PoolMetadata,
   DLMMPairAccount,
+  PositionAccount,
   PoolLiquidityData,
   BinLiquidityData,
 } from './types';

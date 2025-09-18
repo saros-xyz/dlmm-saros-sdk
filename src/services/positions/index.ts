@@ -11,16 +11,16 @@ import {
   WRAP_SOL_PUBKEY,
 } from '../../constants';
 import {
-  AddLiquidityToPositionParams,
-  PositionBinReserve,
+  AddLiquidityByShapeParams,
+  PositionBinBalance,
   CreatePositionParams,
   RemoveLiquidityParams,
   RemoveLiquidityResponse,
   GetUserPositionsParams,
   BinArray,
   PositionAccount,
-  PositionInfo,
   DLMMPairAccount,
+  GetPositionBinBalancesParams,
 } from '../../types';
 import {
   addSolTransferInstructions,
@@ -87,11 +87,9 @@ export class PositionService extends SarosBaseService {
     }
   }
 
-  private async getBinsReserveInformation(params: {
-    position: PublicKey;
-    pair: PublicKey;
-    payer: PublicKey;
-  }): Promise<PositionBinReserve[]> {
+  public async getPositionBinBalances(
+    params: GetPositionBinBalancesParams
+  ): Promise<PositionBinBalance[]> {
     const { position, pair, payer } = params;
     const positionInfo = await this.getPositionAccount(position);
     const firstBinId = positionInfo.lowerBinId;
@@ -211,8 +209,8 @@ export class PositionService extends SarosBaseService {
     return transaction;
   }
 
-  async addLiquidityToPosition(
-    params: AddLiquidityToPositionParams,
+  async addLiquidityByShape(
+    params: AddLiquidityByShapeParams,
     pairInfo: DLMMPairAccount
   ): Promise<Transaction> {
     const {
@@ -505,7 +503,7 @@ export class PositionService extends SarosBaseService {
           spl.TOKEN_2022_PROGRAM_ID
         );
 
-        const reserveXY = await this.getBinsReserveInformation({
+        const reserveXY = await this.getPositionBinBalances({
           position: new PublicKey(position),
           pair,
           payer,
@@ -633,7 +631,7 @@ export class PositionService extends SarosBaseService {
   public async getUserPositions({
     payer,
     poolAddress: pair,
-  }: GetUserPositionsParams): Promise<PositionInfo[]> {
+  }: GetUserPositionsParams): Promise<PositionAccount[]> {
     const tokenAccounts = await this.connection.getParsedTokenAccountsByOwner(payer, {
       programId: spl.TOKEN_2022_PROGRAM_ID,
     });
@@ -645,7 +643,7 @@ export class PositionService extends SarosBaseService {
       })
       .map((acc) => new PublicKey(acc.account.data.parsed.info.mint));
 
-    const arrPositionPda = positionMints.map((mint) => {
+    const positionPdas = positionMints.map((mint) => {
       const [positionPda] = PublicKey.findProgramAddressSync(
         [Buffer.from(utils.bytes.utf8.encode('position')), mint.toBuffer()],
         this.lbProgram.programId
@@ -653,61 +651,55 @@ export class PositionService extends SarosBaseService {
       return positionPda;
     });
 
-    let positions = [];
-    try {
-      // getMultipleAccountsInfo allows up to 100 accounts at once
-      const arrPositionPdaChunked: PublicKey[][] = chunk(arrPositionPda, 100);
-      const results: any[] = [];
-      for (const item of arrPositionPdaChunked) {
-        const accountsInfo = await this.connection.getMultipleAccountsInfo(item);
-        results.push(...accountsInfo);
-      }
-      if (results.length !== arrPositionPda.length) {
-        throw new Error('Invalid account info');
-      }
-      positions = await Promise.all(
-        arrPositionPda.map(async (positionPda, idx) => {
-          const accountInfo = results[idx];
-          if (!accountInfo) return null;
-          try {
-            //@ts-ignore
-            const position = await this.lbProgram.account.position.fetch(positionPda);
-            if (position.pair.toString() !== pair.toString()) return null;
-            return { ...position, position: positionPda.toString() };
-          } catch {
-            return null;
-          }
-        })
-      );
-    } catch {
-      positions = await Promise.all(
-        arrPositionPda.map(async (positionPda) => {
-          try {
-            const accountInfo = await this.connection.getAccountInfo(positionPda);
-            if (!accountInfo) return null;
-            //@ts-ignore
-            const position = await this.lbProgram.account.position.fetch(positionPda);
-            if (position.pair.toString() !== pair.toString()) return null;
-            return { ...position, position: positionPda.toString() };
-          } catch {
-            return null;
-          }
-        })
-      );
-    }
+    const positions = await this.fetchPositionAccounts(positionPdas, pair);
 
     return positions
       .filter(Boolean)
-      .sort((a, b) => a.lowerBinId - b.lowerBinId)
-      .map(
-        (item) =>
-          ({
-            liquidityShares: item.liquidityShares,
-            lowerBinId: item.lowerBinId,
-            upperBinId: item.upperBinId,
-            positionMint: item.positionMint,
-            position: item.position,
-          }) as PositionInfo
+      .sort((a: { lowerBinId: number }, b: { lowerBinId: number }) => a.lowerBinId - b.lowerBinId);
+  }
+
+  private async fetchPositionAccounts(
+    positionPdas: PublicKey[],
+    pair: PublicKey
+  ): Promise<PositionAccount[]> {
+    try {
+      // Batch fetch for better performance
+      const positionPdaChunks = chunk(positionPdas, 100);
+      const allPositions: PositionAccount[] = [];
+
+      for (const chunk of positionPdaChunks) {
+        //@ts-ignore
+        const positions = await this.lbProgram.account.position.fetchMultiple(chunk);
+
+        const validPositions = positions
+          .map((position: any, idx: number) => {
+            if (!position || position.pair.toString() !== pair.toString()) {
+              return null;
+            }
+            return { ...position, position: chunk[idx].toString() };
+          })
+          .filter(Boolean);
+
+        allPositions.push(...validPositions);
+      }
+
+      return allPositions;
+    } catch {
+      // Fallback to individual fetches
+      const positions = await Promise.all(
+        positionPdas.map(async (positionPda) => {
+          try {
+            //@ts-ignore
+            const position = await this.lbProgram.account.position.fetch(positionPda);
+            if (position.pair.toString() !== pair.toString()) return null;
+            return { ...position, position: positionPda.toString() };
+          } catch {
+            return null;
+          }
+        })
       );
+
+      return positions.filter(Boolean);
+    }
   }
 }
