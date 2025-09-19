@@ -6,11 +6,11 @@ interface Options {
 }
 
 export interface SwapParams {
-  tokenMintX: PublicKey;
-  tokenMintY: PublicKey;
+  tokenIn: PublicKey; // tokenX
+  tokenOut: PublicKey; // tokenY
   amount: bigint;
   options: Options;
-  otherAmountOffset: bigint; // slippage protection threshold
+  minTokenOut: bigint; // The minimum amount of tokenOut
   pair: PublicKey;
   hook: PublicKey;
   payer: PublicKey;
@@ -29,5 +29,5 @@ export interface QuoteResponse {
   priceImpact: number; // price impact as percentage (0-100)
   amount: bigint;
   /** Slippage-adjusted threshold - unclear naming, consider minAmountOut/maxAmountIn */
-  otherAmountOffset: bigint;
+  minTokenOut: bigint;
 }

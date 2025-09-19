@@ -98,19 +98,19 @@ export class SarosDLMM extends SarosBaseService {
     return this.poolService.createPairWithConfig(params);
   }
 
-  /**   * Fetch metadata for a specific pool
+  /** Fetch metadata for a specific pool
    */
   public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
     return this.poolService.getPoolMetadata(pair);
   }
 
-  /**   * Get list of all Saros DLMM pool addresses
+  /** Get list of all Saros DLMM pool addresses
    */
   public async getAllPoolAddresses(): Promise<string[]> {
     return this.poolService.getAllPoolAddresses();
   }
 
-  /**   * Listen for new pool addresses being created and call postTxFunction with the new address
+  /** Listen for new pool addresses being created and call postTxFunction with the new address
    */
   public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
     return this.poolService.listenNewPoolAddress(postTxFunction);

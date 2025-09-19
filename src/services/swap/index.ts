@@ -390,10 +390,10 @@ export class SwapService extends SarosBaseService {
   // only swap and getQuote are public
   public async swap(params: SwapParams): Promise<Transaction> {
     const {
-      tokenMintX,
-      tokenMintY,
+      tokenIn: tokenMintX,
+      tokenOut: tokenMintY,
       amount,
-      otherAmountOffset,
+      minTokenOut: otherAmountOffset,
       options: { swapForY, isExactInput },
 
       pair,
@@ -577,7 +577,7 @@ export class SwapService extends SarosBaseService {
         amountIn: amountIn,
         amountOut: amountOut,
         amount: isExactInput ? maxAmountIn : minAmountOut,
-        otherAmountOffset: isExactInput ? minAmountOut : maxAmountIn,
+        minTokenOut: isExactInput ? minAmountOut : maxAmountIn,
         priceImpact: priceImpact,
       };
     } catch (error) {
