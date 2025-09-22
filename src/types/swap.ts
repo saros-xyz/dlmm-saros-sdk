@@ -2,7 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 
 interface Options {
   swapForY: boolean; // true = X to Y, false = Y to X
-  isExactInput: boolean;
+  isExactInput: boolean; // if true: best rate within slippage is returned. if false, exact amount is returned 
 }
 
 export interface SwapParams {
@@ -28,6 +28,5 @@ export interface QuoteResponse {
   amountOut: bigint;
   priceImpact: number; // price impact as percentage (0-100)
   amount: bigint;
-  /** Slippage-adjusted threshold - unclear naming, consider minAmountOut/maxAmountIn */
-  minTokenOut: bigint;
+  minTokenOut: bigint; // The minimum amount of tokenOut
 }
