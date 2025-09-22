@@ -22,7 +22,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "fix": "prettier --write . && eslint . --ext .ts --fix",
-    "test": "vitest"
+    "test": "vitest",
+    "test:clean": "rm -rf test-data"
   },
   "author": "Saros Finance",
   "license": "ISC",
