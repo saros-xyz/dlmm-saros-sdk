@@ -222,7 +222,7 @@ export class PoolService extends SarosBaseService {
       const pairAccountDiscriminator = pairAccount ? pairAccount.discriminator : undefined;
 
       if (!pairAccountDiscriminator) {
-        throw PoolServiceError.PoolNotFound;
+        throw PoolServiceError.NoPoolsFound;
       }
 
       const accounts = await this.connection.getProgramAccounts(new PublicKey(programId), {
@@ -234,7 +234,7 @@ export class PoolService extends SarosBaseService {
       });
 
       if (accounts.length === 0) {
-        throw PoolServiceError.PoolNotFound;
+        throw PoolServiceError.NoPoolsFound;
       }
 
       const poolAddresses = accounts.reduce((addresses: string[], account) => {
@@ -253,7 +253,7 @@ export class PoolService extends SarosBaseService {
       if (error instanceof PoolServiceError) {
         throw error;
       }
-      throw PoolServiceError.PoolNotFound;
+      throw PoolServiceError.NoPoolsFound;
     }
   }
 
