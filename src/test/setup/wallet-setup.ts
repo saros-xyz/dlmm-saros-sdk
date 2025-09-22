@@ -29,14 +29,14 @@ export interface TestTokenInfo {
 
 export interface TestPoolInfo {
   pair: string;
-  baseToken: string; // mint address
-  quoteToken: string; // mint address  
+  baseToken: string;
+  quoteToken: string;
   binStep: number;
   ratePrice: number;
   activeBin: number;
   binArrayLower: string;
   binArrayUpper: string;
-  signature: string; // creation transaction signature
+  signature: string;
 }
 
 export interface TestWalletInfo {
@@ -51,7 +51,7 @@ const DEFAULT_CONFIG: TestWalletConfig = {
   walletFile: "test-wallet.json",
   tokenConfigFile: "test-tokens.json",
   minBalanceSol: 1.0,
-  devnetRpcUrl: process.env.RPC_URL || "https://api.devnet.solana.com",
+  devnetRpcUrl: process.env.DEVNET_RPC_URL || "https://api.devnet.solana.com",
 };
 
 export class TestWalletSetup {
@@ -94,19 +94,15 @@ export class TestWalletSetup {
     if (fs.existsSync(walletPath)) {
       try {
         const keypair = this.loadKeypair(walletPath);
-        console.log(`📝 Loaded existing test wallet: ${keypair.publicKey.toBase58()}`);
         return keypair;
       } catch (error) {
         console.warn("Failed to load existing wallet, creating new one...");
       }
     }
 
-    console.log("🔑 Creating new test wallet...");
     const keypair = Keypair.generate();
     this.saveKeypair(keypair, walletPath);
-
-    console.log(`✅ New test wallet created: ${keypair.publicKey.toBase58()}`);
-    console.log(`💡 Run 'npm run test:setup-tokens' to create test tokens for this wallet`);
+    console.log(`Created test wallet: ${keypair.publicKey.toBase58()}`);
     return keypair;
   }
 
@@ -119,7 +115,7 @@ export class TestWalletSetup {
       
       await this.connection.confirmTransaction(signature, "confirmed");
     } catch (error) {
-      console.error("❌ Airdrop failed:", error);
+      console.error("Airdrop failed:", error);
       throw new Error("Failed to get SOL from faucet. Try again later or use a different RPC.");
     }
   }
@@ -136,19 +132,27 @@ export class TestWalletSetup {
     await this.requestAirdrop(wallet.publicKey, amountToRequest);
   }
 
-  private loadTokenConfigs(): TestTokenInfo[] {
+  private loadTestData(): { tokens: TestTokenInfo[], pools: TestPoolInfo[] } {
     const tokenConfigPath = this.getTokenConfigPath();
     
     if (!fs.existsSync(tokenConfigPath)) {
-      return [];
+      return { tokens: [], pools: [] };
     }
 
     try {
-      const tokenConfigs = JSON.parse(fs.readFileSync(tokenConfigPath, "utf-8"));
-      return Array.isArray(tokenConfigs) ? tokenConfigs : [tokenConfigs];
+      const data = JSON.parse(fs.readFileSync(tokenConfigPath, "utf-8"));
+      
+      if (Array.isArray(data)) {
+        return { tokens: data, pools: [] };
+      }
+      
+      return {
+        tokens: data.tokens || [],
+        pools: data.pools || []
+      };
     } catch (error) {
-      console.warn("Failed to load token configs:", error);
-      return [];
+      console.warn("Failed to load test data:", error);
+      return { tokens: [], pools: [] };
     }
   }
 
@@ -159,7 +163,7 @@ export class TestWalletSetup {
       try {
         const mintInfo = await this.connection.getAccountInfo(new PublicKey(tokenConfig.mintAddress));
         if (!mintInfo) {
-          console.warn(`⚠️  Token mint ${tokenConfig.mintAddress} not found on devnet`);
+          console.warn(`Token mint ${tokenConfig.mintAddress} not found on devnet`);
           continue;
         }
 
@@ -177,7 +181,7 @@ export class TestWalletSetup {
 
         tokensWithAccounts.push(tokenWithAccount);
       } catch (error) {
-        console.error(`❌ Failed to setup token account for ${tokenConfig.symbol}:`, error);
+        console.error(`Failed to setup token account for ${tokenConfig.symbol}:`, error);
       }
     }
 
@@ -192,19 +196,20 @@ export class TestWalletSetup {
       const balance = await this.connection.getBalance(wallet.publicKey);
       const solBalance = balance / LAMPORTS_PER_SOL;
 
-      const tokenConfigs = this.loadTokenConfigs();
-      const tokens = await this.setupTokenAccounts(wallet, tokenConfigs);
+      const testData = this.loadTestData();
+      const tokens = await this.setupTokenAccounts(wallet, testData.tokens);
 
       const walletInfo: TestWalletInfo = {
         address: wallet.publicKey.toBase58(),
         keypair: wallet,
         balance: solBalance,
         tokens,
+        pools: testData.pools
       };
 
       return walletInfo;
     } catch (error) {
-      console.error("❌ Test setup failed:", error);
+      console.error("Test setup failed:", error);
       throw error;
     }
   }
@@ -227,7 +232,7 @@ export class TestWalletSetup {
       // Directory not empty or doesn't exist, ignore
     }
     
-    console.log("🧹 Test data cleaned up");
+    console.log("Test data cleaned up");
   }
 
   public getConnection(): Connection {
@@ -242,8 +247,14 @@ export class TestWalletSetup {
     await this.requestAirdrop(publicKey, amount);
   }
 
-  public saveTokenConfigs(tokens: TestTokenInfo[]): void {
+  public saveTestData(walletInfo: TestWalletInfo): void {
     const tokenConfigPath = this.getTokenConfigPath();
-    fs.writeFileSync(tokenConfigPath, JSON.stringify(tokens, null, 2));
+    
+    const testData = {
+      tokens: walletInfo.tokens,
+      pools: walletInfo.pools || []
+    };
+    
+    fs.writeFileSync(tokenConfigPath, JSON.stringify(testData, null, 2));
   }
 }

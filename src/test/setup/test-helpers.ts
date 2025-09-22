@@ -1,7 +1,6 @@
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
-import { TestWalletInfo, TestTokenInfo, TestWalletSetup } from './wallet-setup';
+import { TestWalletInfo, TestTokenInfo, TestWalletSetup, TestPoolInfo } from './wallet-setup';
 
-// Type-safe helpers for accessing test data in tests
 export function getTestWallet(): TestWalletInfo {
   const wallet = (global as any).testWallet;
   if (!wallet) {
@@ -29,7 +28,7 @@ export function getTestWalletSetup(): TestWalletSetup {
 export function getTestToken(symbol?: string): TestTokenInfo {
   const wallet = getTestWallet();
   if (!wallet.tokens || wallet.tokens.length === 0) {
-    throw new Error('No test tokens available. Run "npm run test:setup-tokens" first.');
+    throw new Error('No test tokens available.');
   }
   
   if (symbol) {
@@ -40,7 +39,6 @@ export function getTestToken(symbol?: string): TestTokenInfo {
     return token;
   }
   
-  // Return first token if no symbol specified
   return wallet.tokens[0];
 }
 
@@ -49,9 +47,39 @@ export function getAllTestTokens(): TestTokenInfo[] {
   return wallet.tokens || [];
 }
 
-// Utility function to wait for transaction confirmation
+export function getAllTestPools(): TestPoolInfo[] {
+  const wallet = getTestWallet();
+  return wallet.pools || [];
+}
+
+export function findTestPool(baseSymbol: string, quoteSymbol: string, binStep: number): TestPoolInfo | null {
+  const wallet = getTestWallet();
+  const pools = wallet.pools || [];
+  
+  const baseToken = getTestToken(baseSymbol);
+  const quoteToken = getTestToken(quoteSymbol);
+  
+  return pools.find(pool => 
+    pool.baseToken === baseToken.mintAddress &&
+    pool.quoteToken === quoteToken.mintAddress &&
+    pool.binStep === binStep
+  ) || null;
+}
+
+export function saveTestPool(poolInfo: TestPoolInfo): void {
+  const wallet = getTestWallet();
+  const setup = getTestWalletSetup();
+  
+  if (!wallet.pools) {
+    wallet.pools = [];
+  }
+  
+  wallet.pools.push(poolInfo);
+  setup.saveTestData(wallet);
+}
+
 export async function waitForConfirmation(signature: string, connection: Connection) {
-  console.log(`⏳ Waiting for confirmation: ${signature}`);
+  console.log(`Waiting for confirmation: ${signature}`);
   
   const result = await connection.confirmTransaction(signature, 'confirmed');
   
@@ -59,22 +87,19 @@ export async function waitForConfirmation(signature: string, connection: Connect
     throw new Error(`Transaction failed: ${result.value.err}`);
   }
   
-  console.log(`✅ Transaction confirmed: ${signature}`);
+  console.log(`Transaction confirmed: ${signature}`);
   return result;
 }
 
-// Utility to create additional test keypairs
 export function createTestKeypair(): Keypair {
   return TestWalletSetup.generateTestKeypair();
 }
 
-// Utility to fund additional test wallets
 export async function fundTestWallet(publicKey: PublicKey, amount: number = 1.0): Promise<void> {
   const setup = getTestWalletSetup();
   await setup.fundWallet(publicKey, amount);
 }
 
-// Utility to get token balance
 export async function getTokenBalance(
   connection: Connection,
   tokenAccount: PublicKey
@@ -88,11 +113,10 @@ export async function getTokenBalance(
   }
 }
 
-// Utility to get SOL balance
 export async function getSolBalance(
   connection: Connection,
   publicKey: PublicKey
 ): Promise<number> {
   const balance = await connection.getBalance(publicKey);
-  return balance / 1_000_000_000; // Convert lamports to SOL
+  return balance / 1_000_000_000;
 }

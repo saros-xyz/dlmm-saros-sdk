@@ -11,14 +11,12 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
   const testDir = path.join(process.cwd(), "test-data");
   const tokenConfigPath = path.join(testDir, "test-tokens.json");
   
-  // Check if tokens already exist
   if (fs.existsSync(tokenConfigPath)) {
     return;
   }
 
-  console.log('🪙 Creating test tokens...');
+  console.log('Creating test tokens...');
 
-  // Get a temporary wallet setup to create tokens
   const tempWalletInfo = await walletSetup.setup();
   const connection = walletSetup.getConnection();
   const wallet = tempWalletInfo.keypair;
@@ -29,10 +27,10 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
     // Create SAROSDEV token
     const sarosMint = await createMint(
       connection,
-      wallet, // payer
+      wallet,
       wallet.publicKey,
       wallet.publicKey,
-      9 // decimals
+      9
     );
 
     const sarosTokenAccount = await getOrCreateAssociatedTokenAccount(
@@ -42,7 +40,6 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
       wallet.publicKey
     );
 
-    // Mint 1 million tokens
     await mintTo(
       connection,
       wallet,
@@ -66,7 +63,7 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
       wallet,
       wallet.publicKey,
       wallet.publicKey,
-      6 // USDC has 6 decimals
+      6
     );
 
     const usdcTokenAccount = await getOrCreateAssociatedTokenAccount(
@@ -76,7 +73,6 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
       wallet.publicKey
     );
 
-    // Mint 100,000 USDC (in 6 decimal format)
     await mintTo(
       connection,
       wallet,
@@ -100,7 +96,7 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
       wallet,
       wallet.publicKey,
       wallet.publicKey,
-      8 // WBTC has 8 decimals
+      8
     );
 
     const wbtcTokenAccount = await getOrCreateAssociatedTokenAccount(
@@ -110,7 +106,6 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
       wallet.publicKey
     );
 
-    // Mint 10 WBTC (in 8 decimal format)
     await mintTo(
       connection,
       wallet,
@@ -128,13 +123,14 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
       supply: 10,
     });
 
-    // Save token configs
-    walletSetup.saveTokenConfigs(tokens);
+    const walletInfo = await walletSetup.setup();
+    walletInfo.tokens = tokens;
+    walletSetup.saveTestData(walletInfo);
 
-    console.log('✅ Test tokens ready: SAROSDEV, TESTUSDC, TESTWBTC');
+    console.log('Test tokens ready: SAROSDEV, TESTUSDC, TESTWBTC');
 
   } catch (error) {
-    console.error('❌ Failed to create test tokens:', error);
+    console.error('Failed to create test tokens:', error);
     throw error;
   }
 }
