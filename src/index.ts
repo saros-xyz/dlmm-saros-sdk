@@ -8,6 +8,13 @@ export { SarosDLMM } from './services';
 export { MODE, LiquidityShape, RemoveLiquidityType } from './types';
 
 export { getPriceFromId, getIdFromPrice } from './utils/price';
+export {
+  getTokenProgram,
+  getPairVaultInfo,
+  getUserVaultInfo,
+  GetPairVaultInfoParams,
+  GetUserVaultInfoParams,
+} from './utils/vaults';
 
 // Public types (type-only)
 export type {
