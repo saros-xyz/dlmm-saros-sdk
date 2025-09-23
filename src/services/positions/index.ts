@@ -264,8 +264,7 @@ export class PositionService extends SarosBaseService {
       if (totalLiquid) {
         const amount = Number((BigInt(totalLiquid) * totalAmount) / MAX_BASIS_POINTS_BIGINT);
         const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
-        const tokenProgram = isNativeY ? tokenProgramY : tokenProgramX;
-        addSolTransferInstructions(transaction, payer, associatedUserVault, amount, tokenProgram);
+        addSolTransferInstructions(transaction, payer, associatedUserVault, amount);
       }
     }
 
@@ -520,8 +519,7 @@ export class PositionService extends SarosBaseService {
     ) {
       const isNativeY = pairInfo.tokenMintY.equals(WRAP_SOL_PUBKEY);
       const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
-      const solTokenProgram = isNativeY ? tokenProgramY : tokenProgramX;
-      addCloseAccountInstruction(cleanupTransaction, associatedUserVault, payer, solTokenProgram);
+      addCloseAccountInstruction(cleanupTransaction, associatedUserVault, payer);
     }
 
     return {

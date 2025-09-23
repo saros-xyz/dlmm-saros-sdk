@@ -493,8 +493,7 @@ export class SwapService extends SarosBaseService {
       const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
 
       if ((isNativeY && !swapForY) || (!isNativeY && swapForY)) {
-        const solTokenProgram = isNativeY ? tokenProgramY : tokenProgramX;
-        addSolTransferInstructions(tx, payer, associatedUserVault, amount, solTokenProgram);
+        addSolTransferInstructions(tx, payer, associatedUserVault, amount);
       }
     }
 
@@ -536,8 +535,7 @@ export class SwapService extends SarosBaseService {
       const isNativeY = tokenMintY.equals(WRAP_SOL_PUBKEY);
       const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
       if ((isNativeY && swapForY) || (!isNativeY && !swapForY)) {
-        const solTokenProgram = isNativeY ? tokenProgramY : tokenProgramX;
-        addCloseAccountInstruction(tx, associatedUserVault, payer, solTokenProgram);
+        addCloseAccountInstruction(tx, associatedUserVault, payer);
       }
     }
 
