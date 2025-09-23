@@ -19,8 +19,9 @@ import {
   PositionAccount,
   GetPositionBinBalancesParams,
   PositionBinBalance,
+  CreatePoolResponse,
 } from '../types';
-import { Transaction } from '@solana/web3.js';
+import { PublicKey, Transaction } from '@solana/web3.js';
 
 export class SarosDLMM extends SarosBaseService {
   bufferGas?: number;
@@ -83,6 +84,13 @@ export class SarosDLMM extends SarosBaseService {
   }
 
   /**
+   * Get position account data by position address
+   */
+  public async getPositionAccount(position: PublicKey): Promise<PositionAccount> {
+    return this.positionService.getPositionAccount(position);
+  }
+
+  /**
    * Get detailed token balances for each bin in a position
    */
   public async getPositionBinBalances(
@@ -94,8 +102,8 @@ export class SarosDLMM extends SarosBaseService {
   /**
    * Create a new pool. Requires a new pair with unique binStep and ratePrice.
    */
-  public async createPool(params: CreatePoolParams) {
-    return this.poolService.createPairWithConfig(params);
+  public async createPool(params: CreatePoolParams): Promise<CreatePoolResponse> {
+    return await this.poolService.createPairWithConfig(params);
   }
 
   /** Fetch metadata for a specific pool

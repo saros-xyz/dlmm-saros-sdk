@@ -1,4 +1,4 @@
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, Transaction } from '@solana/web3.js';
 
 export interface CreatePoolParams {
   baseToken: TokenInfo;
@@ -8,6 +8,21 @@ export interface CreatePoolParams {
   /** Initial price to set the active bin */
   ratePrice: number;
   payer: PublicKey;
+}
+
+export interface CreatePoolResponse {
+  /** Transaction to execute */
+  transaction: Transaction;
+  /** Address of the created pool pair */
+  pair: string;
+  /** Active bin ID where initial liquidity will be placed */
+  activeBin: number;
+  /** Lower bin array address */
+  binArrayLower: string;
+  /** Upper bin array address */
+  binArrayUpper: string;
+  /** Address for hooks configuration */
+  hooksConfig: string;
 }
 
 export interface PoolMetadata {
