@@ -41,14 +41,14 @@ export class SarosDLMM extends SarosBaseService {
    */
   public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
     const poolMetadata = await this.getPoolMetadata(params.pair.toString());
-    return this.swapService.getQuote(params, poolMetadata);
+    return await this.swapService.getQuote(params, poolMetadata);
   }
 
   /**
    * Execute a swap transaction
    */
   public async swap(params: SwapParams): Promise<Transaction> {
-    return this.swapService.swap(params);
+    return await this.swapService.swap(params);
   }
 
   /**
@@ -56,14 +56,14 @@ export class SarosDLMM extends SarosBaseService {
    */
   public async createPosition(params: CreatePositionParams): Promise<Transaction> {
     const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
-    return this.positionService.createPosition(params, pairInfo);
+    return await this.positionService.createPosition(params, pairInfo);
   }
 
   /** Add liquidity to an existing position
    */
   public async addLiquidityByShape(params: AddLiquidityByShapeParams): Promise<Transaction> {
     const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
-    return this.positionService.addLiquidityByShape(params, pairInfo);
+    return await this.positionService.addLiquidityByShape(params, pairInfo);
   }
 
   /**
@@ -73,21 +73,21 @@ export class SarosDLMM extends SarosBaseService {
    */
   public async removeLiquidity(params: RemoveLiquidityParams): Promise<RemoveLiquidityResponse> {
     const pairInfo = await this.poolService.getPoolAccount(params.poolAddress);
-    return this.positionService.removeLiquidity(params, pairInfo);
+    return await this.positionService.removeLiquidity(params, pairInfo);
   }
 
   /**
    * Get all user positions in a specific pool
    */
   public async getUserPositions(params: GetUserPositionsParams): Promise<PositionAccount[]> {
-    return this.positionService.getUserPositions(params);
+    return await this.positionService.getUserPositions(params);
   }
 
   /**
    * Get position account data by position address
    */
   public async getPositionAccount(position: PublicKey): Promise<PositionAccount> {
-    return this.positionService.getPositionAccount(position);
+    return await this.positionService.getPositionAccount(position);
   }
 
   /**
@@ -109,25 +109,25 @@ export class SarosDLMM extends SarosBaseService {
   /** Fetch metadata for a specific pool
    */
   public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
-    return this.poolService.getPoolMetadata(pair);
+    return await this.poolService.getPoolMetadata(pair);
   }
 
   /** Get list of all Saros DLMM pool addresses
    */
   public async getAllPoolAddresses(): Promise<string[]> {
-    return this.poolService.getAllPoolAddresses();
+    return await this.poolService.getAllPoolAddresses();
   }
 
   /** Listen for new pool addresses being created and call postTxFunction with the new address
    */
   public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
-    return this.poolService.listenNewPoolAddress(postTxFunction);
+    return await this.poolService.listenNewPoolAddress(postTxFunction);
   }
 
   /**
    * Get all bins with liquidity for a given pool. (new)
    */
   public async getPoolLiquidity(params: GetPoolLiquidityParams): Promise<PoolLiquidityData> {
-    return this.poolService.getPoolLiquidity(params);
+    return await this.poolService.getPoolLiquidity(params);
   }
 }
