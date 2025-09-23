@@ -5,3 +5,4 @@ dist
 .DS_Store
 # Test data (DEVNET only)
 test-data/
+.env*
