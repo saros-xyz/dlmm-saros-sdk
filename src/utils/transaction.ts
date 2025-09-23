@@ -58,7 +58,7 @@ export const addSolTransferInstructions = (
   transaction: Transaction,
   payer: PublicKey,
   vault: PublicKey,
-  amount: bigint | number,
+  amount: bigint | number
 ): void => {
   const lamports = typeof amount === 'bigint' ? Number(amount) : amount;
   transaction.add(
@@ -70,9 +70,7 @@ export const addSolTransferInstructions = (
 export const addCloseAccountInstruction = (
   transaction: Transaction,
   vault: PublicKey,
-  payer: PublicKey,
+  payer: PublicKey
 ): void => {
-  transaction.add(
-    spl.createCloseAccountInstruction(vault, payer, payer)
-  );
+  transaction.add(spl.createCloseAccountInstruction(vault, payer, payer));
 };

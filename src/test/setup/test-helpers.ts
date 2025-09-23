@@ -7,7 +7,7 @@ const NATIVE_SOL: TestTokenInfo = {
   mintAddress: 'So11111111111111111111111111111111111111112',
   decimals: 9,
   name: 'Wrapped SOL',
-  supply: 100000000
+  supply: 100000000,
 };
 
 export function getTestWallet(): TestWalletInfo {
@@ -44,15 +44,17 @@ export function getTestToken(symbol?: string): TestTokenInfo {
   if (!wallet.tokens || wallet.tokens.length === 0) {
     throw new Error('No test tokens available.');
   }
-  
+
   if (symbol) {
-    const token = wallet.tokens.find(t => t.symbol === symbol);
+    const token = wallet.tokens.find((t) => t.symbol === symbol);
     if (!token) {
-      throw new Error(`Test token ${symbol} not found. Available: ${wallet.tokens.map(t => t.symbol).join(', ')}, wSOL`);
+      throw new Error(
+        `Test token ${symbol} not found. Available: ${wallet.tokens.map((t) => t.symbol).join(', ')}, wSOL`
+      );
     }
     return token;
   }
-  
+
   return wallet.tokens[0];
 }
 
@@ -66,41 +68,48 @@ export function getAllTestPools(): TestPoolInfo[] {
   return wallet.pools || [];
 }
 
-export function findTestPool(baseSymbol: string, quoteSymbol: string, binStep: number): TestPoolInfo | null {
+export function findTestPool(
+  baseSymbol: string,
+  quoteSymbol: string,
+  binStep: number
+): TestPoolInfo | null {
   const wallet = getTestWallet();
   const pools = wallet.pools || [];
-  
+
   const baseToken = getTestToken(baseSymbol);
   const quoteToken = getTestToken(quoteSymbol);
-  
-  return pools.find(pool => 
-    pool.baseToken === baseToken.mintAddress &&
-    pool.quoteToken === quoteToken.mintAddress &&
-    pool.binStep === binStep
-  ) || null;
+
+  return (
+    pools.find(
+      (pool) =>
+        pool.baseToken === baseToken.mintAddress &&
+        pool.quoteToken === quoteToken.mintAddress &&
+        pool.binStep === binStep
+    ) || null
+  );
 }
 
 export function saveTestPool(poolInfo: TestPoolInfo): void {
   const wallet = getTestWallet();
   const setup = getTestWalletSetup();
-  
+
   if (!wallet.pools) {
     wallet.pools = [];
   }
-  
+
   wallet.pools.push(poolInfo);
   setup.saveTestData(wallet);
 }
 
 export async function waitForConfirmation(signature: string, connection: Connection) {
   console.log(`Waiting for confirmation: ${signature}`);
-  
+
   const result = await connection.confirmTransaction(signature, 'confirmed');
-  
+
   if (result.value.err) {
     throw new Error(`Transaction failed: ${result.value.err}`);
   }
-  
+
   console.log(`Transaction confirmed: ${signature}`);
   return result;
 }
@@ -127,10 +136,7 @@ export async function getTokenBalance(
   }
 }
 
-export async function getSolBalance(
-  connection: Connection,
-  publicKey: PublicKey
-): Promise<number> {
+export async function getSolBalance(connection: Connection, publicKey: PublicKey): Promise<number> {
   const balance = await connection.getBalance(publicKey);
   return balance / 1_000_000_000;
 }

@@ -1,15 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import * as fs from "fs";
-import * as path from "path";
-import {
-  Connection,
-  Keypair,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-} from "@solana/web3.js";
-import {
-  getOrCreateAssociatedTokenAccount,
-} from "@solana/spl-token";
+import * as fs from 'fs';
+import * as path from 'path';
+import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import { getOrCreateAssociatedTokenAccount } from '@solana/spl-token';
 
 export interface TestWalletConfig {
   walletFile: string;
@@ -48,10 +41,10 @@ export interface TestWalletInfo {
 }
 
 const DEFAULT_CONFIG: TestWalletConfig = {
-  walletFile: "test-wallet.json",
-  tokenConfigFile: "test-tokens.json",
-  minBalanceSol: 1.0,
-  devnetRpcUrl: process.env.DEVNET_RPC_URL || "https://api.devnet.solana.com",
+  walletFile: 'test-wallet.json',
+  tokenConfigFile: 'test-tokens.json',
+  minBalanceSol: 0.3,
+  devnetRpcUrl: process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com',
 };
 
 export class TestWalletSetup {
@@ -61,13 +54,12 @@ export class TestWalletSetup {
 
   constructor(config: Partial<TestWalletConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.testDir = path.join(process.cwd(), "test-data");
-    
+    this.testDir = path.join(process.cwd(), 'test-data');
+
     if (!fs.existsSync(this.testDir)) {
       fs.mkdirSync(this.testDir, { recursive: true });
     }
-
-    this.connection = new Connection(this.config.devnetRpcUrl, "confirmed");
+    this.connection = new Connection(this.config.devnetRpcUrl, 'confirmed');
   }
 
   private getWalletPath(): string {
@@ -84,7 +76,7 @@ export class TestWalletSetup {
   }
 
   private loadKeypair(filePath: string): Keypair {
-    const secretKey = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    const secretKey = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     return Keypair.fromSecretKey(new Uint8Array(secretKey));
   }
 
@@ -96,7 +88,7 @@ export class TestWalletSetup {
         const keypair = this.loadKeypair(walletPath);
         return keypair;
       } catch (error) {
-        console.warn("Failed to load existing wallet, creating new one...");
+        console.warn('Failed to load existing wallet, creating new one...');
       }
     }
 
@@ -108,15 +100,12 @@ export class TestWalletSetup {
 
   private async requestAirdrop(publicKey: PublicKey, amount: number): Promise<void> {
     try {
-      const signature = await this.connection.requestAirdrop(
-        publicKey,
-        amount * LAMPORTS_PER_SOL
-      );
-      
-      await this.connection.confirmTransaction(signature, "confirmed");
+      const signature = await this.connection.requestAirdrop(publicKey, amount * LAMPORTS_PER_SOL);
+
+      await this.connection.confirmTransaction(signature, 'confirmed');
     } catch (error) {
-      console.error("Airdrop failed:", error);
-      throw new Error("Failed to get SOL from faucet. Try again later or use a different RPC.");
+      console.error('Airdrop failed:', error);
+      throw new Error('Failed to get SOL from faucet. Try again later or use a different RPC.');
     }
   }
 
@@ -132,36 +121,41 @@ export class TestWalletSetup {
     await this.requestAirdrop(wallet.publicKey, amountToRequest);
   }
 
-  private loadTestData(): { tokens: TestTokenInfo[], pools: TestPoolInfo[] } {
+  private loadTestData(): { tokens: TestTokenInfo[]; pools: TestPoolInfo[] } {
     const tokenConfigPath = this.getTokenConfigPath();
-    
+
     if (!fs.existsSync(tokenConfigPath)) {
       return { tokens: [], pools: [] };
     }
 
     try {
-      const data = JSON.parse(fs.readFileSync(tokenConfigPath, "utf-8"));
-      
+      const data = JSON.parse(fs.readFileSync(tokenConfigPath, 'utf-8'));
+
       if (Array.isArray(data)) {
         return { tokens: data, pools: [] };
       }
-      
+
       return {
         tokens: data.tokens || [],
-        pools: data.pools || []
+        pools: data.pools || [],
       };
     } catch (error) {
-      console.warn("Failed to load test data:", error);
+      console.warn('Failed to load test data:', error);
       return { tokens: [], pools: [] };
     }
   }
 
-  private async setupTokenAccounts(wallet: Keypair, tokenConfigs: TestTokenInfo[]): Promise<TestTokenInfo[]> {
+  private async setupTokenAccounts(
+    wallet: Keypair,
+    tokenConfigs: TestTokenInfo[]
+  ): Promise<TestTokenInfo[]> {
     const tokensWithAccounts: TestTokenInfo[] = [];
 
     for (const tokenConfig of tokenConfigs) {
       try {
-        const mintInfo = await this.connection.getAccountInfo(new PublicKey(tokenConfig.mintAddress));
+        const mintInfo = await this.connection.getAccountInfo(
+          new PublicKey(tokenConfig.mintAddress)
+        );
         if (!mintInfo) {
           console.warn(`Token mint ${tokenConfig.mintAddress} not found on devnet`);
           continue;
@@ -204,12 +198,12 @@ export class TestWalletSetup {
         keypair: wallet,
         balance: solBalance,
         tokens,
-        pools: testData.pools
+        pools: testData.pools,
       };
 
       return walletInfo;
     } catch (error) {
-      console.error("Test setup failed:", error);
+      console.error('Test setup failed:', error);
       throw error;
     }
   }
@@ -217,22 +211,22 @@ export class TestWalletSetup {
   public async cleanup(): Promise<void> {
     const walletPath = this.getWalletPath();
     const tokenConfigPath = this.getTokenConfigPath();
-    
+
     if (fs.existsSync(walletPath)) {
       fs.unlinkSync(walletPath);
     }
-    
+
     if (fs.existsSync(tokenConfigPath)) {
       fs.unlinkSync(tokenConfigPath);
     }
-    
+
     try {
       fs.rmdirSync(this.testDir);
     } catch (error) {
       // Directory not empty or doesn't exist, ignore
     }
-    
-    console.log("Test data cleaned up");
+
+    console.log('Test data cleaned up');
   }
 
   public getConnection(): Connection {
@@ -249,12 +243,12 @@ export class TestWalletSetup {
 
   public saveTestData(walletInfo: TestWalletInfo): void {
     const tokenConfigPath = this.getTokenConfigPath();
-    
+
     const testData = {
       tokens: walletInfo.tokens,
-      pools: walletInfo.pools || []
+      pools: walletInfo.pools || [],
     };
-    
+
     fs.writeFileSync(tokenConfigPath, JSON.stringify(testData, null, 2));
   }
 }

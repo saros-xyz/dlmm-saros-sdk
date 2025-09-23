@@ -14,9 +14,9 @@ export default defineConfig(({ mode }) => ({
     pool: 'threads',
     poolOptions: {
       threads: {
-        singleThread: true
-      }
-    }
+        singleThread: true,
+      },
+    },
   },
   resolve: {
     alias: {

@@ -44,7 +44,9 @@ async function createOrVerifyPool(
 
   try {
     console.log('Submitting transaction...');
-    signature = await connection.sendTransaction(createPoolResult.transaction, [testWallet.keypair]);
+    signature = await connection.sendTransaction(createPoolResult.transaction, [
+      testWallet.keypair,
+    ]);
     await waitForConfirmation(signature, connection);
 
     console.log(`Pool created: ${createPoolResult.pair}`);

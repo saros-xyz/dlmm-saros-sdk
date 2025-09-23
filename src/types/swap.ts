@@ -2,7 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 
 interface Options {
   swapForY: boolean; // true = X to Y, false = Y to X
-  isExactInput: boolean; // if true: best rate within slippage is returned. if false, exact amount is returned 
+  isExactInput: boolean; // if true: best rate within slippage is returned. if false, exact amount is returned
 }
 
 export interface SwapParams {

@@ -322,4 +322,3 @@ export class PoolService extends SarosBaseService {
     }
   }
 }
-

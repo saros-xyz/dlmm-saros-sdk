@@ -31,11 +31,13 @@ interface TransactionLog {
 
 // Logging utilities
 function loadTransactionLog(): TransactionLog {
-const logPath = join(process.cwd(), 'test-data/position-transactions.json');  return existsSync(logPath) ? JSON.parse(readFileSync(logPath, 'utf8')) : { positions: [] };
+  const logPath = join(process.cwd(), 'test-data/position-transactions.json');
+  return existsSync(logPath) ? JSON.parse(readFileSync(logPath, 'utf8')) : { positions: [] };
 }
 
 function saveTransactionLog(log: TransactionLog): void {
-const logPath = join(process.cwd(), 'test-data/position-transactions.json');  mkdirSync(dirname(logPath), { recursive: true });
+  const logPath = join(process.cwd(), 'test-data/position-transactions.json');
+  mkdirSync(dirname(logPath), { recursive: true });
   writeFileSync(logPath, JSON.stringify(log, null, 2));
 }
 
@@ -47,7 +49,11 @@ function logTransaction(transaction: Omit<PositionTransaction, 'timestamp'>): vo
 
 function isInsufficientFundsError(error: unknown): boolean {
   const msg = String(error);
-  return msg.includes('insufficient') || msg.includes('InsufficientFunds') || msg.includes('custom program error: 0x1');
+  return (
+    msg.includes('insufficient') ||
+    msg.includes('InsufficientFunds') ||
+    msg.includes('custom program error: 0x1')
+  );
 }
 
 describe('Position Management Integration', () => {
@@ -106,7 +112,10 @@ describe('Position Management Integration', () => {
           });
 
           // Include position mint keypair in signers
-          const signature = await connection.sendTransaction(createTx, [testWallet.keypair, positionMintKeypair]);
+          const signature = await connection.sendTransaction(createTx, [
+            testWallet.keypair,
+            positionMintKeypair,
+          ]);
           await waitForConfirmation(signature, connection);
 
           logTransaction({
@@ -128,10 +137,9 @@ describe('Position Management Integration', () => {
 
           const positionAccount = await lbServices.getPositionAccount(positionAddress);
           expect(positionAccount.pair.toString()).toBe(pool.pair);
-
         } catch (error) {
           console.log(`✗ ${testCase.name}: ${error}`);
-          
+
           logTransaction({
             type: 'create_position',
             signature: 'failed',
@@ -162,7 +170,10 @@ describe('Position Management Integration', () => {
           positionMint: positionMintKeypair.publicKey,
         });
 
-        const createSig = await connection.sendTransaction(createTx, [testWallet.keypair, positionMintKeypair]);
+        const createSig = await connection.sendTransaction(createTx, [
+          testWallet.keypair,
+          positionMintKeypair,
+        ]);
         await waitForConfirmation(createSig, connection);
 
         // Test liquidity amounts
@@ -185,7 +196,9 @@ describe('Position Management Integration', () => {
               binRange,
             });
 
-            const signature = await connection.sendTransaction(addLiquidityTx, [testWallet.keypair]);
+            const signature = await connection.sendTransaction(addLiquidityTx, [
+              testWallet.keypair,
+            ]);
             await waitForConfirmation(signature, connection);
 
             logTransaction({
@@ -199,7 +212,6 @@ describe('Position Management Integration', () => {
             });
 
             console.log(`✓ ${test.name} liquidity: ${signature.slice(0, 8)}...`);
-
           } catch (error) {
             if (isInsufficientFundsError(error)) {
               console.log(`⚠ ${test.name} liquidity: insufficient funds`);
@@ -207,7 +219,7 @@ describe('Position Management Integration', () => {
             }
 
             console.log(`✗ ${test.name} liquidity: ${error}`);
-            
+
             logTransaction({
               type: 'add_liquidity',
               signature: 'failed',
@@ -220,7 +232,6 @@ describe('Position Management Integration', () => {
             });
           }
         }
-
       } catch (error) {
         console.log(`Position creation failed: ${error}`);
       }
@@ -272,7 +283,6 @@ describe('Position Management Integration', () => {
 
         console.log(`Position balances - Base: ${totalBase}, Quote: ${totalQuote}`);
         expect(totalBase + totalQuote).toBeGreaterThan(0n);
-
       } catch (error) {
         if (!isInsufficientFundsError(error)) {
           console.log(`Balance verification failed: ${error}`);
@@ -290,7 +300,7 @@ describe('Position Management Integration', () => {
       try {
         // Create and fund position
         console.log('Creating position for removal test...');
-        
+
         const createTx = await lbServices.createPosition({
           poolAddress: new PublicKey(pool.pair),
           binRange,
@@ -314,7 +324,7 @@ describe('Position Management Integration', () => {
 
         // Remove liquidity
         console.log('Removing liquidity...');
-        
+
         const removeResult = await lbServices.removeLiquidity({
           positionMints: [positionMintKeypair.publicKey],
           payer: testWallet.keypair.publicKey,
@@ -324,7 +334,9 @@ describe('Position Management Integration', () => {
 
         // Execute setup transaction if needed
         if (removeResult.setupTransaction) {
-          const setupSig = await connection.sendTransaction(removeResult.setupTransaction, [testWallet.keypair]);
+          const setupSig = await connection.sendTransaction(removeResult.setupTransaction, [
+            testWallet.keypair,
+          ]);
           await waitForConfirmation(setupSig, connection);
           console.log(`✓ Setup tx: ${setupSig.slice(0, 8)}...`);
         }
@@ -348,17 +360,18 @@ describe('Position Management Integration', () => {
 
         // Execute cleanup transaction if needed
         if (removeResult.cleanupTransaction) {
-          const cleanupSig = await connection.sendTransaction(removeResult.cleanupTransaction, [testWallet.keypair]);
+          const cleanupSig = await connection.sendTransaction(removeResult.cleanupTransaction, [
+            testWallet.keypair,
+          ]);
           await waitForConfirmation(cleanupSig, connection);
           console.log(`✓ Cleanup tx: ${cleanupSig.slice(0, 8)}...`);
         }
 
         console.log(`Closed ${removeResult.closedPositions.length} positions`);
-
       } catch (error) {
         if (!isInsufficientFundsError(error)) {
           console.log(`Liquidity removal failed: ${error}`);
-          
+
           logTransaction({
             type: 'remove_liquidity',
             signature: 'failed',
@@ -382,11 +395,10 @@ describe('Position Management Integration', () => {
           });
 
           console.log(`Pool ${pool.pair.slice(0, 8)}...: ${positions.length} positions`);
-          
+
           positions.forEach((pos, i) => {
             console.log(`  Position ${i + 1}: bins [${pos.lowerBinId}, ${pos.upperBinId}]`);
           });
-
         } catch (error) {
           console.log(`Failed to get positions for ${pool.pair.slice(0, 8)}...: ${error}`);
         }
@@ -450,7 +462,6 @@ describe('Position Management Integration', () => {
         ).rejects.toThrow();
 
         console.log('✓ Zero liquidity amounts properly rejected');
-
       } catch (error) {
         console.log(`Zero liquidity test setup failed: ${error}`);
       }
@@ -504,8 +515,9 @@ describe('Position Management Integration', () => {
           });
 
           expect(removeResult.transactions.length).toBeGreaterThan(0);
-          console.log(`✓ ${removalTest.name}: ${removeResult.transactions.length} transactions generated`);
-
+          console.log(
+            `✓ ${removalTest.name}: ${removeResult.transactions.length} transactions generated`
+          );
         } catch (error) {
           if (!isInsufficientFundsError(error)) {
             console.log(`✗ ${removalTest.name} failed: ${error}`);
