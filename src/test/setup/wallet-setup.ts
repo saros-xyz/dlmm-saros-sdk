@@ -43,7 +43,7 @@ export interface TestWalletInfo {
 const DEFAULT_CONFIG: TestWalletConfig = {
   walletFile: 'test-wallet.json',
   tokenConfigFile: 'test-tokens.json',
-  minBalanceSol: 0.3,
+  minBalanceSol: 0.1,
   devnetRpcUrl: process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com',
 };
 
