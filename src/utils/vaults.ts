@@ -1,5 +1,6 @@
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
+import { WRAP_SOL_PUBKEY } from '../constants';
 
 export interface GetPairVaultInfoParams {
   tokenMint: PublicKey;
@@ -18,6 +19,10 @@ export async function getTokenProgram(
   address: PublicKey,
   connection: Connection
 ): Promise<PublicKey> {
+  // Special-case: WSOL is always legacy SPL
+  if (address.equals(WRAP_SOL_PUBKEY)) {
+    return spl.TOKEN_PROGRAM_ID;
+  }
   const account = await connection.getParsedAccountInfo(address);
   const owner = account.value?.owner.toBase58();
 
@@ -26,6 +31,11 @@ export async function getTokenProgram(
     : spl.TOKEN_2022_PROGRAM_ID;
 }
 
+/**
+ * Returns the ATA owned by the pair PDA.
+ * If {payer, transaction} are provided and the ATA is missing,
+ * this appends a create-ATA ix to the given transaction.
+ */
 export async function getPairVaultInfo(
   params: GetPairVaultInfoParams,
   connection: Connection
@@ -59,6 +69,11 @@ export async function getPairVaultInfo(
   return associatedPairVault;
 }
 
+/**
+ * Returns the **ATA owned by the user**.
+ * If {transaction} is provided and the ATA is missing,
+ * this appends a create-ATA ix to the given transaction.
+ */
 export async function getUserVaultInfo(
   params: GetUserVaultInfoParams,
   connection: Connection

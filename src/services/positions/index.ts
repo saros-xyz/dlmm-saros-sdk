@@ -25,6 +25,7 @@ import {
 import { getUserVaultInfo, getPairVaultInfo, getTokenProgram } from '../../utils/vaults';
 import { BinArrayManager } from '../pools/bin-manager';
 import { createUniformDistribution } from './bin-distribution';
+import { PositionServiceError } from './errors';
 
 export class PositionService extends SarosBaseService {
   bufferGas?: number;
@@ -212,25 +213,30 @@ export class PositionService extends SarosBaseService {
       binRange,
     } = params;
 
+    if (baseAmount <= 0n && quoteAmount <= 0n) {
+      throw PositionServiceError.CannotAddZero;
+    }
+
     const transaction = userTxn || new Transaction();
 
     const tokenProgramX = await getTokenProgram(pairInfo.tokenMintX, this.connection);
     const tokenProgramY = await getTokenProgram(pairInfo.tokenMintY, this.connection);
 
     const associatedPairVaultX = await getPairVaultInfo(
-      { tokenMint: pairInfo.tokenMintX, pair: poolAddress },
+      { tokenMint: pairInfo.tokenMintX, pair: poolAddress, payer, transaction },
       this.connection
     );
     const associatedPairVaultY = await getPairVaultInfo(
-      { tokenMint: pairInfo.tokenMintY, pair: poolAddress },
+      { tokenMint: pairInfo.tokenMintY, pair: poolAddress, payer, transaction },
       this.connection
     );
+
     const associatedUserVaultX = await getUserVaultInfo(
-      { tokenMint: pairInfo.tokenMintX, payer },
+      { tokenMint: pairInfo.tokenMintX, payer, transaction },
       this.connection
     );
     const associatedUserVaultY = await getUserVaultInfo(
-      { tokenMint: pairInfo.tokenMintY, payer },
+      { tokenMint: pairInfo.tokenMintY, payer, transaction },
       this.connection
     );
 
