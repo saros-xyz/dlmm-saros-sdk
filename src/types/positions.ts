@@ -18,7 +18,7 @@ export interface AddLiquidityByShapeParams {
   positionMint: PublicKey;
   payer: PublicKey;
   poolAddress: PublicKey;
-  transaction: Transaction;
+  transaction?: Transaction;
   liquidityShape: LiquidityShape;
   baseAmount: bigint;
   quoteAmount: bigint;
@@ -28,16 +28,20 @@ export interface AddLiquidityByShapeParams {
 
 export interface RemoveLiquidityParams {
   /** list of NFT position mints to be removed */
-  positionMints: string[];
+  positionMints: PublicKey[];
   payer: PublicKey;
   type: RemoveLiquidityType;
   poolAddress: PublicKey;
 }
 
 export interface RemoveLiquidityResponse {
-  transactions: Transaction[];
+  /** Execute FIRST if present - creates required token accounts */
   setupTransaction?: Transaction;
+  /** Execute SECOND - main liquidity removal transactions */
+  transactions: Transaction[];
+  /** Execute LAST if present - closes accounts and unwraps SOL */
   cleanupTransaction?: Transaction;
+  /** Positions that will be fully closed and burned */
   closedPositions: string[];
 }
 

@@ -5,8 +5,11 @@ export enum MODE {
 }
 
 export enum LiquidityShape {
+  /** Distributes liquidity uniformly across the selected price range */
   Spot = 'Spot',
-  Curve = 'Curve',
+  /** Distributes liquidity in a bell curve/gaussian distribution centered around active bin */
+  Curve = 'Curve', 
+  /** Distributes liquidity with linear weighting - higher concentration on the edges */
   BidAsk = 'BidAsk',
 }
 
