@@ -13,6 +13,7 @@ import {
   PoolLiquidityData,
   BinLiquidityData,
   Bin,
+  CreatePoolResponse,
 } from '../../types';
 import { getIdFromPrice, getPriceFromId } from '../../utils/price';
 import { getPairVaultInfo } from '../../utils/vaults';
@@ -26,39 +27,31 @@ export class PoolService extends SarosBaseService {
 
   public async getPoolAccount(pair: PublicKey): Promise<DLMMPairAccount> {
     try {
-      // @ts-ignore
+      //@ts-ignore
       const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
       if (!pairInfo) throw PoolServiceError.PoolNotFound;
       return pairInfo;
-    } catch (_error) {
+    } catch {
       throw PoolServiceError.PoolNotFound;
     }
   }
 
-  public async createPairWithConfig(params: CreatePoolParams) {
+  public async createPairWithConfig(params: CreatePoolParams): Promise<CreatePoolResponse> {
     const { baseToken, quoteToken, binStep, ratePrice, payer } = params;
 
-    // Validation
-    if (ratePrice <= 0) {
-      throw PoolServiceError.InvalidPrice;
-    }
-
-    if (binStep < 1 || binStep > 10000) {
-      throw PoolServiceError.InvalidBinStep;
-    }
+    if (ratePrice <= 0) throw PoolServiceError.InvalidPrice;
+    if (binStep < 1 || binStep > 10000) throw PoolServiceError.InvalidBinStep;
 
     try {
       const tokenX = new PublicKey(baseToken.mintAddress);
       const tokenY = new PublicKey(quoteToken.mintAddress);
 
       const id = getIdFromPrice(ratePrice, binStep, baseToken.decimals, quoteToken.decimals);
-
-      // Use BinArrayManager to calculate bin array index
       const binArrayIndex = BinArrayManager.calculateBinArrayIndex(id);
 
       const tx = new Transaction();
 
-      // Generate PDAs
+      // PDAs
       const binStepConfig = PublicKey.findProgramAddressSync(
         [
           Buffer.from(utils.bytes.utf8.encode('bin_step_config')),
@@ -88,23 +81,23 @@ export class PoolService extends SarosBaseService {
         this.lbProgram.programId
       )[0];
 
-      // Initialize pair instruction
-      const initializePairConfigTx = await this.lbProgram.methods
+      // Initialize pair
+      const initializePairIx = await this.lbProgram.methods
         .initializePair(id)
         .accountsPartial({
           liquidityBookConfig: this.lbConfig,
-          binStepConfig: binStepConfig,
-          quoteAssetBadge: quoteAssetBadge,
-          pair: pair,
+          binStepConfig,
+          quoteAssetBadge,
+          pair,
           tokenMintX: tokenX,
           tokenMintY: tokenY,
           user: payer,
         })
         .instruction();
 
-      tx.add(initializePairConfigTx);
+      tx.add(initializePairIx);
 
-      // Use BinArrayManager to add bin array initialization instructions
+      // Initialize current + neighbor bin arrays
       await BinArrayManager.addInitializeBinArrayInstruction(
         binArrayIndex,
         pair,
@@ -113,7 +106,6 @@ export class PoolService extends SarosBaseService {
         this.connection,
         this.lbProgram
       );
-
       await BinArrayManager.addInitializeBinArrayInstruction(
         binArrayIndex + 1,
         pair,
@@ -123,13 +115,11 @@ export class PoolService extends SarosBaseService {
         this.lbProgram
       );
 
-      // Get bin array addresses for return value
       const binArrayLower = BinArrayManager.getBinArrayAddress(
         binArrayIndex,
         pair,
         this.lbProgram.programId
       );
-
       const binArrayUpper = BinArrayManager.getBinArrayAddress(
         binArrayIndex + 1,
         pair,
@@ -137,7 +127,7 @@ export class PoolService extends SarosBaseService {
       );
 
       return {
-        tx,
+        transaction: tx,
         pair: pair.toString(),
         binArrayLower: binArrayLower.toString(),
         binArrayUpper: binArrayUpper.toString(),
@@ -145,72 +135,63 @@ export class PoolService extends SarosBaseService {
         activeBin: Number(id),
       };
     } catch (error) {
-      if (error instanceof PoolServiceError) {
-        throw error;
-      }
+      if (error instanceof PoolServiceError) throw error;
       throw PoolServiceError.PoolCreationFailed;
     }
   }
 
   public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
     try {
-      const pairInfo: DLMMPairAccount = await this.getPoolAccount(new PublicKey(pair));
+      const pairInfo = await this.getPoolAccount(new PublicKey(pair));
 
-      const basePairVault = await getPairVaultInfo(
-        {
-          tokenMint: new PublicKey(pairInfo.tokenMintX),
-          pair: new PublicKey(pair),
-        },
-        this.connection
-      );
-      const quotePairVault = await getPairVaultInfo(
-        {
-          tokenMint: new PublicKey(pairInfo.tokenMintY),
-          pair: new PublicKey(pair),
-        },
-        this.connection
-      );
-
-      const [baseReserve, quoteReserve] = await Promise.all([
-        this.connection.getTokenAccountBalance(basePairVault).catch(() => ({
-          value: {
-            uiAmount: 0,
-            amount: '0',
-            decimals: 0,
-            uiAmountString: '0',
-          },
-        })),
-        this.connection.getTokenAccountBalance(quotePairVault).catch(() => ({
-          value: {
-            uiAmount: 0,
-            amount: '0',
-            decimals: 0,
-            uiAmountString: '0',
-          },
-        })),
+      const [baseVault, quoteVault] = await Promise.all([
+        getPairVaultInfo(
+          { tokenMint: new PublicKey(pairInfo.tokenMintX), pair: new PublicKey(pair) },
+          this.connection
+        ),
+        getPairVaultInfo(
+          { tokenMint: new PublicKey(pairInfo.tokenMintY), pair: new PublicKey(pair) },
+          this.connection
+        ),
       ]);
+
+      const [baseReserve, quoteReserve, baseMintInfo, quoteMintInfo] = await Promise.all([
+        this.connection
+          .getTokenAccountBalance(baseVault)
+          .catch(() => ({ value: { amount: '0', decimals: 0 } })),
+        this.connection
+          .getTokenAccountBalance(quoteVault)
+          .catch(() => ({ value: { amount: '0', decimals: 0 } })),
+        this.connection.getParsedAccountInfo(new PublicKey(pairInfo.tokenMintX)),
+        this.connection.getParsedAccountInfo(new PublicKey(pairInfo.tokenMintY)),
+      ]);
+
+      const baseDecimals =
+        baseMintInfo.value?.data && 'parsed' in baseMintInfo.value.data
+          ? (baseMintInfo.value.data.parsed.info.decimals ?? 0)
+          : 0;
+      const quoteDecimals =
+        quoteMintInfo.value?.data && 'parsed' in quoteMintInfo.value.data
+          ? (quoteMintInfo.value.data.parsed.info.decimals ?? 0)
+          : 0;
 
       return {
         poolAddress: pair,
         baseToken: {
           mintAddress: pairInfo.tokenMintX.toString(),
-          decimals: baseReserve.value.decimals,
+          decimals: baseDecimals,
           reserve: baseReserve.value.amount,
         },
         quoteToken: {
           mintAddress: pairInfo.tokenMintY.toString(),
-          decimals: quoteReserve.value.decimals,
+          decimals: quoteDecimals,
           reserve: quoteReserve.value.amount,
         },
         tradeFee: (pairInfo.staticFeeParameters.baseFactor * pairInfo.binStep) / 1e6,
-        extra: {
-          hook: pairInfo.hook?.toString(),
-        },
+        extra: { hook: pairInfo.hook?.toString() },
       };
     } catch (error) {
-      if (error instanceof PoolServiceError) {
-        throw error;
-      }
+      if (error instanceof PoolServiceError) throw error;
       throw PoolServiceError.PoolNotFound;
     }
   }
@@ -219,40 +200,22 @@ export class PoolService extends SarosBaseService {
     try {
       const programId = this.getDexProgramId();
       const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
-      const pairAccountDiscriminator = pairAccount ? pairAccount.discriminator : undefined;
-
-      if (!pairAccountDiscriminator) {
-        throw PoolServiceError.NoPoolsFound;
-      }
+      if (!pairAccount) throw PoolServiceError.NoPoolsFound;
 
       const accounts = await this.connection.getProgramAccounts(new PublicKey(programId), {
-        filters: [
-          {
-            memcmp: { offset: 0, bytes: bs58.encode(pairAccountDiscriminator) },
-          },
-        ],
+        filters: [{ memcmp: { offset: 0, bytes: bs58.encode(pairAccount.discriminator) } }],
       });
 
-      if (accounts.length === 0) {
-        throw PoolServiceError.NoPoolsFound;
-      }
+      if (accounts.length === 0) throw PoolServiceError.NoPoolsFound;
 
-      const poolAddresses = accounts.reduce((addresses: string[], account) => {
-        if (account.account.owner.toString() !== programId.toString()) {
-          return addresses;
-        }
-        if (account.account.data.length < 8) {
-          return addresses;
-        }
-        addresses.push(account.pubkey.toString());
-        return addresses;
-      }, []);
-
-      return poolAddresses;
+      return accounts
+        .filter(
+          (acc) =>
+            acc.account.owner.toString() === programId.toString() && acc.account.data.length >= 8
+        )
+        .map((acc) => acc.pubkey.toString());
     } catch (error) {
-      if (error instanceof PoolServiceError) {
-        throw error;
-      }
+      if (error instanceof PoolServiceError) throw error;
       throw PoolServiceError.NoPoolsFound;
     }
   }
@@ -263,141 +226,100 @@ export class PoolService extends SarosBaseService {
       LB_PROGRAM_ID,
       (logInfo) => {
         if (!logInfo.err) {
-          const logs = logInfo.logs || [];
-          for (const log of logs) {
+          for (const log of logInfo.logs || []) {
             if (log.includes('Instruction: InitializePair')) {
-              const signature = logInfo.signature;
-
-              this.getPairAddressFromLogs(signature).then((address) => {
-                postTxFunction(address);
-              });
+              this.getPairAddressFromLogs(logInfo.signature).then(postTxFunction);
             }
           }
         }
       },
       'finalized'
     );
-
-    // return cleanup function
-    return () => {
-      this.connection.removeOnLogsListener(subscriptionId);
-    };
+    return () => this.connection.removeOnLogsListener(subscriptionId);
   }
 
   private async getPairAddressFromLogs(signature: string) {
-    const parsedTransaction = await this.connection.getTransaction(signature, {
+    const parsedTx = await this.connection.getTransaction(signature, {
       maxSupportedTransactionVersion: 0,
     });
-    if (!parsedTransaction) {
-      throw new Error('Transaction not found');
-    }
+    if (!parsedTx) throw new Error('Transaction not found');
 
-    const compiledMessage = parsedTransaction.transaction.message;
-    const message = TransactionMessage.decompile(compiledMessage);
-    const instructions = message.instructions;
+    const message = TransactionMessage.decompile(parsedTx.transaction.message);
     const initializePairStruct = LiquidityBookIDL.instructions.find(
-      (item) => item.name === 'initialize_pair'
+      (ix) => ix.name === 'initialize_pair'
     )!;
+    const discriminator = Buffer.from(initializePairStruct.discriminator);
 
-    const initializePairDiscriminator = Buffer.from(initializePairStruct.discriminator);
-
-    let pairAddress = '';
-
-    for (const instruction of instructions) {
-      const discriminatorInstruction = instruction.data.subarray(0, 8);
-      if (!discriminatorInstruction.equals(initializePairDiscriminator)) continue;
-      //@ts-ignore
-      const accounts = initializePairStruct.accounts.map((item, index) => {
-        return {
+    for (const ix of message.instructions) {
+      if (ix.data.subarray(0, 8).equals(discriminator)) {
+        //@ts-ignore
+        const accounts = initializePairStruct.accounts.map((item, i) => ({
           name: item.name,
-          address: instruction.keys[index].pubkey.toString(),
-        };
-      });
-      pairAddress =
-        accounts.find((item: { name: string; address: string }) => item.name === 'pair')?.address ||
-        '';
+          address: ix.keys[i].pubkey.toString(),
+        }));
+        return accounts.find((a) => a.name === 'pair')?.address || '';
+      }
     }
-    return pairAddress;
+    return '';
   }
 
   public async getPoolLiquidity(params: GetPoolLiquidityParams): Promise<PoolLiquidityData> {
-    // fetch 1 bin array on each side of active by default
     const { poolAddress, numberOfBinArrays: arrayRange = 1 } = params;
-
     try {
-      // Get basic pool information
       const [metadata, pairAccount] = await Promise.all([
         this.getPoolMetadata(poolAddress.toString()),
         this.getPoolAccount(poolAddress),
       ]);
 
-      const activeBin = pairAccount.activeId;
-      const binStep = pairAccount.binStep;
+      const binArrayIndices = BinArrayManager.calculateBinArrayRange(
+        pairAccount.activeId,
+        arrayRange
+      );
+      const binArrayResults = await Promise.all(
+        binArrayIndices.map(async (index) => {
+          try {
+            const addr = BinArrayManager.getBinArrayAddress(
+              index,
+              poolAddress,
+              this.getDexProgramId()
+            );
+            //@ts-ignore
+            const acc = await this.lbProgram.account.binArray.fetch(addr);
+            return { index, bins: acc.bins };
+          } catch {
+            return { index, bins: [] };
+          }
+        })
+      );
 
-      // Use BinArrayManager to get bin array indices
-      const binArrayIndices = BinArrayManager.calculateBinArrayRange(activeBin, arrayRange);
-
-      // Fetch all bin arrays
-      const binArrayPromises = binArrayIndices.map(async (index) => {
-        try {
-          const binArrayAddress = BinArrayManager.getBinArrayAddress(
-            index,
-            poolAddress,
-            this.getDexProgramId()
-          );
-          //@ts-ignore
-          const binArrayAccount = await this.lbProgram.account.binArray.fetch(binArrayAddress);
-          return { index, bins: binArrayAccount.bins };
-        } catch {
-          // Bin array doesn't exist, return empty
-          return { index, bins: [] };
-        }
-      });
-
-      const binArrayResults = await Promise.all(binArrayPromises);
-
-      // Process all bins with liquidity
-      const binLiquidityData: BinLiquidityData[] = [];
-
-      binArrayResults.forEach(({ index: arrayIndex, bins }) => {
-        bins.forEach((bin: Bin, binIndex: number) => {
+      const bins: BinLiquidityData[] = [];
+      binArrayResults.forEach(({ index, bins: arr }) => {
+        arr.forEach((bin: Bin, binIdx: number) => {
           if (bin.reserveX > 0n || bin.reserveY > 0n) {
-            const binId = arrayIndex * BIN_ARRAY_SIZE + binIndex;
-
-            const binPrice = getPriceFromId(
-              binStep,
+            const binId = index * BIN_ARRAY_SIZE + binIdx;
+            const price = getPriceFromId(
+              pairAccount.binStep,
               binId,
               metadata.baseToken.decimals,
               metadata.quoteToken.decimals
             );
-
-            // Convert reserves to human readable amounts
-            const baseReserve = Number(bin.reserveX) / Math.pow(10, metadata.baseToken.decimals);
-            const quoteReserve = Number(bin.reserveY) / Math.pow(10, metadata.quoteToken.decimals);
-
-            binLiquidityData.push({
+            bins.push({
               binId,
-              price: binPrice,
-              baseReserve,
-              quoteReserve,
+              price,
+              baseReserve: Number(bin.reserveX) / 10 ** metadata.baseToken.decimals,
+              quoteReserve: Number(bin.reserveY) / 10 ** metadata.quoteToken.decimals,
             });
           }
         });
       });
 
-      // Sort bins by binId
-      binLiquidityData.sort((a, b) => a.binId - b.binId);
+      bins.sort((a, b) => a.binId - b.binId);
 
-      return {
-        activeBin,
-        binStep,
-        bins: binLiquidityData,
-      };
+      return { activeBin: pairAccount.activeId, binStep: pairAccount.binStep, bins };
     } catch (error) {
-      if (error instanceof PoolServiceError) {
-        throw error;
-      }
+      if (error instanceof PoolServiceError) throw error;
       throw PoolServiceError.PoolNotFound;
     }
   }
 }
+

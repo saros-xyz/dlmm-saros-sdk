@@ -1,6 +1,15 @@
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { TestWalletInfo, TestTokenInfo, TestWalletSetup, TestPoolInfo } from './wallet-setup';
 
+// Native SOL token info
+const NATIVE_SOL: TestTokenInfo = {
+  symbol: 'wSOL',
+  mintAddress: 'So11111111111111111111111111111111111111112',
+  decimals: 9,
+  name: 'Wrapped SOL',
+  supply: 100000000
+};
+
 export function getTestWallet(): TestWalletInfo {
   const wallet = (global as any).testWallet;
   if (!wallet) {
@@ -26,6 +35,11 @@ export function getTestWalletSetup(): TestWalletSetup {
 }
 
 export function getTestToken(symbol?: string): TestTokenInfo {
+  // Handle native SOL/wSOL
+  if (symbol === 'wSOL' || symbol === 'SOL') {
+    return NATIVE_SOL;
+  }
+
   const wallet = getTestWallet();
   if (!wallet.tokens || wallet.tokens.length === 0) {
     throw new Error('No test tokens available.');
@@ -34,7 +48,7 @@ export function getTestToken(symbol?: string): TestTokenInfo {
   if (symbol) {
     const token = wallet.tokens.find(t => t.symbol === symbol);
     if (!token) {
-      throw new Error(`Test token ${symbol} not found. Available: ${wallet.tokens.map(t => t.symbol).join(', ')}`);
+      throw new Error(`Test token ${symbol} not found. Available: ${wallet.tokens.map(t => t.symbol).join(', ')}, wSOL`);
     }
     return token;
   }

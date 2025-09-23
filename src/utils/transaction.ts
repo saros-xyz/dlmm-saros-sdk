@@ -54,23 +54,35 @@ export const addOptimalComputeBudget = async (
   addComputeBudgetInstructions(transaction, unitPrice);
 };
 
+/**
+ * Wrap SOL -> WSOL by transferring lamports then calling SyncNative on the correct token program
+ * - tokenProgram MUST be the program owning the target token account (legacy or token-2022)
+ */
 export const addSolTransferInstructions = (
   transaction: Transaction,
   payer: PublicKey,
   vault: PublicKey,
-  amount: bigint | number
+  amount: bigint | number,
+  tokenProgram: PublicKey
 ): void => {
   const lamports = typeof amount === 'bigint' ? Number(amount) : amount;
   transaction.add(
     SystemProgram.transfer({ fromPubkey: payer, toPubkey: vault, lamports }),
-    spl.createSyncNativeInstruction(vault)
+    // Pass the token program that owns the token account (legacy or 2022)
+    spl.createSyncNativeInstruction(vault, tokenProgram)
   );
 };
 
+/**
+ * Close token account instruction: Use the token program that owns the account.
+ */
 export const addCloseAccountInstruction = (
   transaction: Transaction,
   vault: PublicKey,
-  payer: PublicKey
+  payer: PublicKey,
+  tokenProgram: PublicKey
 ): void => {
-  transaction.add(spl.createCloseAccountInstruction(vault, payer, payer));
+  transaction.add(
+    spl.createCloseAccountInstruction(vault, payer, payer, [], tokenProgram)
+  );
 };
