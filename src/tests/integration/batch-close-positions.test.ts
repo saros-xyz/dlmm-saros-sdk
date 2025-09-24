@@ -5,12 +5,12 @@ import {
   getTestConnection,
   getAllTestPools,
   waitForConfirmation,
+  createTestSarosDLMM,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
-import { SarosDLMM } from '../../services';
-import { MODE, RemoveLiquidityType } from '../../types';
+import { RemoveLiquidityType } from '../../types';
 
-let lbServices: SarosDLMM;
+let lbServices: any;
 let testWallet: any;
 let connection: any;
 let testPools: any[];
@@ -140,10 +140,7 @@ beforeAll(async () => {
   connection = getTestConnection();
   testPools = getAllTestPools();
 
-  lbServices = new SarosDLMM({
-    mode: MODE.DEVNET,
-    options: { rpcUrl: process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com' },
-  });
+  lbServices = createTestSarosDLMM();
 });
 
 describe('Batch Position Closing', () => {

@@ -11,8 +11,8 @@ export default defineConfig(({ mode }) => ({
       'dist',
       'test-data',
       // Exclude cleanup test from normal test run
-      // run pnpm test:cleanup to reclaim devnet sol after testing
-      'src/tests/**/batch-close-positions.test.ts',
+      // uncomment lint below and run pnpm test:cleanup to reclaim devnet sol after testing
+      // 'src/tests/**/batch-close-positions.test.ts',
     ],
     testTimeout: 60000,
     hookTimeout: 60000,

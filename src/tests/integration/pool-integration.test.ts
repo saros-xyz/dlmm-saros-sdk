@@ -1,17 +1,17 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { MODE, SarosDLMM } from '../../../dist';
 import {
   waitForConfirmation,
   saveTestPool,
-  getTestWallet,
-  getTestConnection,
   getTestToken,
   findTestPool,
   NATIVE_SOL,
+  createTestSarosDLMM,
+  getTestWallet,
+  getTestConnection,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 
-let lbServices: SarosDLMM;
+let lbServices: any;
 let testWallet: any;
 let connection: any;
 
@@ -61,10 +61,7 @@ beforeAll(async () => {
   testWallet = getTestWallet();
   connection = getTestConnection();
 
-  lbServices = new SarosDLMM({
-    mode: MODE.DEVNET,
-    options: { rpcUrl: process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com' },
-  });
+  lbServices = createTestSarosDLMM();
 });
 
 describe('Pool Creation Integration', () => {

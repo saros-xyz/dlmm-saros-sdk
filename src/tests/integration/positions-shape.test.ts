@@ -1,66 +1,21 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { PublicKey } from '@solana/web3.js';
-import { LiquidityShape, MODE, RemoveLiquidityType, SarosDLMM } from '../../..';
+import { LiquidityShape } from '../../types';
 import {
-  getTestWallet,
-  getTestConnection,
-  getAllTestTokens,
-  getAllTestPools,
+  IntegrationTestSetup,
+  setupIntegrationTest,
   createTestKeypair,
   waitForConfirmation,
+  cleanupLiquidity,
+  isInsufficientFundsError,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 
-let lbServices: SarosDLMM;
-let testWallet: any;
-let connection: any;
-let testPool: any;
-
-function isInsufficientFundsError(e: unknown) {
-  return String(e).toLowerCase().includes('insufficient');
-}
-
-async function cleanupLiquidity(positionKeypair: any, poolAddress: PublicKey) {
-  try {
-    const result = await lbServices.removeLiquidity({
-      positionMints: [positionKeypair.publicKey],
-      payer: testWallet.keypair.publicKey,
-      type: RemoveLiquidityType.All,
-      poolAddress,
-    });
-    if (result.setupTransaction) {
-      await connection.sendTransaction(result.setupTransaction, [testWallet.keypair]);
-    }
-    for (const tx of result.transactions) {
-      await connection.sendTransaction(tx, [testWallet.keypair]);
-    }
-    if (result.cleanupTransaction) {
-      await connection.sendTransaction(result.cleanupTransaction, [testWallet.keypair]);
-    }
-  } catch {
-    // ignore cleanup failures
-  }
-}
+let testSetup: IntegrationTestSetup;
 
 beforeAll(async () => {
   await ensureTestEnvironment();
-  testWallet = getTestWallet();
-  connection = getTestConnection();
-
-  const tokens = getAllTestTokens();
-  const saros = tokens.find((t) => t.symbol === 'SAROSDEV');
-  if (!saros) throw new Error('SAROSDEV token missing');
-
-  const pools = getAllTestPools();
-  testPool = pools.find(
-    (p) => p.baseToken === saros.mintAddress || p.quoteToken === saros.mintAddress
-  );
-  if (!testPool) throw new Error('No pool with SAROSDEV token');
-
-  lbServices = new SarosDLMM({
-    mode: MODE.DEVNET,
-    options: { rpcUrl: process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com' },
-  });
+  testSetup = setupIntegrationTest();
 });
 
 async function runShapeTest(
@@ -70,6 +25,7 @@ async function runShapeTest(
   quoteAmount: bigint,
   validate: (bins: any[]) => void
 ) {
+  const { lbServices, testWallet, connection, testPool } = testSetup;
   const poolAddress = new PublicKey(testPool.pair);
   const positionKeypair = createTestKeypair();
 
@@ -113,7 +69,7 @@ async function runShapeTest(
   } catch (err) {
     if (!isInsufficientFundsError(err)) throw err;
   } finally {
-    await cleanupLiquidity(positionKeypair, poolAddress);
+    await cleanupLiquidity(lbServices, positionKeypair, poolAddress, testWallet, connection);
   }
 }
 

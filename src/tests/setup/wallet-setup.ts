@@ -216,10 +216,6 @@ export class TestWalletSetup {
     return Keypair.generate();
   }
 
-  public async fundWallet(publicKey: PublicKey, amount: number = 1.0): Promise<void> {
-    await this.requestAirdrop(publicKey, amount);
-  }
-
   public saveTestData(walletInfo: TestWalletInfo): void {
     const tokenConfigPath = this.getTokenConfigPath();
 
