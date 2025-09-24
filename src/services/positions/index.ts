@@ -108,13 +108,15 @@ export class PositionService extends SarosBaseService {
         const totalSupply = activeBin.totalSupply;
 
         // Use BN arithmetic
-        const baseReserve = reserveX.gt(new BN(0)) && totalSupply.gt(new BN(0))
-          ? liquidityShare.mul(reserveX).div(totalSupply)
-          : new BN(0);
-        
-        const quoteReserve = reserveY.gt(new BN(0)) && totalSupply.gt(new BN(0))
-          ? liquidityShare.mul(reserveY).div(totalSupply)
-          : new BN(0);
+        const baseReserve =
+          reserveX.gt(new BN(0)) && totalSupply.gt(new BN(0))
+            ? liquidityShare.mul(reserveX).div(totalSupply)
+            : new BN(0);
+
+        const quoteReserve =
+          reserveY.gt(new BN(0)) && totalSupply.gt(new BN(0))
+            ? liquidityShare.mul(reserveY).div(totalSupply)
+            : new BN(0);
 
         return {
           baseReserve: BigInt(baseReserve.toString()), // Convert to BigInt only for the interface
@@ -242,7 +244,10 @@ export class PositionService extends SarosBaseService {
       this.connection
     );
 
-    const liquidityDistribution: Distribution[] = createUniformDistribution({ shape: liquidityShape, binRange });
+    const liquidityDistribution: Distribution[] = createUniformDistribution({
+      shape: liquidityShape,
+      binRange,
+    });
 
     const lowerBinId = pairInfo.activeId + binRange[0];
     const upperBinId = pairInfo.activeId + binRange[1];
@@ -270,7 +275,9 @@ export class PositionService extends SarosBaseService {
       );
 
       if (totalLiquid) {
-        const amount = Number((BigInt(totalLiquid) * totalAmount) / MAX_BASIS_POINTS_BIGINT);
+        const amount = new BN(totalLiquid)
+          .mul(new BN(totalAmount.toString()))
+          .div(new BN(MAX_BASIS_POINTS_BIGINT.toString()));
         const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
         addSolTransferInstructions(transaction, payer, associatedUserVault, amount);
       }

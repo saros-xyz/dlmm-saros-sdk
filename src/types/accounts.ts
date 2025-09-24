@@ -48,7 +48,6 @@ export interface PositionAccount {
   space: number[];
 }
 
-
 /**
  * Raw on-chain bin data structure - mirrors Anchor program state
  * Contains liquidity reserves and supply data for a single price bin
