@@ -7,17 +7,18 @@ interface CreateLiquidityDistributionParams {
   binRange: [number, number];
 }
 
-export interface LiquidityDistribution {
+// Note: must use distributionX/Y (instead of base/quote) because Expected format for program function: this.lbProgram.methods.increasePosition
+export interface Distribution {
   relativeBinId: number;
   /** Percentage (0-100) */
-  baseDistribution: number;
+  distributionX: number;
   /** Percentage (0-100) */
-  quoteDistribution: number;
+  distributionY: number;
 }
 
 export function createUniformDistribution(
   params: CreateLiquidityDistributionParams
-): LiquidityDistribution[] {
+): Distribution[] {
   const { shape, binRange } = params;
 
   const [minBin, maxBin] = binRange;
@@ -39,8 +40,8 @@ export function createUniformDistribution(
 
       return relativeIds.map((x) => ({
         relativeBinId: x,
-        baseDistribution: isOnlyX ? distribution : 0,
-        quoteDistribution: isOnlyY ? distribution : 0,
+        distributionX: isOnlyX ? distribution : 0,
+        distributionY: isOnlyY ? distribution : 0,
       }));
     }
 
@@ -63,8 +64,8 @@ export function createUniformDistribution(
 
     return relativeIds.map((x, i) => ({
       relativeBinId: x,
-      baseDistribution: distributionX[i],
-      quoteDistribution: distributionY[i],
+      distributionX: distributionX[i],
+      distributionY: distributionY[i],
     }));
   }
 
@@ -218,8 +219,8 @@ export function createUniformDistribution(
     const liquidityDistribution = deltaIds.map((i, idx) => {
       return {
         relativeBinId: i,
-        baseDistribution: liquidityDistributionX[idx],
-        quoteDistribution: liquidityDistributionY[idx],
+        distributionX: liquidityDistributionX[idx],
+        distributionY: liquidityDistributionY[idx],
       };
     });
 
@@ -229,7 +230,7 @@ export function createUniformDistribution(
   throw new Error(`Unsupported liquidity shape: ${shape}`);
 }
 
-const getCurveDistributionFromBinRange = (binRange: [number, number]): LiquidityDistribution[] => {
+const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribution[] => {
   const activeId = 0;
 
   // init return values
@@ -424,8 +425,8 @@ const getCurveDistributionFromBinRange = (binRange: [number, number]): Liquidity
   const liquidityDistribution = deltaIds.map((i, idx) => {
     return {
       relativeBinId: i,
-      baseDistribution: liquidityDistributionX[idx],
-      quoteDistribution: liquidityDistributionY[idx],
+      distributionX: liquidityDistributionX[idx],
+      distributionY: liquidityDistributionY[idx],
     };
   });
   return liquidityDistribution;

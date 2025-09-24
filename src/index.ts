@@ -16,6 +16,8 @@ export {
   GetUserVaultInfoParams,
 } from './utils/vaults';
 
+export { Distribution } from './services/positions/bin-distribution';
+
 // Public types (type-only)
 export type {
   SwapParams,
