@@ -11,6 +11,10 @@ export class SwapServiceError extends Error {
     'Swap crosses too many bins - quote aborted'
   );
 
+  static InvalidSlippage = new SwapServiceError('Slippage must be between 0 and 100');
+  static ZeroAmount = new SwapServiceError('Amount must be greater than 0');
+  static NoValidBinArrays = new SwapServiceError('No valid bin arrays found for the pair');
+
   constructor(message: string) {
     super(message);
     this.name = 'SwapServiceError';

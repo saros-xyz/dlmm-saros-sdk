@@ -1,4 +1,5 @@
 import { PRECISION_BIGINT, SCALE_OFFSET, MAX_BASIS_POINTS_BIGINT } from '../../constants';
+import { SwapServiceError } from './errors';
 
 /**
  * Calculates the input amount required for a swap based on the desired output amount and price.
@@ -66,10 +67,9 @@ export const getMaxInputWithSlippage = (amountIn: bigint, slippage: number): big
   const slippageScaled = Math.round(slippageFraction * Number(PRECISION_BIGINT));
   const denominatorScaled = Number(PRECISION_BIGINT) - slippageScaled;
 
-  if (denominatorScaled <= 0) {
-    throw new Error(`Invalid slippage: ${slippage}% results in division by zero`);
+ if (denominatorScaled <= 0) {
+    throw SwapServiceError.InvalidSlippage;
   }
-
   return (amountIn * PRECISION_BIGINT) / BigInt(denominatorScaled);
 };
 

@@ -353,6 +353,7 @@ export class SwapService extends SarosBaseService {
       return pairId + 1;
     }
   }
+
   private async getMaxAmountOutWithFee(
     pairAddress: PublicKey,
     amount: bigint,
@@ -361,7 +362,8 @@ export class SwapService extends SarosBaseService {
     decimalQuote: number = 9
   ): Promise<{ maxAmountOut: bigint; price: number }> {
     try {
-      let amountIn = amount;
+      if (amount <= 0n) throw SwapServiceError.ZeroAmount;
+
       //@ts-ignore
       const pair: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pairAddress);
       if (!pair) throw new PoolServiceError('Pair not found');
@@ -375,11 +377,11 @@ export class SwapService extends SarosBaseService {
       const activePrice = getPriceFromId(binStep, activeId, 9, 9);
       const price = getPriceFromId(binStep, activeId, decimalBase, decimalQuote);
 
-      const feeAmount = FeeCalculator.getFeeAmount(amountIn, feePrice);
-      amountIn = amountIn - feeAmount;
+      const feeAmount = FeeCalculator.getFeeAmount(amount, feePrice);
+      amount = amount - feeAmount;
       const maxAmountOut = swapForY
-        ? (amountIn * BigInt(activePrice)) >> BigInt(SCALE_OFFSET)
-        : (amountIn << BigInt(SCALE_OFFSET)) / BigInt(activePrice);
+        ? (amount * BigInt(activePrice)) >> BigInt(SCALE_OFFSET)
+        : (amount << BigInt(SCALE_OFFSET)) / BigInt(activePrice);
 
       return { maxAmountOut, price };
     } catch {
@@ -387,7 +389,7 @@ export class SwapService extends SarosBaseService {
     }
   }
 
-  // only swap and getQuote are public
+  // Swap and getQuote are public
   public async swap(params: SwapParams): Promise<Transaction> {
     const {
       tokenIn: tokenMintX,
@@ -400,6 +402,9 @@ export class SwapService extends SarosBaseService {
       hook,
       payer,
     } = params;
+    // Validate user inputs
+    if (amount <= 0n) throw SwapServiceError.ZeroAmount;
+    if (otherAmountOffset < 0n) throw SwapServiceError.ZeroAmount;
 
     //@ts-ignore
     const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
@@ -476,7 +481,7 @@ export class SwapService extends SarosBaseService {
       tokenProgramY
     );
 
-    // Use the centralized getUserVaultInfo function to create user vault accounts if needed
+    // Use getUserVaultInfo function to get or create user vault accounts
     const associatedUserVaultX = await getUserVaultInfo(
       { tokenMint: tokenMintX, payer, transaction: tx },
       this.connection
@@ -544,6 +549,10 @@ export class SwapService extends SarosBaseService {
 
   public async getQuote(params: QuoteParams, poolMetadata: PoolMetadata): Promise<QuoteResponse> {
     try {
+      // Validate user inputs
+      if (params.amount <= 0n) throw SwapServiceError.ZeroAmount;
+      if (params.slippage < 0 || params.slippage >= 100) throw SwapServiceError.InvalidSlippage;
+
       const { baseToken, quoteToken } = poolMetadata;
       const {
         slippage,
