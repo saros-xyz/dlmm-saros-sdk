@@ -23,7 +23,7 @@
     "format:check": "prettier --check .",
     "fix": "prettier --write . && eslint . --ext .ts --fix",
     "test": "vitest",
-"test:cleanup": "vitest run src/tests/integration/batch-close-positions.test.ts --exclude=node_modules,dist,test-data"
+    "test:cleanup": "vitest run src/tests/integration/batch-close-positions.test.ts --reporter=verbose"
 
   },
   "author": "Saros Finance",
