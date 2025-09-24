@@ -7,6 +7,7 @@ import {
 } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { CCU_LIMIT, UNIT_PRICE_DEFAULT } from '../constants';
+import { BN } from '@coral-xyz/anchor';
 
 /**
  * Get optimal gas price from recent prioritization fees
@@ -58,11 +59,17 @@ export const addSolTransferInstructions = (
   transaction: Transaction,
   payer: PublicKey,
   vault: PublicKey,
-  amount: bigint | number
+  amount: bigint | BN
 ): void => {
-  const lamports = typeof amount === 'bigint' ? Number(amount) : amount;
+  // normalize to bigint
+  const lamports = amount instanceof BN ? BigInt(amount.toString()) : amount;
+
   transaction.add(
-    SystemProgram.transfer({ fromPubkey: payer, toPubkey: vault, lamports }),
+    SystemProgram.transfer({
+      fromPubkey: payer,
+      toPubkey: vault,
+      lamports,
+    }),
     spl.createSyncNativeInstruction(vault)
   );
 };
