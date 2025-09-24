@@ -24,7 +24,7 @@ import {
 } from '../../utils/transaction';
 import { getUserVaultInfo, getPairVaultInfo, getTokenProgram } from '../../utils/vaults';
 import { BinArrayManager } from '../pools/bin-manager';
-import { createUniformDistribution } from './bin-distribution';
+import { createUniformDistribution, Distribution } from './bin-distribution';
 import { PositionServiceError } from './errors';
 
 export class PositionService extends SarosBaseService {
@@ -82,7 +82,6 @@ export class PositionService extends SarosBaseService {
       throw new Error(`Failed to get bin array info for index ${binArrayIndex}: ${error}`);
     }
   }
-
   public async getPositionBinBalances(
     params: GetPositionBinBalancesParams
   ): Promise<PositionBinBalance[]> {
@@ -102,25 +101,28 @@ export class PositionService extends SarosBaseService {
     return binIds.map((binId: number, idx: number) => {
       const liquidityShare = positionInfo.liquidityShares[idx];
       const activeBin = bins[binId];
-      const liquidityShareBigInt = BigInt(liquidityShare.toString());
 
       if (activeBin) {
-        const baseReserve =
-          activeBin.reserveX > 0n
-            ? (liquidityShareBigInt * activeBin.reserveX) / activeBin.totalSupply
-            : 0n;
-        const quoteReserve =
-          activeBin.reserveY > 0n
-            ? (liquidityShareBigInt * activeBin.reserveY) / activeBin.totalSupply
-            : 0n;
+        const reserveX = activeBin.reserveX;
+        const reserveY = activeBin.reserveY;
+        const totalSupply = activeBin.totalSupply;
+
+        // Use BN arithmetic
+        const baseReserve = reserveX.gt(new BN(0)) && totalSupply.gt(new BN(0))
+          ? liquidityShare.mul(reserveX).div(totalSupply)
+          : new BN(0);
+        
+        const quoteReserve = reserveY.gt(new BN(0)) && totalSupply.gt(new BN(0))
+          ? liquidityShare.mul(reserveY).div(totalSupply)
+          : new BN(0);
 
         return {
-          baseReserve,
-          quoteReserve,
-          totalSupply: activeBin.totalSupply,
+          baseReserve: BigInt(baseReserve.toString()), // Convert to BigInt only for the interface
+          quoteReserve: BigInt(quoteReserve.toString()),
+          totalSupply: BigInt(totalSupply.toString()),
           binId: firstBinId + idx,
           binPosition: binId,
-          liquidityShare: liquidityShareBigInt,
+          liquidityShare: BigInt(liquidityShare.toString()),
         };
       }
 
@@ -130,7 +132,7 @@ export class PositionService extends SarosBaseService {
         totalSupply: 0n,
         binId: firstBinId + idx,
         binPosition: binId,
-        liquidityShare: liquidityShareBigInt,
+        liquidityShare: BigInt(liquidityShare.toString()),
       };
     });
   }
@@ -240,7 +242,7 @@ export class PositionService extends SarosBaseService {
       this.connection
     );
 
-    const liquidityDistribution = createUniformDistribution({ shape: liquidityShape, binRange });
+    const liquidityDistribution: Distribution[] = createUniformDistribution({ shape: liquidityShape, binRange });
 
     const lowerBinId = pairInfo.activeId + binRange[0];
     const upperBinId = pairInfo.activeId + binRange[1];
@@ -263,7 +265,7 @@ export class PositionService extends SarosBaseService {
       const isNativeY = pairInfo.tokenMintY.equals(WRAP_SOL_PUBKEY);
       const totalAmount = isNativeY ? quoteAmount : baseAmount;
       const totalLiquid = liquidityDistribution.reduce(
-        (prev, curr) => prev + (isNativeY ? curr.quoteDistribution : curr.baseDistribution),
+        (prev, curr) => prev + (isNativeY ? curr.distributionY : curr.distributionX),
         0
       );
 
