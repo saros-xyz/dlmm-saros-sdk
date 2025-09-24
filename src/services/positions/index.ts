@@ -16,6 +16,7 @@ import {
   PositionAccount,
   DLMMPairAccount,
   GetPositionBinBalancesParams,
+  GetBinArrayInfoParams,
 } from '../../types';
 import {
   addSolTransferInstructions,
@@ -39,17 +40,13 @@ export class PositionService extends SarosBaseService {
     return await this.lbProgram.account.position.fetch(position);
   }
 
-  public async getBinArrayInfo(params: {
-    binArrayIndex: number;
-    pair: PublicKey;
-    payer: PublicKey;
-  }): Promise<BinArray> {
-    const { binArrayIndex, pair } = params;
+  public async getBinArrayInfo(params: GetBinArrayInfoParams): Promise<BinArray> {
+    const { binArrayIndex, poolAddress } = params;
 
     try {
       const current = BinArrayManager.getBinArrayAddress(
         binArrayIndex,
-        pair,
+        poolAddress,
         this.lbProgram.programId
       );
       //@ts-ignore
@@ -58,7 +55,7 @@ export class PositionService extends SarosBaseService {
       try {
         const next = BinArrayManager.getBinArrayAddress(
           binArrayIndex + 1,
-          pair,
+          poolAddress,
           this.lbProgram.programId
         );
         //@ts-ignore
@@ -68,7 +65,7 @@ export class PositionService extends SarosBaseService {
         try {
           const prev = BinArrayManager.getBinArrayAddress(
             binArrayIndex - 1,
-            pair,
+            poolAddress,
             this.lbProgram.programId
           );
           //@ts-ignore
@@ -85,12 +82,12 @@ export class PositionService extends SarosBaseService {
   public async getPositionBinBalances(
     params: GetPositionBinBalancesParams
   ): Promise<PositionBinBalance[]> {
-    const { position, pair, payer } = params;
+    const { position, poolAddress, payer } = params;
     const positionInfo = await this.getPositionAccount(position);
     const firstBinId = positionInfo.lowerBinId;
     const binArrayIndex = BinArrayManager.calculateBinArrayIndex(firstBinId);
 
-    const { bins, index } = await this.getBinArrayInfo({ binArrayIndex, pair, payer });
+    const { bins, index } = await this.getBinArrayInfo({ binArrayIndex, poolAddress, payer });
 
     const firstBinIndex = index * BIN_ARRAY_SIZE;
     const binIds = Array.from(
@@ -403,7 +400,7 @@ export class PositionService extends SarosBaseService {
 
         const { index } = await this.getBinArrayInfo({
           binArrayIndex: BinArrayManager.calculateBinArrayIndex(positionAccount.lowerBinId),
-          pair,
+          poolAddress: pair,
           payer,
         });
 
@@ -428,7 +425,7 @@ export class PositionService extends SarosBaseService {
           spl.TOKEN_2022_PROGRAM_ID
         );
 
-        const reserveXY = await this.getPositionBinBalances({ position, pair, payer });
+        const reserveXY = await this.getPositionBinBalances({ position, poolAddress: pair, payer });
 
         const hookBinArrayLower = BinArrayManager.getHookBinArrayAddress(
           hook,
@@ -575,11 +572,11 @@ export class PositionService extends SarosBaseService {
         )[0]
     );
 
-    const positions = await this.fetchPositionAccounts(positionPdas, pair);
+    const positions = await this.getPositionAccounts(positionPdas, pair);
     return positions.filter(Boolean).sort((a, b) => a.lowerBinId - b.lowerBinId);
   }
 
-  private async fetchPositionAccounts(
+  private async getPositionAccounts(
     positionPdas: PublicKey[],
     pair: PublicKey
   ): Promise<PositionAccount[]> {

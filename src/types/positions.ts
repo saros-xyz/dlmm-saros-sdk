@@ -82,8 +82,20 @@ export interface GetPositionBinBalancesParams {
   /** The position account address (derived from position mint) */
   position: PublicKey;
   /** The DLMM pool/pair address */
-  pair: PublicKey;
+  poolAddress: PublicKey;
   /** The wallet that owns the position */
+  payer: PublicKey;
+}
+
+/**
+ * Parameters for retrieving bin array information from a pool
+ */
+export interface GetBinArrayInfoParams {
+  /** The bin array index to fetch */
+  binArrayIndex: number;
+  /** The DLMM pool address */
+  poolAddress: PublicKey;
+  /** The wallet requesting the information (used for transaction context if needed) */
   payer: PublicKey;
 }
 

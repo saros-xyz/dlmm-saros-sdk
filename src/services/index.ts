@@ -20,6 +20,8 @@ import {
   GetPositionBinBalancesParams,
   PositionBinBalance,
   CreatePoolResponse,
+  GetBinArrayInfoParams,
+  BinArray,
 } from '../types';
 import { PublicKey, Transaction } from '@solana/web3.js';
 
@@ -40,7 +42,7 @@ export class SarosDLMM extends SarosBaseService {
    * Get a quote for a swap
    */
   public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
-    const poolMetadata = await this.getPoolMetadata(params.pair.toString());
+    const poolMetadata = await this.getPoolMetadata(params.poolAddress.toString());
     return await this.swapService.getQuote(params, poolMetadata);
   }
 
@@ -50,6 +52,8 @@ export class SarosDLMM extends SarosBaseService {
   public async swap(params: SwapParams): Promise<Transaction> {
     return await this.swapService.swap(params);
   }
+
+  // getMaxAmountOutWithFee
 
   /**
    *  Create a new position in a specific pool
@@ -81,6 +85,10 @@ export class SarosDLMM extends SarosBaseService {
    */
   public async getUserPositions(params: GetUserPositionsParams): Promise<PositionAccount[]> {
     return await this.positionService.getUserPositions(params);
+  }
+
+  public async getBinArrayInfo(params: GetBinArrayInfoParams): Promise<BinArray>{
+    return await this.positionService.getBinArrayInfo(params);
   }
 
   /**

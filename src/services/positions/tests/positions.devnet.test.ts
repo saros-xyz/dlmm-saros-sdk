@@ -102,7 +102,7 @@ describe('Liquidity Shape Distribution Tests', () => {
 
       const binBalances = await lbServices.getPositionBinBalances({
         position: positionAddress,
-        pair: poolAddress,
+        poolAddress,
         payer: testWallet.keypair.publicKey,
       });
 
@@ -207,7 +207,7 @@ describe('Liquidity Shape Distribution Tests', () => {
 
       const binBalances = await lbServices.getPositionBinBalances({
         position: positionAddress,
-        pair: poolAddress,
+        poolAddress,
         payer: testWallet.keypair.publicKey,
       });
 
@@ -302,7 +302,7 @@ describe('Liquidity Shape Distribution Tests', () => {
 
       const binBalances = await lbServices.getPositionBinBalances({
         position: positionAddress,
-        pair: poolAddress,
+        poolAddress,
         payer: testWallet.keypair.publicKey,
       });
 
