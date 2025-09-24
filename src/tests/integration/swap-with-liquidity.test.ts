@@ -71,16 +71,15 @@ describe('Swap Integration with Seeded Liquidity', () => {
       });
 
       expect(quote.amountOut).toBeGreaterThan(0n);
-
       // 5. Perform the swap
       const tx = await lbServices.swap({
         tokenIn: baseMint,
         tokenOut: quoteMint,
-        amount: amountIn,
+        amount: quote.amountOut,
         options: { swapForY: true, isExactInput: true },
         minTokenOut: quote.minTokenOut,
         poolAddress,
-        hook: poolAddress,
+        hook: lbServices.hooksConfig,
         payer: testWallet.keypair.publicKey,
       });
 
