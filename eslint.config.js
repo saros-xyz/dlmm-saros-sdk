@@ -3,7 +3,7 @@ import tsParser from '@typescript-eslint/parser';
 import prettier from 'eslint-config-prettier';
 
 export default [
-  prettier, // obey prettier rules
+  prettier, // prioritize prettier rules
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
