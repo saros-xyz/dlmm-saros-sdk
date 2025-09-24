@@ -208,27 +208,6 @@ export class TestWalletSetup {
     }
   }
 
-  public async cleanup(): Promise<void> {
-    const walletPath = this.getWalletPath();
-    const tokenConfigPath = this.getTokenConfigPath();
-
-    if (fs.existsSync(walletPath)) {
-      fs.unlinkSync(walletPath);
-    }
-
-    if (fs.existsSync(tokenConfigPath)) {
-      fs.unlinkSync(tokenConfigPath);
-    }
-
-    try {
-      fs.rmdirSync(this.testDir);
-    } catch (error) {
-      // Directory not empty or doesn't exist, ignore
-    }
-
-    console.log('Test data cleaned up');
-  }
-
   public getConnection(): Connection {
     return this.connection;
   }

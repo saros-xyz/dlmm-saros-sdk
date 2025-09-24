@@ -556,6 +556,9 @@ export class PositionService extends SarosBaseService {
 
     const combined = [...legacyAccountsResp.value, ...token2022AccountsResp.value];
 
+    if (combined.length === 0) {
+      return [];
+    }
     const mints = Array.from(
       combined
         .filter((acc) => acc.account.data.parsed.info.tokenAmount.uiAmount > 0)

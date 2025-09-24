@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { SarosDLMM } from '../../..';
-import { MODE, RemoveLiquidityType } from '../../../types';
-import { PublicKey } from '@solana/web3.js';
-import { LiquidityManager } from '../liquidity';
-import { ACTIVE_ID } from '../../../constants';
-import type { PositionBinBalance } from '../../../types';
+import { MODE, PositionBinBalance, RemoveLiquidityType, SarosDLMM } from '../../../dist';
+import { PublicKey, Keypair } from '@solana/web3.js';
+import { ACTIVE_ID } from '../../constants';
+import { LiquidityManager } from '../../services/positions/liquidity';
 
 const lbServices = new SarosDLMM({
   mode: MODE.MAINNET,
@@ -35,7 +33,7 @@ describe('Position Operations', () => {
 
   it('handles wallet with no positions', async () => {
     const positions = await lbServices.getUserPositions({
-      payer: new PublicKey('11111111111111111111111111111111'),
+      payer: Keypair.generate().publicKey,
       poolAddress: new PublicKey(USDC_USDT),
     });
 

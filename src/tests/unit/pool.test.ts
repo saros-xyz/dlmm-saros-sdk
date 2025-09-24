@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { SarosDLMM } from '../../..';
-import { MODE } from '../../../types';
+import { MODE } from '../../types';
 import { PublicKey } from '@solana/web3.js';
-import { PoolServiceError } from '../errors';
+import { PoolServiceError } from '../../services/pools/errors';
+import { SarosDLMM } from '../../services';
 
 const lbServices = new SarosDLMM({
   mode: MODE.MAINNET,
