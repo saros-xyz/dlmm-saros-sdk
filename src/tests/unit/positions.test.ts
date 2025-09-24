@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { MODE, PositionBinBalance, RemoveLiquidityType, SarosDLMM } from '../../../dist';
 import { PublicKey, Keypair } from '@solana/web3.js';
 import { ACTIVE_ID } from '../../constants';
 import { LiquidityManager } from '../../services/positions/liquidity';
+import { SarosDLMM } from '../../services';
+import { MODE, PositionBinBalance, RemoveLiquidityType } from '../../types';
 
 const lbServices = new SarosDLMM({
   mode: MODE.MAINNET,

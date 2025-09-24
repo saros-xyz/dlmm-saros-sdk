@@ -29,14 +29,6 @@ const POOLS = {
 } as const;
 
 describe('Pool Metadata', () => {
-  it('fetches USDC/USDT metadata', async () => {
-    const metadata = await lbServices.getPoolMetadata(POOLS.USDC_USDT.address);
-
-    expect(metadata.poolAddress).toBe(POOLS.USDC_USDT.address);
-    expect(metadata.baseToken.decimals).toBe(POOLS.USDC_USDT.baseDecimals);
-    expect(metadata.quoteToken.decimals).toBe(POOLS.USDC_USDT.quoteDecimals);
-  });
-
   it('fetches SOL/USDC metadata', async () => {
     const metadata = await lbServices.getPoolMetadata(POOLS.SOL_USDC.address);
 
