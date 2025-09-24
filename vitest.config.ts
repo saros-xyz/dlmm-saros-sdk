@@ -6,7 +6,14 @@ export default defineConfig(({ mode }) => ({
     environment: 'node',
     globals: true,
     include: ['src/tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: ['node_modules', 'dist', 'test-data'],
+    exclude: [
+      'node_modules',
+      'dist',
+      'test-data',
+      // Exclude cleanup test from normal test run
+      // run pnpm test:cleanup to reclaim devnet sol after testing
+      'src/tests/**/batch-close-positions.test.ts',
+    ],
     testTimeout: 60000,
     hookTimeout: 60000,
     setupFiles: ['src/tests/setup/test-setup.ts'],
