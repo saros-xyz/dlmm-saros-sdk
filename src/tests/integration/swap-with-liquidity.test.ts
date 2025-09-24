@@ -1,89 +1,27 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { PublicKey } from '@solana/web3.js';
-import { SarosDLMM } from '../..';
-import { MODE, LiquidityShape, RemoveLiquidityType } from '../../types';
+import { LiquidityShape } from '../../types';
 import {
-  getTestWallet,
-  getTestConnection,
-  getAllTestPools,
-  getAllTestTokens,
+  IntegrationTestSetup,
+  setupIntegrationTest,
   createTestKeypair,
   waitForConfirmation,
+  cleanupLiquidity,
+  getTokenBalance,
+  isInsufficientFundsError,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
-import * as spl from '@solana/spl-token';
-import { WRAP_SOL_PUBKEY } from '../../constants';
 
-let lbServices: SarosDLMM;
-let testWallet: any;
-let connection: any;
-let testPool: any;
-
-function isInsufficientFundsError(e: unknown) {
-  return String(e).toLowerCase().includes('insufficient');
-}
-
-async function cleanupLiquidity(positionKeypair: any, poolAddress: PublicKey) {
-  try {
-    const result = await lbServices.removeLiquidity({
-      positionMints: [positionKeypair.publicKey],
-      payer: testWallet.keypair.publicKey,
-      type: RemoveLiquidityType.All,
-      poolAddress,
-    });
-
-    if (result.setupTransaction) {
-      await connection.sendTransaction(result.setupTransaction, [testWallet.keypair]);
-    }
-    for (const tx of result.transactions) {
-      await connection.sendTransaction(tx, [testWallet.keypair]);
-    }
-    if (result.cleanupTransaction) {
-      await connection.sendTransaction(result.cleanupTransaction, [testWallet.keypair]);
-    }
-  } catch {
-    // ignore cleanup failures
-  }
-}
-
-async function getTokenBalance(owner: PublicKey, mint: PublicKey) {
-  if (mint === WRAP_SOL_PUBKEY) {
-    // WSOL unwraps into SOL, so check lamports directly
-    const acctInfo = await connection.getAccountInfo(owner);
-    return acctInfo ? BigInt(acctInfo.lamports) : 0n;
-  }
-  const ata = spl.getAssociatedTokenAddressSync(mint, owner);
-  try {
-    const bal = await connection.getTokenAccountBalance(ata);
-    return BigInt(bal.value.amount);
-  } catch {
-    return 0n;
-  }
-}
+let testSetup: IntegrationTestSetup;
 
 beforeAll(async () => {
   await ensureTestEnvironment();
-  testWallet = getTestWallet();
-  connection = getTestConnection();
-
-  const tokens = getAllTestTokens();
-  const saros = tokens.find((t) => t.symbol === 'SAROSDEV');
-  if (!saros) throw new Error('SAROSDEV token missing');
-
-  const pools = getAllTestPools();
-  testPool = pools.find(
-    (p) => p.baseToken === saros.mintAddress || p.quoteToken === saros.mintAddress
-  );
-  if (!testPool) throw new Error('No pool with SAROSDEV token');
-
-  lbServices = new SarosDLMM({
-    mode: MODE.DEVNET,
-    options: { rpcUrl: process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com' },
-  });
+  testSetup = setupIntegrationTest();
 });
 
 describe('Swap Integration with Seeded Liquidity', () => {
   it('adds liquidity, performs a swap, and verifies balances', async () => {
+    const { lbServices, testWallet, connection, testPool } = testSetup;
     const poolAddress = new PublicKey(testPool.pair);
     const positionKeypair = createTestKeypair();
 
@@ -120,8 +58,8 @@ describe('Swap Integration with Seeded Liquidity', () => {
       // 3. Balances before swap
       const baseMint = new PublicKey(testPool.baseToken);
       const quoteMint = new PublicKey(testPool.quoteToken);
-      const balBeforeBase = await getTokenBalance(testWallet.keypair.publicKey, baseMint);
-      const balBeforeQuote = await getTokenBalance(testWallet.keypair.publicKey, quoteMint);
+      const balBeforeBase = await getTokenBalance(connection, testWallet.keypair.publicKey, baseMint);
+      const balBeforeQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, quoteMint);
 
       // 4. Get a quote
       const amountIn = 1_000_000_000n; // 1 base token (with 9 decimals)
@@ -151,32 +89,23 @@ describe('Swap Integration with Seeded Liquidity', () => {
       console.log(`Swap confirmed: ${sig}`);
 
       // 6. Balances after swap
-      const balAfterBase = await getTokenBalance(testWallet.keypair.publicKey, baseMint);
-      const balAfterQuote = await getTokenBalance(testWallet.keypair.publicKey, quoteMint);
+      const balAfterBase = await getTokenBalance(connection, testWallet.keypair.publicKey, baseMint);
+      const balAfterQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, quoteMint);
 
-      // 7. Assertions with tolerance
-      const spentBase = balBeforeBase > balAfterBase ? balBeforeBase - balAfterBase : 0n;
-      const gainedQuote = balAfterQuote > balBeforeQuote ? balAfterQuote - balBeforeQuote : 0n;
+      // 7. Calculate actual changes (let it fail if unexpected)
+      const spentBase = balBeforeBase - balAfterBase;
+      const gainedQuote = balAfterQuote - balBeforeQuote;
 
-      console.log('Base spent:', spentBase.toString());
-      console.log(
-        'Quote gained:',
-        gainedQuote.toString(),
-        'expected ≥',
-        quote.minTokenOut.toString()
-      );
+      console.log(`Balance changes: spent ${spentBase} base, gained ${gainedQuote} quote`);
 
-      // Must have spent some base
+      // 8. Assertions - these should all pass for a successful swap
       expect(spentBase).toBeGreaterThan(0n);
-
-      // minTokenOut is enforced on-chain, so if gainedQuote is measurable, check it
-      if (gainedQuote > 0n) {
-        expect(gainedQuote).toBeGreaterThanOrEqual(quote.minTokenOut);
-      }
+      expect(gainedQuote).toBeGreaterThan(0n);
+      expect(gainedQuote).toBeGreaterThanOrEqual(quote.minTokenOut);
     } catch (err) {
       if (!isInsufficientFundsError(err)) throw err;
     } finally {
-      await cleanupLiquidity(positionKeypair, poolAddress);
+      await cleanupLiquidity(lbServices, positionKeypair, poolAddress, testWallet, connection);
     }
   });
 });
