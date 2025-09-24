@@ -7,11 +7,9 @@ import {
   getTestConnection,
   getTestToken,
   findTestPool,
+  NATIVE_SOL,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
-
-const WSOL_MINT = 'So11111111111111111111111111111111111111112';
-const WSOL_DECIMALS = 9;
 
 let lbServices: SarosDLMM;
 let testWallet: any;
@@ -75,7 +73,7 @@ describe('Pool Creation Integration', () => {
     await expect(
       lbServices.createPool({
         baseToken: saros,
-        quoteToken: { mintAddress: WSOL_MINT, decimals: WSOL_DECIMALS },
+        quoteToken: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
         binStep: 25,
         ratePrice: 0,
         payer: testWallet.keypair.publicKey,
@@ -93,7 +91,7 @@ describe('Pool Creation Integration', () => {
     const result = await createOrVerifyPool(
       {
         baseToken: saros,
-        quoteToken: { mintAddress: WSOL_MINT, decimals: WSOL_DECIMALS },
+        quoteToken: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
         binStep: 25,
         ratePrice: 0.00001,
         payer: testWallet.keypair.publicKey,
@@ -113,7 +111,7 @@ describe('Pool Creation Integration', () => {
     const result = await createOrVerifyPool(
       {
         baseToken: wbtc,
-        quoteToken: { mintAddress: WSOL_MINT, decimals: WSOL_DECIMALS },
+        quoteToken: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
         binStep: 20,
         ratePrice: 2000,
         payer: testWallet.keypair.publicKey,

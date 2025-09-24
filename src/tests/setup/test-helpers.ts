@@ -1,10 +1,11 @@
-import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { Connection, Keypair } from '@solana/web3.js';
 import { TestWalletInfo, TestTokenInfo, TestWalletSetup, TestPoolInfo } from './wallet-setup';
+import { WRAP_SOL_PUBKEY } from '../../constants';
 
 // Native SOL token info
-const NATIVE_SOL: TestTokenInfo = {
+export const NATIVE_SOL: TestTokenInfo = {
   symbol: 'wSOL',
-  mintAddress: 'So11111111111111111111111111111111111111112',
+  mintAddress: WRAP_SOL_PUBKEY.toString(),
   decimals: 9,
   name: 'Wrapped SOL',
   supply: 100000000,
@@ -26,7 +27,7 @@ export function getTestConnection(): Connection {
   return connection;
 }
 
-export function getTestWalletSetup(): TestWalletSetup {
+function getTestWalletSetup(): TestWalletSetup {
   const setup = (global as any).testWalletSetup;
   if (!setup) {
     throw new Error('Test wallet setup not initialized. Make sure global setup ran.');
@@ -116,27 +117,4 @@ export async function waitForConfirmation(signature: string, connection: Connect
 
 export function createTestKeypair(): Keypair {
   return TestWalletSetup.generateTestKeypair();
-}
-
-export async function fundTestWallet(publicKey: PublicKey, amount: number = 1.0): Promise<void> {
-  const setup = getTestWalletSetup();
-  await setup.fundWallet(publicKey, amount);
-}
-
-export async function getTokenBalance(
-  connection: Connection,
-  tokenAccount: PublicKey
-): Promise<number> {
-  try {
-    const balance = await connection.getTokenAccountBalance(tokenAccount);
-    return parseFloat(balance.value.amount) / Math.pow(10, balance.value.decimals);
-  } catch (error) {
-    console.error('Failed to get token balance:', error);
-    return 0;
-  }
-}
-
-export async function getSolBalance(connection: Connection, publicKey: PublicKey): Promise<number> {
-  const balance = await connection.getBalance(publicKey);
-  return balance / 1_000_000_000;
 }
