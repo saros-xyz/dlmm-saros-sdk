@@ -7,7 +7,7 @@ interface CreateLiquidityDistributionParams {
   binRange: [number, number];
 }
 
-// Note: must use distributionX/Y (instead of base/quote) because Expected format for program function: this.lbProgram.methods.increasePosition
+// this.lbProgram.methods.increasePosition expects distributionX/Y (not base/quote) 
 export interface Distribution {
   relativeBinId: number;
   /** Percentage (0-100) */
