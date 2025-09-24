@@ -168,7 +168,7 @@ export async function getTokenBalance(
   owner: PublicKey,
   mint: PublicKey
 ): Promise<bigint> {
-  if (mint === WRAP_SOL_PUBKEY) {
+  if (mint.equals(WRAP_SOL_PUBKEY)) {
     // WSOL unwraps into SOL, so check lamports directly
     const acctInfo = await connection.getAccountInfo(owner);
     return acctInfo ? BigInt(acctInfo.lamports) : 0n;
