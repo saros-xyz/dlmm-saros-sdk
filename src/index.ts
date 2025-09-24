@@ -8,19 +8,16 @@ export { SarosDLMM } from './services';
 export { MODE, LiquidityShape, RemoveLiquidityType } from './types';
 
 export { getPriceFromId, getIdFromPrice } from './utils/price';
-export {
-  getTokenProgram,
-  getPairVaultInfo,
-  getUserVaultInfo,
-  GetPairVaultInfoParams,
-  GetUserVaultInfoParams,
-} from './utils/vaults';
+export { getTokenProgram, getPairVaultInfo, getUserVaultInfo } from './utils/vaults';
 
-export { Distribution } from './services/positions/bin-distribution';
+export type { GetPairVaultInfoParams, GetUserVaultInfoParams } from './utils/vaults';
+
+export type { Distribution } from './services/positions/bin-distribution';
 
 // Public types (type-only)
 export type {
   SwapParams,
+  SwapOptions,
   QuoteParams,
   QuoteResponse,
   CreatePositionParams,
@@ -29,10 +26,18 @@ export type {
   RemoveLiquidityResponse,
   GetUserPositionsParams,
   CreatePoolParams,
+  CreatePoolResponse,
   GetPoolLiquidityParams,
   PoolMetadata,
   DLMMPairAccount,
   PositionAccount,
   PoolLiquidityData,
   BinLiquidityData,
+  GetMaxAmountOutWithFeeParams,
+  GetMaxAmountOutWithFeeResponse,
+  GetPositionBinBalancesParams,
+  PositionBinBalance,
+  GetBinArrayInfoParams,
+  BinArray,
+  Bin,
 } from './types';

@@ -16,7 +16,7 @@ describe('getQuote with bigint support', () => {
 
     const quote = await lbServices.getQuote({
       amount: largeAmount,
-      pair: new PublicKey('9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk'),
+      poolAddress: new PublicKey('9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk'),
       options: { swapForY: true, isExactInput: true },
       slippage: 10,
     });

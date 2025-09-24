@@ -1,4 +1,4 @@
-import { utils } from '@coral-xyz/anchor';
+import { BN, utils } from '@coral-xyz/anchor';
 import { PublicKey, Transaction, TransactionMessage } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import bs58 from 'bs58';
@@ -295,7 +295,7 @@ export class PoolService extends SarosBaseService {
       const bins: BinLiquidityData[] = [];
       binArrayResults.forEach(({ index, bins: arr }) => {
         arr.forEach((bin: Bin, binIdx: number) => {
-          if (bin.reserveX > 0n || bin.reserveY > 0n) {
+          if (bin.reserveX.gt(new BN(0)) || bin.reserveY.gt(new BN(0))) {
             const binId = index * BIN_ARRAY_SIZE + binIdx;
             const price = getPriceFromId(
               pairAccount.binStep,

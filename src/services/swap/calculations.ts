@@ -67,7 +67,7 @@ export const getMaxInputWithSlippage = (amountIn: bigint, slippage: number): big
   const slippageScaled = Math.round(slippageFraction * Number(PRECISION_BIGINT));
   const denominatorScaled = Number(PRECISION_BIGINT) - slippageScaled;
 
- if (denominatorScaled <= 0) {
+  if (denominatorScaled <= 0) {
     throw SwapServiceError.InvalidSlippage;
   }
   return (amountIn * PRECISION_BIGINT) / BigInt(denominatorScaled);

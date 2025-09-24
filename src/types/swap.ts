@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 /**
  * Swap direction and execution mode
  */
-interface SwapOptions {
+export interface SwapOptions {
   /** Swap direction: true = X to Y, false = Y to X */
   swapForY: boolean;
   /** Execution mode: true = exact input amount, false = exact output amount */
@@ -26,8 +26,8 @@ export interface SwapParams {
   minTokenOut: bigint;
   /** The DLMM pool address */
   poolAddress: PublicKey;
-  /** Optional hook program address */
-  hook?: PublicKey;
+  /** hook program address */
+  hook: PublicKey;
   /** Wallet executing the swap */
   payer: PublicKey;
 }
@@ -63,23 +63,27 @@ export interface QuoteResponse {
 }
 
 /**
- * Parameters for theoretical maximum output calculation
+ * Parameters for calculating theoretical maximum output with known token decimals
  */
-export interface MaxAmountOutParams {
+export interface GetMaxAmountOutWithFeeParams {
   /** The DLMM pool address */
   poolAddress: PublicKey;
-  /** Input amount */
+  /** Input amount in token's smallest unit */
   amount: bigint;
-  /** Swap direction */
+  /** Swap direction: true = X to Y, false = Y to X */
   swapForY?: boolean;
+  /** Number of decimal places for base token */
+  decimalBase?: number;
+  /** Number of decimal places for quote token */
+  decimalQuote?: number;
 }
 
 /**
- * Theoretical maximum output calculation result
+ * Result of theoretical maximum output calculation
  */
-export interface MaxAmountOutResponse {
-  /** Maximum possible output amount */
+export interface GetMaxAmountOutWithFeeResponse {
+  /** Maximum possible output amount (accounting for fees but not slippage) */
   maxAmountOut: bigint;
-  /** Current pool price */
+  /** Current price in the pool using specified decimals */
   price: number;
 }

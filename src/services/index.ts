@@ -22,6 +22,8 @@ import {
   CreatePoolResponse,
   GetBinArrayInfoParams,
   BinArray,
+  GetMaxAmountOutWithFeeResponse,
+  GetMaxAmountOutWithFeeParams,
 } from '../types';
 import { PublicKey, Transaction } from '@solana/web3.js';
 
@@ -53,17 +55,24 @@ export class SarosDLMM extends SarosBaseService {
     return await this.swapService.swap(params);
   }
 
-  // getMaxAmountOutWithFee
-
   /**
-   *  Create a new position in a specific pool
+   * Calculate maximum theoretical output for price impact analysis
+   */
+  public async getMaxAmountOutWithFee(
+    params: GetMaxAmountOutWithFeeParams
+  ): Promise<GetMaxAmountOutWithFeeResponse> {
+    return await this.swapService.getMaxAmountOutWithFee(params);
+  }
+  /**
+   * Create a new position in a specific pool
    */
   public async createPosition(params: CreatePositionParams): Promise<Transaction> {
     const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
     return await this.positionService.createPosition(params, pairInfo);
   }
 
-  /** Add liquidity to an existing position
+  /**
+   * Add liquidity to an existing position
    */
   public async addLiquidityByShape(params: AddLiquidityByShapeParams): Promise<Transaction> {
     const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
@@ -87,7 +96,10 @@ export class SarosDLMM extends SarosBaseService {
     return await this.positionService.getUserPositions(params);
   }
 
-  public async getBinArrayInfo(params: GetBinArrayInfoParams): Promise<BinArray>{
+  /**
+   * Get bin array information for a pool
+   */
+  public async getBinArrayInfo(params: GetBinArrayInfoParams): Promise<BinArray> {
     return await this.positionService.getBinArrayInfo(params);
   }
 
@@ -114,26 +126,29 @@ export class SarosDLMM extends SarosBaseService {
     return await this.poolService.createPairWithConfig(params);
   }
 
-  /** Fetch metadata for a specific pool
+  /**
+   * Fetch metadata for a specific pool
    */
   public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
     return await this.poolService.getPoolMetadata(pair);
   }
 
-  /** Get list of all Saros DLMM pool addresses
+  /**
+   * Get list of all Saros DLMM pool addresses
    */
   public async getAllPoolAddresses(): Promise<string[]> {
     return await this.poolService.getAllPoolAddresses();
   }
 
-  /** Listen for new pool addresses being created and call postTxFunction with the new address
+  /**
+   * Listen for new pool addresses being created and call postTxFunction with the new address
    */
   public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
     return await this.poolService.listenNewPoolAddress(postTxFunction);
   }
 
   /**
-   * Get all bins with liquidity for a given pool. (new)
+   * Get all bins with liquidity for a given pool
    */
   public async getPoolLiquidity(params: GetPoolLiquidityParams): Promise<PoolLiquidityData> {
     return await this.poolService.getPoolLiquidity(params);

@@ -79,6 +79,7 @@ export class PositionService extends SarosBaseService {
       throw new Error(`Failed to get bin array info for index ${binArrayIndex}: ${error}`);
     }
   }
+
   public async getPositionBinBalances(
     params: GetPositionBinBalancesParams
   ): Promise<PositionBinBalance[]> {
