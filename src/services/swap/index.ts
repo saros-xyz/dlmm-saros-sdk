@@ -12,7 +12,7 @@ import {
   QuoteResponse,
   SwapParams,
   BinArray,
-  PoolMetadata,
+  PairMetadata,
   GetMaxAmountOutWithFeeResponse,
   GetMaxAmountOutWithFeeParams,
 } from '../../types';
@@ -24,9 +24,9 @@ import {
   getMinOutputWithSlippage,
   getMaxInputWithSlippage,
 } from './calculations';
-import { PoolServiceError } from '../pools/errors';
+import { PairServiceError } from '../pair/errors';
 import { SwapServiceError } from './errors';
-import { BinArrayManager } from '../pools/bin-manager';
+import { BinArrayManager } from '../pair/bin-manager';
 import { addSolTransferInstructions, addCloseAccountInstruction } from '../../utils/transaction';
 import { getTokenProgram, getUserVaultInfo } from '../../utils/vaults';
 
@@ -46,10 +46,10 @@ export class SwapService extends SarosBaseService {
     } = params;
     try {
       //@ts-ignore
-      const poolInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
-      if (!poolInfo) throw PoolServiceError.PoolNotFound;
+      const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
+      if (!pairInfo) throw PairServiceError.Pair;
 
-      const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(poolInfo.activeId);
+      const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(pairInfo.activeId);
       const binArrayIndexes = [
         currentBinArrayIndex - 1,
         currentBinArrayIndex,
@@ -90,7 +90,7 @@ export class SwapService extends SarosBaseService {
         const amountOut = await this.calculateAmountOut(
           amountAfterTransferFee,
           binRange,
-          poolInfo,
+          pairInfo,
           swapForY
         );
 
@@ -102,7 +102,7 @@ export class SwapService extends SarosBaseService {
         const amountIn = await this.calculateAmountIn(
           amountAfterTransferFee,
           binRange,
-          poolInfo,
+          pairInfo,
           swapForY
         );
 
@@ -112,7 +112,7 @@ export class SwapService extends SarosBaseService {
         };
       }
     } catch (error) {
-      if (error instanceof SwapServiceError || error instanceof PoolServiceError) {
+      if (error instanceof SwapServiceError || error instanceof PairServiceError) {
         throw error;
       }
       throw new Error(
@@ -124,18 +124,18 @@ export class SwapService extends SarosBaseService {
   private async calculateAmountIn(
     amount: bigint,
     bins: BinArrayRange,
-    poolInfo: DLMMPairAccount,
+    pairInfo: DLMMPairAccount,
     swapForY: boolean
   ) {
     try {
       let amountIn = BigInt(0);
       // let totalProtocolFee = BigInt(0);
       let amountOutLeft = amount;
-      let activeId = poolInfo.activeId;
+      let activeId = pairInfo.activeId;
       let totalBinUsed = 0;
 
       await this.volatilityManager.updateReferences(
-        poolInfo,
+        pairInfo,
         activeId,
         () => this.connection.getSlot(),
         (slot) => this.connection.getBlockTime(slot)
@@ -143,7 +143,7 @@ export class SwapService extends SarosBaseService {
 
       while (amountOutLeft > BigInt(0)) {
         totalBinUsed++;
-        this.volatilityManager.updateVolatilityAccumulator(poolInfo, activeId);
+        this.volatilityManager.updateVolatilityAccumulator(pairInfo, activeId);
 
         const activeBin = bins.getBinMut(activeId);
         if (!activeBin) {
@@ -151,7 +151,7 @@ export class SwapService extends SarosBaseService {
         }
 
         const fee = FeeCalculator.getTotalFee(
-          poolInfo,
+          pairInfo,
           this.volatilityManager.getVolatilityAccumulator()
         );
 
@@ -160,11 +160,11 @@ export class SwapService extends SarosBaseService {
           amountOut: amountOutOfBin,
           // protocolFeeAmount,
         } = this.swapExactOutput({
-          binStep: poolInfo.binStep,
+          binStep: pairInfo.binStep,
           activeId,
           amountOutLeft,
           fee,
-          protocolShare: poolInfo.staticFeeParameters.protocolShare,
+          protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
           reserveX: new BN(activeBin.reserveX.toString()),
           reserveY: new BN(activeBin.reserveY.toString()),
@@ -191,18 +191,18 @@ export class SwapService extends SarosBaseService {
   private async calculateAmountOut(
     amount: bigint,
     bins: BinArrayRange,
-    poolInfo: DLMMPairAccount,
+    pairInfo: DLMMPairAccount,
     swapForY: boolean
   ) {
     try {
       let amountOut = BigInt(0);
       // let totalProtocolFee = BigInt(0);
       let amountInLeft = amount;
-      let activeId = poolInfo.activeId;
+      let activeId = pairInfo.activeId;
       let totalBinUsed = 0;
 
       await this.volatilityManager.updateReferences(
-        poolInfo,
+        pairInfo,
         activeId,
         // can we pass the values directly instead of functions?
         () => this.connection.getSlot(),
@@ -211,7 +211,7 @@ export class SwapService extends SarosBaseService {
 
       while (amountInLeft > BigInt(0)) {
         totalBinUsed++;
-        this.volatilityManager.updateVolatilityAccumulator(poolInfo, activeId);
+        this.volatilityManager.updateVolatilityAccumulator(pairInfo, activeId);
 
         const activeBin = bins.getBinMut(activeId);
         if (!activeBin) {
@@ -219,7 +219,7 @@ export class SwapService extends SarosBaseService {
         }
 
         const fee = FeeCalculator.getTotalFee(
-          poolInfo,
+          pairInfo,
           this.volatilityManager.getVolatilityAccumulator()
         );
 
@@ -228,11 +228,11 @@ export class SwapService extends SarosBaseService {
           amountOut: amountOutOfBin,
           // protocolFeeAmount,
         } = this.swapExactInput({
-          binStep: poolInfo.binStep,
+          binStep: pairInfo.binStep,
           activeId,
           amountInLeft,
           fee,
-          protocolShare: poolInfo.staticFeeParameters.protocolShare,
+          protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
           reserveX: new BN(activeBin.reserveX.toString()),
           reserveY: new BN(activeBin.reserveY.toString()),
@@ -353,11 +353,11 @@ export class SwapService extends SarosBaseService {
     };
   }
 
-  private moveActiveId(poolId: number, swapForY: boolean): number {
+  private moveActiveId(pairId: number, swapForY: boolean): number {
     if (swapForY) {
-      return poolId - 1;
+      return pairId - 1;
     } else {
-      return poolId + 1;
+      return pairId + 1;
     }
   }
 
@@ -378,10 +378,10 @@ export class SwapService extends SarosBaseService {
     if (otherAmountOffset < 0n) throw SwapServiceError.ZeroAmount;
 
     //@ts-ignore
-    const poolInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
-    if (!poolInfo) throw PoolServiceError.PoolNotFound;
+    const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
+    if (!pairInfo) throw PairServiceError.Pair;
 
-    const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(poolInfo.activeId);
+    const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(pairInfo.activeId);
 
     const surroundingIndexes = [
       currentBinArrayIndex - 1,
@@ -408,7 +408,7 @@ export class SwapService extends SarosBaseService {
     if (validIndexes.length === 2) {
       [binArrayLowerIndex, binArrayUpperIndex] = validIndexes;
     } else {
-      const activeOffset = poolInfo.activeId % BIN_ARRAY_SIZE;
+      const activeOffset = pairInfo.activeId % BIN_ARRAY_SIZE;
       const [first, second, third] = validIndexes;
       [binArrayLowerIndex, binArrayUpperIndex] =
         activeOffset < BIN_ARRAY_SIZE / 2 ? [first, second] : [second, third];
@@ -518,13 +518,13 @@ export class SwapService extends SarosBaseService {
     return tx;
   }
 
-  public async getQuote(params: QuoteParams, poolMetadata: PoolMetadata): Promise<QuoteResponse> {
+  public async getQuote(params: QuoteParams, pairMetadata: PairMetadata): Promise<QuoteResponse> {
     // Validate user inputs
     if (params.amount <= 0n) throw SwapServiceError.ZeroAmount;
     if (params.slippage < 0 || params.slippage >= 100) throw SwapServiceError.InvalidSlippage;
 
     try {
-      const { baseToken, quoteToken } = poolMetadata;
+      const { baseToken, quoteToken } = pairMetadata;
       const {
         slippage,
         pair,
@@ -578,12 +578,12 @@ export class SwapService extends SarosBaseService {
       if (amount <= 0n) throw SwapServiceError.ZeroAmount;
 
       //@ts-ignore
-      const poolInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
-      if (!poolInfo) throw PoolServiceError.PoolNotFound;
-      const { activeId, binStep } = poolInfo;
+      const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
+      if (!pairInfo) throw PairServiceError.Pair;
+      const { activeId, binStep } = pairInfo;
 
       const feePrice = FeeCalculator.getTotalFee(
-        poolInfo,
+        pairInfo,
         this.volatilityManager.getVolatilityAccumulator()
       );
       const activePrice = getPriceFromId(binStep, activeId, 9, 9);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PublicKey, Keypair } from '@solana/web3.js';
 import { ACTIVE_ID } from '../../constants';
-import { LiquidityManager } from '../../services/positions/liquidity';
+import { LiquidityManager } from '../../services/position/liquidity';
 import { SarosDLMM } from '../../services';
 import { MODE, PositionBinBalance, RemoveLiquidityType } from '../../types';
 

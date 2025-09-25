@@ -24,7 +24,7 @@ import {
   addOptimalComputeBudget,
 } from '../../utils/transaction';
 import { getUserVaultInfo, getPairVaultInfo, getTokenProgram } from '../../utils/vaults';
-import { BinArrayManager } from '../pools/bin-manager';
+import { BinArrayManager } from '../pair/bin-manager';
 import { createUniformDistribution, Distribution } from './bin-distribution';
 import { PositionServiceError } from './errors';
 

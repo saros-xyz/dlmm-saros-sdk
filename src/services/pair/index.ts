@@ -6,21 +6,21 @@ import { SarosBaseService, SarosConfig } from '../base';
 import { BinArrayManager } from './bin-manager';
 import { BIN_ARRAY_SIZE } from '../../constants';
 import {
-  CreatePoolParams,
+  CreatePairParams,
   DLMMPairAccount,
-  PoolMetadata,
-  GetPoolLiquidityParams,
-  PoolLiquidityData,
+  PairMetadata,
+  GetPairLiquidityParams,
+  PairLiquidityData,
   BinLiquidityData,
   Bin,
-  CreatePoolResponse,
+  CreatePairResponse,
 } from '../../types';
 import { getIdFromPrice, getPriceFromId } from '../../utils/price';
 import { getPairVaultInfo } from '../../utils/vaults';
 import LiquidityBookIDL from '../../constants/idl/liquidity_book.json';
-import { PoolServiceError } from './errors';
+import { PairServiceError } from './errors';
 
-export class PoolService extends SarosBaseService {
+export class PairService extends SarosBaseService {
   constructor(config: SarosConfig) {
     super(config);
   }
@@ -29,18 +29,18 @@ export class PoolService extends SarosBaseService {
     try {
       //@ts-ignore
       const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
-      if (!pairInfo) throw PoolServiceError.PoolNotFound;
+      if (!pairInfo) throw PairServiceError.Pair;
       return pairInfo;
     } catch {
-      throw PoolServiceError.PoolNotFound;
+      throw PairServiceError.Pair;
     }
   }
 
-  public async createPairWithConfig(params: CreatePoolParams): Promise<CreatePoolResponse> {
+  public async createPairWithConfig(params: CreatePairParams): Promise<CreatePairResponse> {
     const { baseToken, quoteToken, binStep, ratePrice, payer } = params;
 
-    if (ratePrice <= 0) throw PoolServiceError.InvalidPrice;
-    if (binStep < 1 || binStep > 10000) throw PoolServiceError.InvalidBinStep;
+    if (ratePrice <= 0) throw PairServiceError.InvalidPrice;
+    if (binStep < 1 || binStep > 10000) throw PairServiceError.InvalidBinStep;
 
     try {
       const tokenX = new PublicKey(baseToken.mintAddress);
@@ -135,12 +135,12 @@ export class PoolService extends SarosBaseService {
         activeBin: Number(id),
       };
     } catch (error) {
-      if (error instanceof PoolServiceError) throw error;
-      throw PoolServiceError.PoolCreationFailed;
+      if (error instanceof PairServiceError) throw error;
+      throw PairServiceError.PairCreationFailed;
     }
   }
 
-  public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
+  public async getPairMetadata(pair: string): Promise<PairMetadata> {
     try {
       const pairInfo = await this.getPairAccount(new PublicKey(pair));
 
@@ -191,22 +191,22 @@ export class PoolService extends SarosBaseService {
         extra: { hook: pairInfo.hook?.toString() },
       };
     } catch (error) {
-      if (error instanceof PoolServiceError) throw error;
-      throw PoolServiceError.PoolNotFound;
+      if (error instanceof PairServiceError) throw error;
+      throw PairServiceError.Pair;
     }
   }
 
-  public async getAllPoolAddresses(): Promise<string[]> {
+  public async getAllPairAddresses(): Promise<string[]> {
     try {
       const programId = this.getDexProgramId();
       const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
-      if (!pairAccount) throw PoolServiceError.NoPoolsFound;
+      if (!pairAccount) throw PairServiceError.NoPairFound;
 
       const accounts = await this.connection.getProgramAccounts(new PublicKey(programId), {
         filters: [{ memcmp: { offset: 0, bytes: bs58.encode(pairAccount.discriminator) } }],
       });
 
-      if (accounts.length === 0) throw PoolServiceError.NoPoolsFound;
+      if (accounts.length === 0) throw PairServiceError.NoPairFound;
 
       return accounts
         .filter(
@@ -215,12 +215,12 @@ export class PoolService extends SarosBaseService {
         )
         .map((acc) => acc.pubkey.toString());
     } catch (error) {
-      if (error instanceof PoolServiceError) throw error;
-      throw PoolServiceError.NoPoolsFound;
+      if (error instanceof PairServiceError) throw error;
+      throw PairServiceError.NoPairFound;
     }
   }
 
-  public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
+  public async listenNewPairAddress(postTxFunction: (address: string) => Promise<void>) {
     const LB_PROGRAM_ID = this.getDexProgramId();
     const subscriptionId = this.connection.onLogs(
       LB_PROGRAM_ID,
@@ -263,11 +263,11 @@ export class PoolService extends SarosBaseService {
     return '';
   }
 
-  public async getPoolLiquidity(params: GetPoolLiquidityParams): Promise<PoolLiquidityData> {
+  public async getPairLiquidity(params: GetPairLiquidityParams): Promise<PairLiquidityData> {
     const { pair, numberOfBinArrays: arrayRange = 1 } = params;
     try {
       const [metadata, pairAccount] = await Promise.all([
-        this.getPoolMetadata(pair.toString()),
+        this.getPairMetadata(pair.toString()),
         this.getPairAccount(pair),
       ]);
 
@@ -313,8 +313,8 @@ export class PoolService extends SarosBaseService {
 
       return { activeBin: pairAccount.activeId, binStep: pairAccount.binStep, bins };
     } catch (error) {
-      if (error instanceof PoolServiceError) throw error;
-      throw PoolServiceError.PoolNotFound;
+      if (error instanceof PairServiceError) throw error;
+      throw PairServiceError.Pair;
     }
   }
 }

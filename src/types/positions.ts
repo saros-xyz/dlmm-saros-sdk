@@ -2,12 +2,12 @@ import { PublicKey, Transaction } from '@solana/web3.js';
 import { LiquidityShape, RemoveLiquidityType } from './config';
 
 /**
- * Parameters for retrieving all user positions in a specific pool
+ * Parameters for retrieving all user positions in a specific pair
  */
 export interface GetUserPositionsParams {
   /** The wallet/account that owns the positions */
   payer: PublicKey;
-  /** The DLMM pool address to query positions for */
+  /** The DLMM pair address to query positions for */
   pair: PublicKey;
 }
 
@@ -17,7 +17,7 @@ export interface GetUserPositionsParams {
 export interface CreatePositionParams {
   /** The wallet that will own the position and pay transaction fees */
   payer: PublicKey;
-  /** The DLMM pool address where the position will be created */
+  /** The DLMM pair address where the position will be created */
   pair: PublicKey;
   /** The NFT mint that will represent this position */
   positionMint: PublicKey;
@@ -33,7 +33,7 @@ export interface AddLiquidityByShapeParams {
   positionMint: PublicKey;
   /** The wallet providing the liquidity and paying transaction fees */
   payer: PublicKey;
-  /** The DLMM pool address */
+  /** The DLMM pair address */
   pair: PublicKey;
   /** Optional pre-built transaction to append instructions to */
   transaction?: Transaction;
@@ -57,7 +57,7 @@ export interface RemoveLiquidityParams {
   payer: PublicKey;
   /** Type of removal: All tokens, BaseToken only, or QuoteToken only */
   type: RemoveLiquidityType;
-  /** The DLMM pool address */
+  /** The DLMM pair address */
   pair: PublicKey;
 }
 
@@ -81,19 +81,19 @@ export interface RemoveLiquidityResponse {
 export interface GetPositionBinBalancesParams {
   /** The position account address (derived from position mint) */
   position: PublicKey;
-  /** The DLMM pool/pair address */
+  /** The DLMM pair address */
   pair: PublicKey;
   /** The wallet that owns the position */
   payer: PublicKey;
 }
 
 /**
- * Parameters for retrieving bin array information from a pool
+ * Parameters for retrieving bin array information from a pair
  */
 export interface GetBinArrayInfoParams {
   /** The bin array index to fetch */
   binArrayIndex: number;
-  /** The DLMM pool address */
+  /** The DLMM pair address */
   pair: PublicKey;
   /** The wallet requesting the information (used for transaction context if needed) */
   payer: PublicKey;

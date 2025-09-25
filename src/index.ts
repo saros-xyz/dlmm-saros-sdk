@@ -12,7 +12,7 @@ export { getTokenProgram, getPairVaultInfo, getUserVaultInfo } from './utils/vau
 
 export type { GetPairVaultInfoParams, GetUserVaultInfoParams } from './utils/vaults';
 
-export type { Distribution } from './services/positions/bin-distribution';
+export type { Distribution } from './services/position/bin-distribution';
 
 // Public types (type-only)
 export type {
@@ -25,13 +25,13 @@ export type {
   RemoveLiquidityParams,
   RemoveLiquidityResponse,
   GetUserPositionsParams,
-  CreatePoolParams,
-  CreatePoolResponse,
-  GetPoolLiquidityParams,
-  PoolMetadata,
+  CreatePairParams,
+  CreatePairResponse,
+  GetPairLiquidityParams,
+  PairMetadata,
   DLMMPairAccount,
   PositionAccount,
-  PoolLiquidityData,
+  PairLiquidityData,
   BinLiquidityData,
   GetMaxAmountOutWithFeeParams,
   GetMaxAmountOutWithFeeResponse,

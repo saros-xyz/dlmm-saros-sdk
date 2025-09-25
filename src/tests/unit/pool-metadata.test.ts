@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MODE } from '../../types';
 import { PublicKey } from '@solana/web3.js';
-import { PoolServiceError } from '../../services/pools/errors';
+import { PairServiceError } from '../../services/pair/errors';
 import { SarosDLMM } from '../../services';
 
 const lbServices = new SarosDLMM({
@@ -39,14 +39,14 @@ describe('Pool Metadata', () => {
 
   it('throws PoolNotFound for invalid pool', async () => {
     await expect(lbServices.getPoolMetadata(POOLS.INVALID.address)).rejects.toThrow(
-      PoolServiceError.PoolNotFound
+      PairServiceError.Pair
     );
   });
 });
 
 describe('Pool Discovery', () => {
   it('returns array of pool addresses', async () => {
-    const addresses = await lbServices.getAllPoolAddresses();
+    const addresses = await lbServices.getAllPairAddresses();
 
     expect(Array.isArray(addresses)).toBe(true);
     expect(addresses.length).toBeGreaterThan(0);
@@ -56,7 +56,7 @@ describe('Pool Discovery', () => {
 
 describe('Pool Liquidity', () => {
   it('returns liquidity data with default range', async () => {
-    const data = await lbServices.getPoolLiquidity({
+    const data = await lbServices.getPairLiquidity({
       pair: new PublicKey(POOLS.USDC_USDT.address),
     });
 
@@ -67,11 +67,11 @@ describe('Pool Liquidity', () => {
 
   it('respects custom arrayRange', async () => {
     const [small, large] = await Promise.all([
-      lbServices.getPoolLiquidity({
+      lbServices.getPairLiquidity({
         pair: new PublicKey(POOLS.USDC_USDT.address),
         numberOfBinArrays: 1,
       }),
-      lbServices.getPoolLiquidity({
+      lbServices.getPairLiquidity({
         pair: new PublicKey(POOLS.USDC_USDT.address),
         numberOfBinArrays: 5,
       }),

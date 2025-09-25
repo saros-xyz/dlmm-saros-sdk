@@ -24,7 +24,7 @@ export interface SwapParams {
   options: SwapOptions;
   /** Minimum acceptable output amount (slippage protection) */
   minTokenOut: bigint;
-  /** The DLMM pool address */
+  /** The DLMM pair address */
   pair: PublicKey;
   /** hook program address */
   hook: PublicKey;
@@ -36,7 +36,7 @@ export interface SwapParams {
  * Parameters for getting a swap quote
  */
 export interface QuoteParams {
-  /** The DLMM pool address */
+  /** The DLMM pair address */
   pair: PublicKey;
   /** Amount to quote */
   amount: bigint;
@@ -66,7 +66,7 @@ export interface QuoteResponse {
  * Parameters for calculating theoretical maximum output with known token decimals
  */
 export interface GetMaxAmountOutWithFeeParams {
-  /** The DLMM pool address */
+  /** The DLMM pair address */
   pair: PublicKey;
   /** Input amount in token's smallest unit */
   amount: bigint;
@@ -84,6 +84,6 @@ export interface GetMaxAmountOutWithFeeParams {
 export interface GetMaxAmountOutWithFeeResponse {
   /** Maximum possible output amount (accounting for fees but not slippage) */
   maxAmountOut: bigint;
-  /** Current price in the pool using specified decimals */
+  /** Current price in the pair using specified decimals */
   price: number;
 }

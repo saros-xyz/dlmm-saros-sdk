@@ -1,6 +1,6 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
 
-export interface CreatePoolParams {
+export interface CreatePairParams {
   baseToken: TokenInfo;
   quoteToken: TokenInfo;
   /** Determines fee tier and price precision */
@@ -10,10 +10,10 @@ export interface CreatePoolParams {
   payer: PublicKey;
 }
 
-export interface CreatePoolResponse {
+export interface CreatePairResponse {
   /** Transaction to execute */
   transaction: Transaction;
-  /** Address of the created pool pair */
+  /** Address of the created LB pair */
   pair: string;
   /** Active bin ID where initial liquidity will be placed */
   activeBin: number;
@@ -25,7 +25,7 @@ export interface CreatePoolResponse {
   hooksConfig: string;
 }
 
-export interface PoolMetadata {
+export interface PairMetadata {
   pair: string;
   baseToken: TokenInfoWithReserve;
   quoteToken: TokenInfoWithReserve;
@@ -44,7 +44,7 @@ export interface TokenInfoWithReserve extends TokenInfo {
   reserve: string;
 }
 
-export interface GetPoolLiquidityParams {
+export interface GetPairLiquidityParams {
   pair: PublicKey;
   /**
    * Number of bin arrays to fetch symmetrically around the active bin.
@@ -60,7 +60,7 @@ export interface BinLiquidityData {
   quoteReserve: number;
 }
 
-export interface PoolLiquidityData {
+export interface PairLiquidityData {
   activeBin: number;
   binStep: number;
   bins: BinLiquidityData[];
