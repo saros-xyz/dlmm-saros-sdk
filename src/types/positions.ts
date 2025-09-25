@@ -8,7 +8,7 @@ export interface GetUserPositionsParams {
   /** The wallet/account that owns the positions */
   payer: PublicKey;
   /** The DLMM pool address to query positions for */
-  poolAddress: PublicKey;
+  pair: PublicKey;
 }
 
 /**
@@ -18,7 +18,7 @@ export interface CreatePositionParams {
   /** The wallet that will own the position and pay transaction fees */
   payer: PublicKey;
   /** The DLMM pool address where the position will be created */
-  poolAddress: PublicKey;
+  pair: PublicKey;
   /** The NFT mint that will represent this position */
   positionMint: PublicKey;
   /** Bin range [minBin, maxBin] relative to the current active bin */
@@ -34,7 +34,7 @@ export interface AddLiquidityByShapeParams {
   /** The wallet providing the liquidity and paying transaction fees */
   payer: PublicKey;
   /** The DLMM pool address */
-  poolAddress: PublicKey;
+  pair: PublicKey;
   /** Optional pre-built transaction to append instructions to */
   transaction?: Transaction;
   /** The distribution shape for the liquidity (Spot, Curve, Bid, Ask) */
@@ -58,7 +58,7 @@ export interface RemoveLiquidityParams {
   /** Type of removal: All tokens, BaseToken only, or QuoteToken only */
   type: RemoveLiquidityType;
   /** The DLMM pool address */
-  poolAddress: PublicKey;
+  pair: PublicKey;
 }
 
 /**
@@ -82,7 +82,7 @@ export interface GetPositionBinBalancesParams {
   /** The position account address (derived from position mint) */
   position: PublicKey;
   /** The DLMM pool/pair address */
-  poolAddress: PublicKey;
+  pair: PublicKey;
   /** The wallet that owns the position */
   payer: PublicKey;
 }
@@ -94,7 +94,7 @@ export interface GetBinArrayInfoParams {
   /** The bin array index to fetch */
   binArrayIndex: number;
   /** The DLMM pool address */
-  poolAddress: PublicKey;
+  pair: PublicKey;
   /** The wallet requesting the information (used for transaction context if needed) */
   payer: PublicKey;
 }

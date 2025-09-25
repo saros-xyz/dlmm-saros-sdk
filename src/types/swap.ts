@@ -25,7 +25,7 @@ export interface SwapParams {
   /** Minimum acceptable output amount (slippage protection) */
   minTokenOut: bigint;
   /** The DLMM pool address */
-  poolAddress: PublicKey;
+  pair: PublicKey;
   /** hook program address */
   hook: PublicKey;
   /** Wallet executing the swap */
@@ -37,7 +37,7 @@ export interface SwapParams {
  */
 export interface QuoteParams {
   /** The DLMM pool address */
-  poolAddress: PublicKey;
+  pair: PublicKey;
   /** Amount to quote */
   amount: bigint;
   /** Swap direction and execution mode */
@@ -67,7 +67,7 @@ export interface QuoteResponse {
  */
 export interface GetMaxAmountOutWithFeeParams {
   /** The DLMM pool address */
-  poolAddress: PublicKey;
+  pair: PublicKey;
   /** Input amount in token's smallest unit */
   amount: bigint;
   /** Swap direction: true = X to Y, false = Y to X */

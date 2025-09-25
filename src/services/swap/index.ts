@@ -41,12 +41,12 @@ export class SwapService extends SarosBaseService {
   private async calculateInOutAmount(params: QuoteParams) {
     const {
       amount,
-      poolAddress,
+      pair,
       options: { swapForY, isExactInput },
     } = params;
     try {
       //@ts-ignore
-      const poolInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(poolAddress);
+      const poolInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
       if (!poolInfo) throw PoolServiceError.PoolNotFound;
 
       const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(poolInfo.activeId);
@@ -56,7 +56,7 @@ export class SwapService extends SarosBaseService {
         currentBinArrayIndex + 1,
       ];
       const binArrayAddresses = binArrayIndexes.map((idx) =>
-        BinArrayManager.getBinArrayAddress(idx, poolAddress, this.lbProgram.programId)
+        BinArrayManager.getBinArrayAddress(idx, pair, this.lbProgram.programId)
       );
 
       // Fetch bin arrays in batch, fallback to empty if not found
@@ -369,7 +369,7 @@ export class SwapService extends SarosBaseService {
       amount,
       minTokenOut: otherAmountOffset,
       options: { swapForY, isExactInput },
-      poolAddress,
+      pair,
       hook,
       payer,
     } = params;
@@ -378,7 +378,7 @@ export class SwapService extends SarosBaseService {
     if (otherAmountOffset < 0n) throw SwapServiceError.ZeroAmount;
 
     //@ts-ignore
-    const poolInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(poolAddress);
+    const poolInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
     if (!poolInfo) throw PoolServiceError.PoolNotFound;
 
     const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(poolInfo.activeId);
@@ -391,7 +391,7 @@ export class SwapService extends SarosBaseService {
 
     const binArrayAddresses = await Promise.all(
       surroundingIndexes.map(async (idx) =>
-        BinArrayManager.getBinArrayAddress(idx, poolAddress, this.lbProgram.programId)
+        BinArrayManager.getBinArrayAddress(idx, pair, this.lbProgram.programId)
       )
     );
 
@@ -416,13 +416,13 @@ export class SwapService extends SarosBaseService {
 
     const binArrayLower = BinArrayManager.getBinArrayAddress(
       binArrayLowerIndex,
-      poolAddress,
+      pair,
       this.lbProgram.programId
     );
 
     const binArrayUpper = BinArrayManager.getBinArrayAddress(
       binArrayUpperIndex,
-      poolAddress,
+      pair,
       this.lbProgram.programId
     );
 
@@ -440,14 +440,14 @@ export class SwapService extends SarosBaseService {
 
     const associatedPairVaultX = spl.getAssociatedTokenAddressSync(
       tokenMintX,
-      poolAddress,
+      pair,
       true,
       tokenProgramX
     );
 
     const associatedPairVaultY = spl.getAssociatedTokenAddressSync(
       tokenMintY,
-      poolAddress,
+      pair,
       true,
       tokenProgramY
     );
@@ -482,7 +482,7 @@ export class SwapService extends SarosBaseService {
         isExactInput ? { exactInput: {} } : { exactOutput: {} }
       )
       .accountsPartial({
-        pair: poolAddress,
+        pair: pair,
         binArrayLower: binArrayLower,
         binArrayUpper: binArrayUpper,
         tokenVaultX: associatedPairVaultX,
@@ -498,7 +498,7 @@ export class SwapService extends SarosBaseService {
         hooksProgram: this.hooksProgram.programId,
       })
       .remainingAccounts([
-        { pubkey: poolAddress, isWritable: false, isSigner: false },
+        { pubkey: pair, isWritable: false, isSigner: false },
         { pubkey: binArrayLower, isWritable: false, isSigner: false },
         { pubkey: binArrayUpper, isWritable: false, isSigner: false },
       ])
@@ -527,7 +527,7 @@ export class SwapService extends SarosBaseService {
       const { baseToken, quoteToken } = poolMetadata;
       const {
         slippage,
-        poolAddress,
+        pair,
         options: { swapForY, isExactInput },
       } = params;
 
@@ -544,7 +544,7 @@ export class SwapService extends SarosBaseService {
       }
 
       const { maxAmountOut } = await this.getMaxAmountOutWithFee({
-        poolAddress,
+        pair,
         amount: amountIn,
         swapForY,
         decimalBase: baseToken.decimals,
@@ -574,11 +574,11 @@ export class SwapService extends SarosBaseService {
     params: GetMaxAmountOutWithFeeParams
   ): Promise<GetMaxAmountOutWithFeeResponse> {
     try {
-      const { poolAddress, amount, swapForY = false, decimalBase = 9, decimalQuote = 9 } = params;
+      const { pair, amount, swapForY = false, decimalBase = 9, decimalQuote = 9 } = params;
       if (amount <= 0n) throw SwapServiceError.ZeroAmount;
 
       //@ts-ignore
-      const poolInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(poolAddress);
+      const poolInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
       if (!poolInfo) throw PoolServiceError.PoolNotFound;
       const { activeId, binStep } = poolInfo;
 

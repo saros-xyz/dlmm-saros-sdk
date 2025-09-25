@@ -25,12 +25,12 @@ async function runShapeTest(
   validate: (bins: any[]) => void
 ) {
   const { lbServices, testWallet, connection, testPool } = testSetup;
-  const poolAddress = new PublicKey(testPool.pair);
+  const pair = new PublicKey(testPool.pair);
   const positionKeypair = createTestKeypair();
 
   try {
     const createTx = await lbServices.createPosition({
-      poolAddress,
+      pair,
       binRange,
       payer: testWallet.keypair.publicKey,
       positionMint: positionKeypair.publicKey,
@@ -41,7 +41,7 @@ async function runShapeTest(
     );
 
     const addTx = await lbServices.addLiquidityByShape({
-      poolAddress,
+      pair,
       positionMint: positionKeypair.publicKey,
       payer: testWallet.keypair.publicKey,
       baseAmount,
@@ -60,13 +60,13 @@ async function runShapeTest(
     )[0];
     const bins = await lbServices.getPositionBinBalances({
       position: positionAddr,
-      poolAddress,
+      pair,
       payer: testWallet.keypair.publicKey,
     });
 
     validate(bins.filter((b) => b.baseReserve > 0n || b.quoteReserve > 0n));
   } finally {
-    await cleanupLiquidity(lbServices, positionKeypair, poolAddress, testWallet, connection);
+    await cleanupLiquidity(lbServices, positionKeypair, pair, testWallet, connection);
   }
 }
 

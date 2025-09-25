@@ -25,7 +25,7 @@ export class PoolService extends SarosBaseService {
     super(config);
   }
 
-  public async getPoolAccount(pair: PublicKey): Promise<DLMMPairAccount> {
+  public async getPairAccount(pair: PublicKey): Promise<DLMMPairAccount> {
     try {
       //@ts-ignore
       const pairInfo: DLMMPairAccount = await this.lbProgram.account.pair.fetch(pair);
@@ -142,7 +142,7 @@ export class PoolService extends SarosBaseService {
 
   public async getPoolMetadata(pair: string): Promise<PoolMetadata> {
     try {
-      const pairInfo = await this.getPoolAccount(new PublicKey(pair));
+      const pairInfo = await this.getPairAccount(new PublicKey(pair));
 
       const [baseVault, quoteVault] = await Promise.all([
         getPairVaultInfo(
@@ -176,7 +176,7 @@ export class PoolService extends SarosBaseService {
           : 0;
 
       return {
-        poolAddress: pair,
+        pair,
         baseToken: {
           mintAddress: pairInfo.tokenMintX.toString(),
           decimals: baseDecimals,
@@ -264,11 +264,11 @@ export class PoolService extends SarosBaseService {
   }
 
   public async getPoolLiquidity(params: GetPoolLiquidityParams): Promise<PoolLiquidityData> {
-    const { poolAddress, numberOfBinArrays: arrayRange = 1 } = params;
+    const { pair, numberOfBinArrays: arrayRange = 1 } = params;
     try {
       const [metadata, pairAccount] = await Promise.all([
-        this.getPoolMetadata(poolAddress.toString()),
-        this.getPoolAccount(poolAddress),
+        this.getPoolMetadata(pair.toString()),
+        this.getPairAccount(pair),
       ]);
 
       const binArrayIndices = BinArrayManager.calculateBinArrayRange(
@@ -278,11 +278,7 @@ export class PoolService extends SarosBaseService {
       const binArrayResults = await Promise.all(
         binArrayIndices.map(async (index) => {
           try {
-            const addr = BinArrayManager.getBinArrayAddress(
-              index,
-              poolAddress,
-              this.getDexProgramId()
-            );
+            const addr = BinArrayManager.getBinArrayAddress(index, pair, this.getDexProgramId());
             //@ts-ignore
             const acc = await this.lbProgram.account.binArray.fetch(addr);
             return { index, bins: acc.bins };

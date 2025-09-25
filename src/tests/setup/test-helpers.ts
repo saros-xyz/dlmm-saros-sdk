@@ -133,7 +133,7 @@ export function createTestSarosDLMM(): SarosDLMM {
 export async function cleanupLiquidity(
   lbServices: SarosDLMM,
   positionKeypair: Keypair,
-  poolAddress: PublicKey,
+  pair: PublicKey,
   testWallet: TestWalletInfo,
   connection: Connection
 ): Promise<void> {
@@ -142,7 +142,7 @@ export async function cleanupLiquidity(
       positionMints: [positionKeypair.publicKey],
       payer: testWallet.keypair.publicKey,
       type: RemoveLiquidityType.All,
-      poolAddress,
+      pair,
     });
 
     if (result.setupTransaction) {

@@ -44,7 +44,7 @@ export class SarosDLMM extends SarosBaseService {
    * Get a quote for a swap
    */
   public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
-    const poolMetadata = await this.getPoolMetadata(params.poolAddress.toString());
+    const poolMetadata = await this.getPoolMetadata(params.pair.toString());
     return await this.swapService.getQuote(params, poolMetadata);
   }
 
@@ -67,7 +67,7 @@ export class SarosDLMM extends SarosBaseService {
    * Create a new position in a specific pool
    */
   public async createPosition(params: CreatePositionParams): Promise<Transaction> {
-    const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
+    const pairInfo: DLMMPairAccount = await this.poolService.getPairAccount(params.pair);
     return await this.positionService.createPosition(params, pairInfo);
   }
 
@@ -75,7 +75,7 @@ export class SarosDLMM extends SarosBaseService {
    * Add liquidity to an existing position
    */
   public async addLiquidityByShape(params: AddLiquidityByShapeParams): Promise<Transaction> {
-    const pairInfo: DLMMPairAccount = await this.poolService.getPoolAccount(params.poolAddress);
+    const pairInfo: DLMMPairAccount = await this.poolService.getPairAccount(params.pair);
     return await this.positionService.addLiquidityByShape(params, pairInfo);
   }
 
@@ -85,7 +85,7 @@ export class SarosDLMM extends SarosBaseService {
    * closedPositions lists positions that will be fully closed and burned.
    */
   public async removeLiquidity(params: RemoveLiquidityParams): Promise<RemoveLiquidityResponse> {
-    const pairInfo = await this.poolService.getPoolAccount(params.poolAddress);
+    const pairInfo = await this.poolService.getPairAccount(params.pair);
     return await this.positionService.removeLiquidity(params, pairInfo);
   }
 

@@ -23,26 +23,26 @@ async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function getAllUserPositions(poolAddresses: PublicKey[], userPublicKey: PublicKey) {
+async function getAllUserPositions(paires: PublicKey[], userPublicKey: PublicKey) {
   const allPositions: Array<{
-    poolAddress: PublicKey;
+    pair: PublicKey;
     positionMint: PublicKey;
     position: PublicKey;
   }> = [];
 
-  for (const poolAddress of poolAddresses) {
+  for (const pair of paires) {
     try {
-      console.log(`Fetching positions for pool: ${poolAddress.toString()}`);
+      console.log(`Fetching positions for pool: ${pair.toString()}`);
 
       // Get all position mints for this user and pool
       const userPositions = await lbServices.getUserPositions({
         payer: userPublicKey,
-        poolAddress,
+        pair,
       });
 
       for (const position of userPositions) {
         allPositions.push({
-          poolAddress,
+          pair,
           positionMint: position.positionMint,
           position: position.positionMint,
         });
@@ -51,7 +51,7 @@ async function getAllUserPositions(poolAddresses: PublicKey[], userPublicKey: Pu
       // Rate limit
       await sleep(RATE_LIMIT_DELAY);
     } catch (error) {
-      console.warn(`Failed to fetch positions for pool ${poolAddress.toString()}:`, error);
+      console.warn(`Failed to fetch positions for pool ${pair.toString()}:`, error);
     }
   }
 
@@ -59,7 +59,7 @@ async function getAllUserPositions(poolAddresses: PublicKey[], userPublicKey: Pu
 }
 
 async function batchRemoveLiquidity(
-  positions: Array<{ poolAddress: PublicKey; positionMint: PublicKey }>
+  positions: Array<{ pair: PublicKey; positionMint: PublicKey }>
 ) {
   const results = {
     successful: 0,
@@ -75,7 +75,7 @@ async function batchRemoveLiquidity(
       `Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(positions.length / BATCH_SIZE)}`
     );
 
-    for (const { poolAddress, positionMint } of batch) {
+    for (const { pair, positionMint } of batch) {
       try {
         console.log(`Removing liquidity from position: ${positionMint.toString()}`);
 
@@ -83,7 +83,7 @@ async function batchRemoveLiquidity(
           positionMints: [positionMint],
           payer: testWallet.keypair.publicKey,
           type: RemoveLiquidityType.All,
-          poolAddress,
+          pair,
         });
 
         // Execute setup transaction if exists
@@ -149,11 +149,11 @@ describe('Batch Position Closing', () => {
     console.log(`User: ${testWallet.keypair.publicKey.toString()}`);
 
     // Convert pool addresses to PublicKey objects
-    const poolAddresses = testPools.map((pool) => new PublicKey(pool.pair));
+    const paires = testPools.map((pool) => new PublicKey(pool.pair));
 
     // Get all user positions across all pools
     console.log('\n📊 Fetching all user positions...');
-    const allPositions = await getAllUserPositions(poolAddresses, testWallet.keypair.publicKey);
+    const allPositions = await getAllUserPositions(paires, testWallet.keypair.publicKey);
 
     console.log(`\n📋 Found ${allPositions.length} positions to clean up`);
 
@@ -166,7 +166,7 @@ describe('Batch Position Closing', () => {
     // Log positions by pool
     const positionsByPool = allPositions.reduce(
       (acc, pos) => {
-        const poolKey = pos.poolAddress.toString();
+        const poolKey = pos.pair.toString();
         acc[poolKey] = (acc[poolKey] || 0) + 1;
         return acc;
       },
@@ -182,7 +182,7 @@ describe('Batch Position Closing', () => {
     console.log('\n🧹 Starting batch liquidity removal...');
     const results = await batchRemoveLiquidity(
       allPositions.map((pos) => ({
-        poolAddress: pos.poolAddress,
+        pair: pos.pair,
         positionMint: pos.positionMint,
       }))
     );

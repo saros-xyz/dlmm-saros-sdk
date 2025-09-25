@@ -20,7 +20,7 @@ describe('Position Operations', () => {
   it('fetches user positions for pool', async () => {
     const positions = await lbServices.getUserPositions({
       payer: TEST_WALLET,
-      poolAddress: new PublicKey(USDC_USDT),
+      pair: new PublicKey(USDC_USDT),
     });
 
     // console.log(positions);
@@ -35,7 +35,7 @@ describe('Position Operations', () => {
   it('handles wallet with no positions', async () => {
     const positions = await lbServices.getUserPositions({
       payer: Keypair.generate().publicKey,
-      poolAddress: new PublicKey(USDC_USDT),
+      pair: new PublicKey(USDC_USDT),
     });
 
     expect(positions).toEqual([]);

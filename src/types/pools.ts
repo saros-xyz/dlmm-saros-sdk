@@ -26,7 +26,7 @@ export interface CreatePoolResponse {
 }
 
 export interface PoolMetadata {
-  poolAddress: string;
+  pair: string;
   baseToken: TokenInfoWithReserve;
   quoteToken: TokenInfoWithReserve;
   tradeFee: number;
@@ -45,7 +45,7 @@ export interface TokenInfoWithReserve extends TokenInfo {
 }
 
 export interface GetPoolLiquidityParams {
-  poolAddress: PublicKey;
+  pair: PublicKey;
   /**
    * Number of bin arrays to fetch symmetrically around the active bin.
    * Default is 1, which fetches the active bin array only.

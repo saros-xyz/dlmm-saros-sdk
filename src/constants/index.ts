@@ -14,7 +14,7 @@ export const RPC_CONFIG = {
 };
 
 export const FIXED_LENGTH = 16;
-export const MAX_BIN_CROSSINGS = 30;
+export const MAX_BIN_CROSSINGS = 30; // Maximum number of bins that can be crossed in a swap
 export const SCALE_OFFSET = 64;
 export const BIN_ARRAY_SIZE = 256;
 export const ACTIVE_ID = 8388608; // 2^23

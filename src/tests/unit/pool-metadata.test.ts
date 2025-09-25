@@ -32,7 +32,7 @@ describe('Pool Metadata', () => {
   it('fetches SOL/USDC metadata', async () => {
     const metadata = await lbServices.getPoolMetadata(POOLS.SOL_USDC.address);
 
-    expect(metadata.poolAddress).toBe(POOLS.SOL_USDC.address);
+    expect(metadata.pair).toBe(POOLS.SOL_USDC.address);
     expect(metadata.baseToken.decimals).toBe(POOLS.SOL_USDC.baseDecimals);
     expect(metadata.quoteToken.decimals).toBe(POOLS.SOL_USDC.quoteDecimals);
   });
@@ -57,7 +57,7 @@ describe('Pool Discovery', () => {
 describe('Pool Liquidity', () => {
   it('returns liquidity data with default range', async () => {
     const data = await lbServices.getPoolLiquidity({
-      poolAddress: new PublicKey(POOLS.USDC_USDT.address),
+      pair: new PublicKey(POOLS.USDC_USDT.address),
     });
 
     expect(typeof data.activeBin).toBe('number');
@@ -68,11 +68,11 @@ describe('Pool Liquidity', () => {
   it('respects custom arrayRange', async () => {
     const [small, large] = await Promise.all([
       lbServices.getPoolLiquidity({
-        poolAddress: new PublicKey(POOLS.USDC_USDT.address),
+        pair: new PublicKey(POOLS.USDC_USDT.address),
         numberOfBinArrays: 1,
       }),
       lbServices.getPoolLiquidity({
-        poolAddress: new PublicKey(POOLS.USDC_USDT.address),
+        pair: new PublicKey(POOLS.USDC_USDT.address),
         numberOfBinArrays: 5,
       }),
     ]);

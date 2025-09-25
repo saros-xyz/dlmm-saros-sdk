@@ -2,8 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 
 /**
- * Raw on-chain pair account structure - mirrors Anchor program state
- * Referred to as "Pool" in the SDK
+ * Account structure for a Pair
  */
 export interface DLMMPairAccount {
   bump: number[];
@@ -36,7 +35,7 @@ export interface DLMMPairAccount {
 }
 
 /**
- * Raw on-chain position account structure - mirrors Anchor program state
+ * a User Position within a Pair
  */
 export interface PositionAccount {
   pair: PublicKey;
@@ -49,8 +48,7 @@ export interface PositionAccount {
 }
 
 /**
- * Raw on-chain bin data structure - mirrors Anchor program state
- * Contains liquidity reserves and supply data for a single price bin
+ * Bin data for for a single price bin
  */
 export interface Bin {
   /** Base token (X) reserves in this bin */
@@ -62,12 +60,11 @@ export interface Bin {
 }
 
 /**
- * Collection of bins with their array index - mirrors on-chain bin array structure
- * Bins are stored in arrays on-chain for efficient batch operations
+ * Collection of bins with their array index
  */
 export interface BinArray {
-  /** Array of bin data structures (typically 64 bins per array) */
+  /** Array of bin data structures */
   bins: Bin[];
-  /** The bin array index on-chain for lookup purposes */
+  /** The bin array index on-chain */
   index: number;
 }
