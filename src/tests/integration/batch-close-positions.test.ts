@@ -1,16 +1,16 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { PublicKey } from '@solana/web3.js';
+import { SarosDLMM } from '../../services';
 import {
   getTestWallet,
   getTestConnection,
   getAllTestPools,
   waitForConfirmation,
-  createTestSarosDLMM,
+  getTestConfig,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 import { RemoveLiquidityType } from '../../types';
 
-let lbServices: any;
 let testWallet: any;
 let connection: any;
 let testPools: any[];
@@ -35,9 +35,9 @@ async function getAllUserPositions(paires: PublicKey[], userPublicKey: PublicKey
       console.log(`Fetching positions for pool: ${pair.toString()}`);
 
       // Get all position mints for this user and pool
-      const userPositions = await lbServices.getUserPositions({
+      const pairInstance = await SarosDLMM.createPair(getTestConfig(), pair);
+      const userPositions = await pairInstance.getUserPositions({
         payer: userPublicKey,
-        pair,
       });
 
       for (const position of userPositions) {
@@ -79,11 +79,11 @@ async function batchRemoveLiquidity(
       try {
         console.log(`Removing liquidity from position: ${positionMint.toString()}`);
 
-        const result = await lbServices.removeLiquidity({
+        const pairInstance = await SarosDLMM.createPair(getTestConfig(), pair);
+        const result = await pairInstance.removeLiquidity({
           positionMints: [positionMint],
           payer: testWallet.keypair.publicKey,
           type: RemoveLiquidityType.All,
-          pair,
         });
 
         // Execute setup transaction if exists
@@ -139,8 +139,6 @@ beforeAll(async () => {
   testWallet = getTestWallet();
   connection = getTestConnection();
   testPools = getAllTestPools();
-
-  lbServices = createTestSarosDLMM();
 });
 
 describe('Batch Position Closing', () => {

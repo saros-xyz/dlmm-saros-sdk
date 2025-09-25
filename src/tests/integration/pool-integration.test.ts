@@ -1,17 +1,18 @@
 import { describe, expect, it, beforeAll } from 'vitest';
+import { PublicKey } from '@solana/web3.js';
+import { SarosDLMM } from '../../services';
 import {
   waitForConfirmation,
   saveTestPool,
   getTestToken,
   findTestPool,
   NATIVE_SOL,
-  createTestSarosDLMM,
   getTestWallet,
   getTestConnection,
+  getTestConfig,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 
-let lbServices: any;
 let testWallet: any;
 let connection: any;
 
@@ -27,7 +28,7 @@ async function createOrVerifyPool(
 ) {
   console.log(`Ensuring ${poolName} pool exists...`);
 
-  const result = await lbServices.createPool(params);
+  const result = await SarosDLMM.createNewPair(getTestConfig(), params);
   try {
     const sig = await connection.sendTransaction(result.transaction, [testWallet.keypair]);
     await waitForConfirmation(sig, connection);
@@ -37,7 +38,8 @@ async function createOrVerifyPool(
     console.log(`Pool already exists: ${result.pair}`);
   }
 
-  const metadata = await lbServices.getPoolMetadata(result.pair);
+  const pair = await SarosDLMM.createPair(getTestConfig(), new PublicKey(result.pair));
+  const metadata = pair.getPairMetadata();
   expect(metadata.baseToken.mintAddress).toBe(params.baseToken.mintAddress);
   expect(metadata.quoteToken.mintAddress).toBe(params.quoteToken.mintAddress);
 
@@ -60,15 +62,13 @@ beforeAll(async () => {
   await ensureTestEnvironment();
   testWallet = getTestWallet();
   connection = getTestConnection();
-
-  lbServices = createTestSarosDLMM();
 });
 
 describe('Pool Creation Integration', () => {
   it('rejects invalid parameters', async () => {
     const saros = getTestToken('SAROSDEV');
     await expect(
-      lbServices.createPool({
+      SarosDLMM.createNewPair(getTestConfig(), {
         baseToken: saros,
         quoteToken: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
         binStep: 25,

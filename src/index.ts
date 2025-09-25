@@ -1,8 +1,9 @@
 // Explicit exports for the SDK
-// New single entry point: SarosDLMM + public types and enums
+// New pair-centric architecture: SarosDLMM (static factory) + SarosDLMMPair (instance)
 
-// Main SDK class
+// Main SDK classes
 export { SarosDLMM } from './services';
+export { SarosDLMMPair } from './services/pair';
 
 // Public enums (values)
 export { MODE, LiquidityShape, RemoveLiquidityType } from './types';
@@ -12,7 +13,7 @@ export { getTokenProgram, getPairVaultInfo, getUserVaultInfo } from './utils/vau
 
 export type { GetPairVaultInfoParams, GetUserVaultInfoParams } from './utils/vaults';
 
-export type { Distribution } from './services/position/bin-distribution';
+export type { Distribution } from './utils/position/bin-distribution';
 
 // Public types (type-only)
 export type {

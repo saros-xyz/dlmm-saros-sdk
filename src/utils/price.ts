@@ -1,5 +1,5 @@
 import { ACTIVE_ID, MAX_BASIS_POINTS } from '../constants';
-import { PairServiceError } from '../services/pair/errors';
+import { PairServiceError } from './errors';
 
 export const getPriceFromId = (
   binStep: number,

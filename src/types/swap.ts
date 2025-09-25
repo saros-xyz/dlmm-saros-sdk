@@ -24,26 +24,38 @@ export interface SwapParams {
   options: SwapOptions;
   /** Minimum acceptable output amount (slippage protection) */
   minTokenOut: bigint;
-  /** The DLMM pair address */
-  pair: PublicKey;
-  /** hook program address */
-  hook: PublicKey;
   /** Wallet executing the swap */
   payer: PublicKey;
+  /** Optional, if you have a hook for reward */
+  hook?: PublicKey;
 }
 
 /**
  * Parameters for getting a swap quote
  */
 export interface QuoteParams {
-  /** The DLMM pair address */
-  pair: PublicKey;
   /** Amount to quote */
   amount: bigint;
   /** Swap direction and execution mode */
   options: SwapOptions;
   /** Maximum allowed slippage as percentage (0-100) */
   slippage: number;
+}
+
+/**
+ * Parameters for executing a swap transaction (static factory method)
+ */
+export interface StaticSwapParams extends SwapParams {
+  /** The DLMM pair address */
+  pair: PublicKey;
+}
+
+/**
+ * Parameters for getting a swap quote (static factory method)
+ */
+export interface StaticQuoteParams extends QuoteParams {
+  /** The DLMM pair address */
+  pair: PublicKey;
 }
 
 /**
@@ -66,8 +78,6 @@ export interface QuoteResponse {
  * Parameters for calculating theoretical maximum output with known token decimals
  */
 export interface GetMaxAmountOutWithFeeParams {
-  /** The DLMM pair address */
-  pair: PublicKey;
   /** Input amount in token's smallest unit */
   amount: bigint;
   /** Swap direction: true = X to Y, false = Y to X */
@@ -76,6 +86,14 @@ export interface GetMaxAmountOutWithFeeParams {
   decimalBase?: number;
   /** Number of decimal places for quote token */
   decimalQuote?: number;
+}
+
+/**
+ * Parameters for calculating theoretical maximum output (static factory method)
+ */
+export interface StaticGetMaxAmountOutWithFeeParams extends GetMaxAmountOutWithFeeParams {
+  /** The DLMM pair address */
+  pair: PublicKey;
 }
 
 /**

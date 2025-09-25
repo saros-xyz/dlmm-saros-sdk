@@ -130,19 +130,25 @@ export function createTestSarosDLMM(): SarosDLMM {
   });
 }
 
+export function getTestConfig() {
+  return {
+    mode: MODE.DEVNET,
+    options: { rpcUrl: process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com' },
+  };
+}
+
 export async function cleanupLiquidity(
-  lbServices: SarosDLMM,
+  pairInstance: any, // SarosDLMMPair or SarosDLMM for backward compatibility
   positionKeypair: Keypair,
-  pair: PublicKey,
+  pairAddress: PublicKey,
   testWallet: TestWalletInfo,
   connection: Connection
 ): Promise<void> {
   try {
-    const result = await lbServices.removeLiquidity({
+    const result = await pairInstance.removeLiquidity({
       positionMints: [positionKeypair.publicKey],
       payer: testWallet.keypair.publicKey,
       type: RemoveLiquidityType.All,
-      pair,
     });
 
     if (result.setupTransaction) {

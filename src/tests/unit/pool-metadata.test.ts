@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { MODE } from '../../types';
 import { PublicKey } from '@solana/web3.js';
-import { PairServiceError } from '../../services/pair/errors';
+import { PairServiceError } from '../../utils/errors';
 import { SarosDLMM } from '../../services';
 
-const lbServices = new SarosDLMM({
+const config = {
   mode: MODE.MAINNET,
   options: {
     rpcUrl: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
   },
-});
+};
 
 // Test constants
 const POOLS = {
@@ -30,7 +30,8 @@ const POOLS = {
 
 describe('Pool Metadata', () => {
   it('fetches SOL/USDC metadata', async () => {
-    const metadata = await lbServices.getPoolMetadata(POOLS.SOL_USDC.address);
+    const pair = await SarosDLMM.createPair(config, new PublicKey(POOLS.SOL_USDC.address));
+    const metadata = pair.getPairMetadata();
 
     expect(metadata.pair).toBe(POOLS.SOL_USDC.address);
     expect(metadata.baseToken.decimals).toBe(POOLS.SOL_USDC.baseDecimals);
@@ -38,7 +39,7 @@ describe('Pool Metadata', () => {
   });
 
   it('throws PoolNotFound for invalid pool', async () => {
-    await expect(lbServices.getPoolMetadata(POOLS.INVALID.address)).rejects.toThrow(
+    await expect(SarosDLMM.createPair(config, new PublicKey(POOLS.INVALID.address))).rejects.toThrow(
       PairServiceError.Pair
     );
   });
@@ -46,7 +47,7 @@ describe('Pool Metadata', () => {
 
 describe('Pool Discovery', () => {
   it('returns array of pool addresses', async () => {
-    const addresses = await lbServices.getAllPairAddresses();
+    const addresses = await SarosDLMM.getAllPairAddresses(config);
 
     expect(Array.isArray(addresses)).toBe(true);
     expect(addresses.length).toBeGreaterThan(0);
@@ -56,9 +57,8 @@ describe('Pool Discovery', () => {
 
 describe('Pool Liquidity', () => {
   it('returns liquidity data with default range', async () => {
-    const data = await lbServices.getPairLiquidity({
-      pair: new PublicKey(POOLS.USDC_USDT.address),
-    });
+    const pair = await SarosDLMM.createPair(config, new PublicKey(POOLS.USDC_USDT.address));
+    const data = await pair.getPairLiquidity();
 
     expect(typeof data.activeBin).toBe('number');
     expect(data.binStep).toBeGreaterThan(0);
@@ -66,13 +66,12 @@ describe('Pool Liquidity', () => {
   });
 
   it('respects custom arrayRange', async () => {
+    const pair = await SarosDLMM.createPair(config, new PublicKey(POOLS.USDC_USDT.address));
     const [small, large] = await Promise.all([
-      lbServices.getPairLiquidity({
-        pair: new PublicKey(POOLS.USDC_USDT.address),
+      pair.getPairLiquidity({
         numberOfBinArrays: 1,
       }),
-      lbServices.getPairLiquidity({
-        pair: new PublicKey(POOLS.USDC_USDT.address),
+      pair.getPairLiquidity({
         numberOfBinArrays: 5,
       }),
     ]);

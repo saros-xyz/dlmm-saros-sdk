@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { PublicKey, Keypair } from '@solana/web3.js';
 import { ACTIVE_ID } from '../../constants';
-import { LiquidityManager } from '../../services/position/liquidity';
+import { LiquidityManager } from '../../utils/position/liquidity';
 import { SarosDLMM } from '../../services';
 import { MODE, PositionBinBalance, RemoveLiquidityType } from '../../types';
 
-const lbServices = new SarosDLMM({
+const config = {
   mode: MODE.MAINNET,
   options: {
     rpcUrl: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
   },
-});
+};
 
 const USDC_USDT = '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk';
 // any wallet with a DLMM position open
@@ -18,9 +18,9 @@ const TEST_WALLET = new PublicKey('4VGLP8wqFEHEoh8vjgYCMsUbZ6LtuYrxcJv226qCWNuT'
 
 describe('Position Operations', () => {
   it('fetches user positions for pool', async () => {
-    const positions = await lbServices.getUserPositions({
+    const pair = await SarosDLMM.createPair(config, new PublicKey(USDC_USDT));
+    const positions = await pair.getUserPositions({
       payer: TEST_WALLET,
-      pair: new PublicKey(USDC_USDT),
     });
 
     // console.log(positions);
@@ -33,9 +33,9 @@ describe('Position Operations', () => {
   });
 
   it('handles wallet with no positions', async () => {
-    const positions = await lbServices.getUserPositions({
+    const pair = await SarosDLMM.createPair(config, new PublicKey(USDC_USDT));
+    const positions = await pair.getUserPositions({
       payer: Keypair.generate().publicKey,
-      pair: new PublicKey(USDC_USDT),
     });
 
     expect(positions).toEqual([]);

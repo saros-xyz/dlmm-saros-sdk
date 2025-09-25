@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
+import { SarosDLMM } from '../../services';
 import { PublicKey } from '@solana/web3.js';
 import { LiquidityShape } from '../../types';
 import {
@@ -8,6 +9,7 @@ import {
   waitForConfirmation,
   cleanupLiquidity,
   getTokenBalance,
+  getTestConfig,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 
@@ -20,14 +22,14 @@ beforeAll(async () => {
 
 describe('Swap Integration with Seeded Liquidity', () => {
   it('adds liquidity, performs a swap, and verifies balances', async () => {
-    const { lbServices, testWallet, connection, testPool } = testSetup;
-    const pair = new PublicKey(testPool.pair);
+    const { testWallet, connection, testPool } = testSetup;
+    const pairAddress = new PublicKey(testPool.pair);
+    const pair = await SarosDLMM.createPair(getTestConfig(), pairAddress);
     const positionKeypair = createTestKeypair();
 
     try {
       // 1. Create position
-      const createTx = await lbServices.createPosition({
-        pair,
+      const createTx = await pair.createPosition({
         binRange: [-3, 3],
         payer: testWallet.keypair.publicKey,
         positionMint: positionKeypair.publicKey,
@@ -40,8 +42,7 @@ describe('Swap Integration with Seeded Liquidity', () => {
       // 2. Add liquidity
       const baseAmount = 20_000_000_000n;
       const quoteAmount = 20_000_000n;
-      const addTx = await lbServices.addLiquidityByShape({
-        pair,
+      const addTx = await pair.addLiquidityByShape({
         positionMint: positionKeypair.publicKey,
         payer: testWallet.keypair.publicKey,
         baseAmount,
@@ -70,8 +71,7 @@ describe('Swap Integration with Seeded Liquidity', () => {
 
       // 4. Get a quote
       const amountIn = 1_000_000_000n; // 1 base token (with 9 decimals)
-      const quote = await lbServices.getQuote({
-        pair,
+      const quote = await pair.getQuote({
         amount: amountIn,
         options: { swapForY: true, isExactInput: true },
         slippage: 1,
@@ -79,14 +79,12 @@ describe('Swap Integration with Seeded Liquidity', () => {
 
       expect(quote.amountOut).toBeGreaterThan(0n);
       // 5. Perform the swap
-      const tx = await lbServices.swap({
+      const tx = await pair.swap({
         tokenIn: baseMint,
         tokenOut: quoteMint,
         amount: quote.amountOut,
         options: { swapForY: true, isExactInput: true },
         minTokenOut: quote.minTokenOut,
-        pair,
-        hook: lbServices.hooksConfig,
         payer: testWallet.keypair.publicKey,
       });
 
@@ -117,7 +115,7 @@ describe('Swap Integration with Seeded Liquidity', () => {
       expect(gainedQuote).toBeGreaterThan(0n);
       expect(gainedQuote).toBeGreaterThanOrEqual(quote.minTokenOut);
     } finally {
-      await cleanupLiquidity(lbServices, positionKeypair, pair, testWallet, connection);
+      await cleanupLiquidity(pair, positionKeypair, pairAddress, testWallet, connection);
     }
   });
 });

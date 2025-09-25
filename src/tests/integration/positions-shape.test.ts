@@ -1,12 +1,14 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { PublicKey } from '@solana/web3.js';
 import { LiquidityShape } from '../../types';
+import { SarosDLMM } from '../../services';
 import {
   IntegrationTestSetup,
   setupIntegrationTest,
   createTestKeypair,
   waitForConfirmation,
   cleanupLiquidity,
+  getTestConfig,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 
@@ -24,13 +26,14 @@ async function runShapeTest(
   quoteAmount: bigint,
   validate: (bins: any[]) => void
 ) {
-  const { lbServices, testWallet, connection, testPool } = testSetup;
-  const pair = new PublicKey(testPool.pair);
+  const { testWallet, connection, testPool } = testSetup;
+  const pairAddress = new PublicKey(testPool.pair);
+  const config = getTestConfig();
+  const pair = await SarosDLMM.createPair(config, pairAddress);
   const positionKeypair = createTestKeypair();
 
   try {
-    const createTx = await lbServices.createPosition({
-      pair,
+    const createTx = await pair.createPosition({
       binRange,
       payer: testWallet.keypair.publicKey,
       positionMint: positionKeypair.publicKey,
@@ -40,8 +43,7 @@ async function runShapeTest(
       connection
     );
 
-    const addTx = await lbServices.addLiquidityByShape({
-      pair,
+    const addTx = await pair.addLiquidityByShape({
       positionMint: positionKeypair.publicKey,
       payer: testWallet.keypair.publicKey,
       baseAmount,
@@ -56,17 +58,16 @@ async function runShapeTest(
 
     const positionAddr = PublicKey.findProgramAddressSync(
       [Buffer.from('position'), positionKeypair.publicKey.toBuffer()],
-      lbServices.lbProgram.programId
+      pair.lbProgram.programId
     )[0];
-    const bins = await lbServices.getPositionBinBalances({
+    const bins = await pair.getPositionBinBalances({
       position: positionAddr,
-      pair,
       payer: testWallet.keypair.publicKey,
     });
 
     validate(bins.filter((b) => b.baseReserve > 0n || b.quoteReserve > 0n));
   } finally {
-    await cleanupLiquidity(lbServices, positionKeypair, pair, testWallet, connection);
+    await cleanupLiquidity(pair, positionKeypair, pairAddress, testWallet, connection);
   }
 }
 
