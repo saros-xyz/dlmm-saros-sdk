@@ -7,7 +7,6 @@ import {
   createTestKeypair,
   waitForConfirmation,
   cleanupLiquidity,
-  isInsufficientFundsError,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 
@@ -66,8 +65,6 @@ async function runShapeTest(
     });
 
     validate(bins.filter((b) => b.baseReserve > 0n || b.quoteReserve > 0n));
-  } catch (err) {
-    if (!isInsufficientFundsError(err)) throw err;
   } finally {
     await cleanupLiquidity(lbServices, positionKeypair, poolAddress, testWallet, connection);
   }

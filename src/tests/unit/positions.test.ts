@@ -137,7 +137,7 @@ describe('LiquidityHelper Logic', () => {
     const shouldClose = LiquidityManager.shouldClosePosition(
       RemoveLiquidityType.All,
       ACTIVE_ID,
-      ACTIVE_ID, // covers only 1 bin
+      ACTIVE_ID,
       availableShares
     );
 

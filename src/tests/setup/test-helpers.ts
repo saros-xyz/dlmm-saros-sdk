@@ -130,10 +130,6 @@ export function createTestSarosDLMM(): SarosDLMM {
   });
 }
 
-export function isInsufficientFundsError(e: unknown): boolean {
-  return String(e).toLowerCase().includes('insufficient');
-}
-
 export async function cleanupLiquidity(
   lbServices: SarosDLMM,
   positionKeypair: Keypair,

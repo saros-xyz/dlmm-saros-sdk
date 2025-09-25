@@ -36,6 +36,7 @@ The shared setup (`tests/setup/`) does the following:
 - `pool-integration.test.ts` → Creates pools, fetches liquidity, validates pool state.
 - `positions-shape.test.ts` → Adds/removes liquidity in different shapes (Spot, Curve, BidAsk).
 - `swap-with-liquidity.test.ts` → End-to-end: add liquidity → perform swap → verify balances → cleanup.
+- `batch-close-positions.test.ts` → Utility test to close all positions and reclaim all dev tokens after testing is complete (see comment in vitest.config.ts)
 
 ## Notes
 

@@ -8,7 +8,6 @@ import {
   waitForConfirmation,
   cleanupLiquidity,
   getTokenBalance,
-  isInsufficientFundsError,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 
@@ -101,9 +100,7 @@ describe('Swap Integration with Seeded Liquidity', () => {
       expect(spentBase).toBeGreaterThan(0n);
       expect(gainedQuote).toBeGreaterThan(0n);
       expect(gainedQuote).toBeGreaterThanOrEqual(quote.minTokenOut);
-    } catch (err) {
-      if (!isInsufficientFundsError(err)) throw err;
-    } finally {
+    }  finally {
       await cleanupLiquidity(lbServices, positionKeypair, poolAddress, testWallet, connection);
     }
   });
