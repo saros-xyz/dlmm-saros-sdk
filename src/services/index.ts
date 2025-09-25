@@ -120,7 +120,7 @@ export class SarosDLMM extends SarosBaseService {
   }
 
   /**
-   * Create a new pool. Requires a new pair with unique binStep and ratePrice.
+   * Create a new pool. Requires a token pair with unique binStep and ratePrice.
    */
   public async createPair(params: CreatePairParams): Promise<CreatePairResponse> {
     return await this.pairService.createPairWithConfig(params);
