@@ -16,7 +16,7 @@ export class SarosDLMM extends SarosBaseService {
   }
 
   /**
-   * Create a new Pair/Pool
+   * Create a new pair/pool
    */
   public async createPair(params: CreatePairParams): Promise<CreatePairResponse> {
     const { baseToken, quoteToken, binStep, ratePrice, payer } = params;
@@ -125,7 +125,7 @@ export class SarosDLMM extends SarosBaseService {
   }
 
   /**
-   * Get a Pair instance with loaded data
+   * Get a pair instance with loaded data
    */
   public async getPair(pairAddress: PublicKey): Promise<SarosDLMMPair> {
     const pair = new SarosDLMMPair(this.config, pairAddress);
@@ -134,7 +134,7 @@ export class SarosDLMM extends SarosBaseService {
   }
 
   /**
-   * Get multiple Pair instances with loaded data
+   * Get multiple pair instances with loaded data
    */
   public async getPairs(pairAddresses: PublicKey[]): Promise<SarosDLMMPair[]> {
     return await Promise.all(pairAddresses.map((addr) => this.getPair(addr)));
