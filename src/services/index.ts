@@ -1,12 +1,12 @@
 import { utils } from '@coral-xyz/anchor';
-import { PublicKey, Transaction, TransactionMessage } from '@solana/web3.js';
-import { Buffer } from 'buffer';
+import { PublicKey, Transaction } from '@solana/web3.js';
 import bs58 from 'bs58';
-import { SarosBaseService, SarosConfig } from './base';
+import { SarosBaseService, SarosConfig } from './base/index';
 import { SarosDLMMPair } from './pair';
 import { BinArrayManager } from '../utils/pair/bin-manager';
 import { CreatePairParams, CreatePairResponse } from '../types';
 import { getIdFromPrice } from '../utils/price';
+import { extractPairFromTx } from '../utils/transaction';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
 import { SarosDLMMError } from '../utils/errors';
 
@@ -19,16 +19,16 @@ export class SarosDLMM extends SarosBaseService {
    * Create a new pair/pool
    */
   public async createPair(params: CreatePairParams): Promise<CreatePairResponse> {
-    const { baseToken, quoteToken, binStep, ratePrice, payer } = params;
+    const { tokenX, tokenY, binStep, ratePrice, payer } = params;
 
     if (ratePrice <= 0) throw SarosDLMMError.InvalidPrice;
     if (binStep < 1 || binStep > 10000) throw SarosDLMMError.InvalidBinStep;
 
     try {
-      const tokenX = new PublicKey(baseToken.mintAddress);
-      const tokenY = new PublicKey(quoteToken.mintAddress);
+      const tokenXMint = tokenX.mintAddress;
+      const tokenYMint = tokenY.mintAddress;
 
-      const id = getIdFromPrice(ratePrice, binStep, baseToken.decimals, quoteToken.decimals);
+      const id = getIdFromPrice(ratePrice, binStep, tokenX.decimals, tokenY.decimals);
       const binArrayIndex = BinArrayManager.calculateBinArrayIndex(id);
 
       const tx = new Transaction();
@@ -47,7 +47,7 @@ export class SarosDLMM extends SarosBaseService {
         [
           Buffer.from(utils.bytes.utf8.encode('quote_asset_badge')),
           this.lbConfig.toBuffer(),
-          tokenY.toBuffer(),
+          tokenYMint.toBuffer(),
         ],
         this.lbProgram.programId
       )[0];
@@ -56,8 +56,8 @@ export class SarosDLMM extends SarosBaseService {
         [
           Buffer.from(utils.bytes.utf8.encode('pair')),
           this.lbConfig.toBuffer(),
-          tokenX.toBuffer(),
-          tokenY.toBuffer(),
+          tokenXMint.toBuffer(),
+          tokenYMint.toBuffer(),
           new Uint8Array([binStep]),
         ],
         this.lbProgram.programId
@@ -71,8 +71,8 @@ export class SarosDLMM extends SarosBaseService {
           binStepConfig,
           quoteAssetBadge,
           pair,
-          tokenMintX: tokenX,
-          tokenMintY: tokenY,
+          tokenMintX: tokenXMint,
+          tokenMintY: tokenYMint,
           user: payer,
         })
         .instruction();
@@ -116,8 +116,8 @@ export class SarosDLMM extends SarosBaseService {
         hooksConfig: this.hooksConfig,
         activeBin: Number(id),
         binStep,
-        tokenX,
-        tokenY,
+        tokenX: tokenXMint,
+        tokenY: tokenYMint,
       };
     } catch (error) {
       SarosDLMMError.handleError(error, SarosDLMMError.PairCreationFailed);
@@ -169,7 +169,7 @@ export class SarosDLMM extends SarosBaseService {
   /**
    * Listen for new pair addresses being created and call postTxFunction with the new address
    */
-  public async listenNewPairAddress(postTxFunction: (address: string) => Promise<void>) {
+  public async listenForNewPairs(postTxFunction: (address: string) => Promise<void>) {
     const LB_PROGRAM_ID = this.getDexProgramId();
     const subscriptionId = this.connection.onLogs(
       LB_PROGRAM_ID,
@@ -177,7 +177,11 @@ export class SarosDLMM extends SarosBaseService {
         if (!logInfo.err) {
           for (const log of logInfo.logs || []) {
             if (log.includes('Instruction: InitializePair')) {
-              this.getPairAddressFromLogs(logInfo.signature).then(postTxFunction);
+              extractPairFromTx(this.connection, logInfo.signature).then((pairAddress) => {
+                if (pairAddress) {
+                  postTxFunction(pairAddress.toString());
+                }
+              });
             }
           }
         }
@@ -185,31 +189,6 @@ export class SarosDLMM extends SarosBaseService {
       'finalized'
     );
     return () => this.connection.removeOnLogsListener(subscriptionId);
-  }
-
-  private async getPairAddressFromLogs(signature: string) {
-    const parsedTx = await this.connection.getTransaction(signature, {
-      maxSupportedTransactionVersion: 0,
-    });
-    if (!parsedTx) throw SarosDLMMError.TransactionNotFound;
-
-    const message = TransactionMessage.decompile(parsedTx.transaction.message);
-    const initializePairStruct = LiquidityBookIDL.instructions.find(
-      (ix) => ix.name === 'initialize_pair'
-    )!;
-    const discriminator = Buffer.from(initializePairStruct.discriminator);
-
-    for (const ix of message.instructions) {
-      if (ix.data.subarray(0, 8).equals(discriminator)) {
-        //@ts-ignore
-        const accounts = initializePairStruct.accounts.map((item, i) => ({
-          name: item.name,
-          address: ix.keys[i].pubkey.toString(),
-        }));
-        return accounts.find((a) => a.name === 'pair')?.address || '';
-      }
-    }
-    return '';
   }
 
   /**

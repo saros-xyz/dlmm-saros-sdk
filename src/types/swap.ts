@@ -82,10 +82,10 @@ export interface GetMaxAmountOutWithFeeParams {
   amount: bigint;
   /** Swap direction: true = X to Y, false = Y to X */
   swapForY?: boolean;
-  /** Number of decimal places for base token */
-  decimalBase?: number;
-  /** Number of decimal places for quote token */
-  decimalQuote?: number;
+  /** Number of decimal places for token X */
+  decimalTokenX?: number;
+  /** Number of decimal places for token Y */
+  decimalTokenY?: number;
 }
 
 /**

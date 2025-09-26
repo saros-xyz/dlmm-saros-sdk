@@ -48,8 +48,8 @@ describe('Swap Integration with Seeded Liquidity', () => {
       const addTx = await pair.addLiquidityByShape({
         positionMint: positionKeypair.publicKey,
         payer: testWallet.keypair.publicKey,
-        baseAmount,
-        quoteAmount,
+        amountTokenX: baseAmount,
+        amountTokenY: quoteAmount,
         liquidityShape: LiquidityShape.Spot,
         binRange: [-3, 3],
       });
@@ -59,10 +59,18 @@ describe('Swap Integration with Seeded Liquidity', () => {
       );
 
       // 3. Balances before swap
-      const baseMint = new PublicKey(testPool.baseToken);
-      const quoteMint = new PublicKey(testPool.quoteToken);
-      const balBeforeBase = await getTokenBalance(connection, testWallet.keypair.publicKey, baseMint);
-      const balBeforeQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, quoteMint);
+      const baseMint = new PublicKey(testPool.tokenX);
+      const quoteMint = new PublicKey(testPool.tokenY);
+      const balBeforeBase = await getTokenBalance(
+        connection,
+        testWallet.keypair.publicKey,
+        baseMint
+      );
+      const balBeforeQuote = await getTokenBalance(
+        connection,
+        testWallet.keypair.publicKey,
+        quoteMint
+      );
 
       // 4. Get a quote
       const amountIn = 1_000_000_000n; // 1 base token (9 decimals)
@@ -89,8 +97,16 @@ describe('Swap Integration with Seeded Liquidity', () => {
       console.log(`Swap confirmed: ${sig}`);
 
       // 6. Balances after swap
-      const balAfterBase = await getTokenBalance(connection, testWallet.keypair.publicKey, baseMint);
-      const balAfterQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, quoteMint);
+      const balAfterBase = await getTokenBalance(
+        connection,
+        testWallet.keypair.publicKey,
+        baseMint
+      );
+      const balAfterQuote = await getTokenBalance(
+        connection,
+        testWallet.keypair.publicKey,
+        quoteMint
+      );
 
       // 7. Calculate actual changes
       const spentBase = balBeforeBase - balAfterBase;

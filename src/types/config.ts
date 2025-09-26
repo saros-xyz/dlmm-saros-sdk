@@ -14,6 +14,6 @@ export enum LiquidityShape {
 
 export enum RemoveLiquidityType {
   All = 'All',
-  BaseToken = 'BaseToken',
-  QuoteToken = 'QuoteToken',
+  TokenX = 'TokenX',
+  TokenY = 'TokenY',
 }

@@ -2,7 +2,7 @@ import { BN, utils } from '@coral-xyz/anchor';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { chunk } from 'lodash';
-import { SarosBaseService, SarosConfig } from './base';
+import { SarosBaseService, SarosConfig } from './base/index';
 import { BinArrayManager } from '../utils/pair/bin-manager';
 import { LiquidityManager } from '../utils/position/liquidity';
 import { FeeCalculator } from '../utils/swap/fees';
@@ -14,28 +14,25 @@ import {
   SCALE_OFFSET,
   WRAP_SOL_PUBKEY,
   MAX_BASIS_POINTS_BIGINT,
+  PRECISION_BIGINT,
 } from '../constants';
 import {
   DLMMPairAccount,
   PairMetadata,
-  PairLiquidityData,
-  BinLiquidityData,
-  Bin,
   QuoteResponse,
   BinArray,
   RemoveLiquidityResponse,
   PositionAccount,
-  PositionBinBalance,
+  PositionReserve,
   GetMaxAmountOutWithFeeResponse,
   QuoteParams,
   SwapParams,
   GetMaxAmountOutWithFeeParams,
-  GetBinArrayInfoParams,
-  GetPositionBinBalancesParams,
+  GetBinArrayReserversParams,
+  GetPositionReservesParams,
   CreatePositionParams,
   AddLiquidityByShapeParams,
   RemoveLiquidityParams,
-  GetPairLiquidityParams,
 } from '../types';
 import { getPriceFromId } from '../utils/price';
 import { getPairVaultInfo, getUserVaultInfo, getTokenProgram } from '../utils/vaults';
@@ -88,7 +85,13 @@ export class SarosDLMMPair extends SarosBaseService {
       SarosDLMMError.handleError(error, SarosDLMMError.PairFetchFailed);
     }
   }
-
+  /**
+   * Normalize fee bigint → number (percentage with fixed decimals).
+   * Example: 100000 => 0.01
+   */
+  private normalizeFee(raw: bigint, decimals = 6): number {
+    return parseFloat((Number(raw) / Number(PRECISION_BIGINT)).toFixed(decimals));
+  }
   /**
    * Build pair metadata from pair account data
    */
@@ -124,19 +127,47 @@ export class SarosDLMMPair extends SarosBaseService {
         ? (quoteMintInfo.value.data.parsed.info.decimals ?? 0)
         : 0;
 
+    // --- fee normalization ---
+    // 1. Base fee = (baseFactor * binStep) / 1e6
+    // 2. Variable fee = (...) / 1e6
+    // 3. Dynamic fee = max(baseFee, variableFee)
+    // 4. Protocol fee = dynamicFee * (protocolShare / 1e4)
+
+    const { binStep, staticFeeParameters, dynamicFeeParameters } = this.pairAccount;
+
+    // Base fee = (baseFactor * binStep) / 1e6
+    const baseFee = (staticFeeParameters.baseFactor * binStep) / 1_000_000;
+
+    // Variable fee = (volatilityAccumulator * binStep)^2 * control / 1e6
+    const variableFee =
+      staticFeeParameters.variableFeeControl > 0
+        ? (Math.pow(dynamicFeeParameters.volatilityAccumulator * binStep, 2) *
+            staticFeeParameters.variableFeeControl) /
+          1_000_000
+        : 0;
+
+    // Dynamic fee = max(baseFee, variableFee)
+    const dynamicFee = Math.max(baseFee, variableFee);
+
+    // Protocol fee = dynamicFee * (protocolShare / 10_000)
+    const protocolFee = dynamicFee * (staticFeeParameters.protocolShare / 10_000);
+
     return {
       pair: this.pairAddress,
-      baseToken: {
+      tokenX: {
         mintAddress: this.pairAccount.tokenMintX,
         decimals: baseDecimals,
         reserve: baseReserve.value.amount,
       },
-      quoteToken: {
+      tokenY: {
         mintAddress: this.pairAccount.tokenMintY,
         decimals: quoteDecimals,
         reserve: quoteReserve.value.amount,
       },
-      tradeFee: (this.pairAccount.staticFeeParameters.baseFactor * this.pairAccount.binStep) / 1e6,
+      binStep,
+      baseFee,
+      dynamicFee,
+      protocolFee,
       extra: { hook: this.pairAccount.hook || undefined },
     };
   }
@@ -163,59 +194,6 @@ export class SarosDLMMPair extends SarosBaseService {
   }
 
   /**
-   * Get all bins with liquidity for this pair
-   */
-  public async getPairLiquidity(params: GetPairLiquidityParams = {}): Promise<PairLiquidityData> {
-    const { numberOfBinArrays: arrayRange = 1 } = params;
-
-    const binArrayIndices = BinArrayManager.calculateBinArrayRange(
-      this.pairAccount.activeId,
-      arrayRange
-    );
-    const binArrayResults = await Promise.all(
-      binArrayIndices.map(async (index) => {
-        try {
-          const addr = BinArrayManager.getBinArrayAddress(
-            index,
-            this.pairAddress,
-            this.getDexProgramId()
-          );
-          //@ts-ignore
-          const acc = await this.lbProgram.account.binArray.fetch(addr);
-          return { index, bins: acc.bins };
-        } catch {
-          return { index, bins: [] };
-        }
-      })
-    );
-
-    const bins: BinLiquidityData[] = [];
-    binArrayResults.forEach(({ index, bins: arr }) => {
-      arr.forEach((bin: Bin, binIdx: number) => {
-        if (bin.reserveX.gt(new BN(0)) || bin.reserveY.gt(new BN(0))) {
-          const binId = index * BIN_ARRAY_SIZE + binIdx;
-          const price = getPriceFromId(
-            this.pairAccount.binStep,
-            binId,
-            this.metadata.baseToken.decimals,
-            this.metadata.quoteToken.decimals
-          );
-          bins.push({
-            binId,
-            price,
-            baseReserve: Number(bin.reserveX) / 10 ** this.metadata.baseToken.decimals,
-            quoteReserve: Number(bin.reserveY) / 10 ** this.metadata.quoteToken.decimals,
-          });
-        }
-      });
-    });
-
-    bins.sort((a, b) => a.binId - b.binId);
-
-    return { activeBin: this.pairAccount.activeId, binStep: this.pairAccount.binStep, bins };
-  }
-
-  /**
    * Get a quote for a swap on this pair
    */
   public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
@@ -223,7 +201,7 @@ export class SarosDLMMPair extends SarosBaseService {
     if (params.slippage < 0 || params.slippage >= 100) throw SarosDLMMError.InvalidSlippage;
 
     try {
-      const { baseToken, quoteToken } = this.metadata;
+      const { tokenX, tokenY } = this.metadata;
       const {
         slippage,
         options: { swapForY, isExactInput },
@@ -244,8 +222,8 @@ export class SarosDLMMPair extends SarosBaseService {
       const { maxAmountOut } = await this.getMaxAmountOutWithFee({
         amount: amountIn,
         swapForY,
-        decimalBase: baseToken.decimals,
-        decimalQuote: quoteToken.decimals,
+        decimalTokenX: tokenX.decimals,
+        decimalTokenY: tokenY.decimals,
       });
 
       const priceImpact = getPriceImpact(amountOut, maxAmountOut);
@@ -422,7 +400,12 @@ export class SarosDLMMPair extends SarosBaseService {
     params: GetMaxAmountOutWithFeeParams
   ): Promise<GetMaxAmountOutWithFeeResponse> {
     try {
-      const { amount, swapForY = false, decimalBase = 9, decimalQuote = 9 } = params;
+      const {
+        amount,
+        swapForY = false,
+        decimalTokenX: decimalBase = 9,
+        decimalTokenY: decimalQuote = 9,
+      } = params;
       if (amount <= 0n) throw SarosDLMMError.ZeroAmount;
 
       const { activeId, binStep } = this.pairAccount;
@@ -754,7 +737,7 @@ export class SarosDLMMPair extends SarosBaseService {
   /**
    * Get bin array information for this pair
    */
-  public async getBinArrayInfo(params: GetBinArrayInfoParams): Promise<BinArray> {
+  public async getBinArrayReserves(params: GetBinArrayReserversParams): Promise<BinArray> {
     const { binArrayIndex } = params;
 
     try {
@@ -797,15 +780,13 @@ export class SarosDLMMPair extends SarosBaseService {
   /**
    * Get detailed token balances for each bin in a position
    */
-  public async getPositionBinBalances(
-    params: GetPositionBinBalancesParams
-  ): Promise<PositionBinBalance[]> {
+  public async getPositionReserves(params: GetPositionReservesParams): Promise<PositionReserve[]> {
     const { position, payer } = params;
     const positionInfo = await this.getPositionAccount(position);
     const firstBinId = positionInfo.lowerBinId;
     const binArrayIndex = BinArrayManager.calculateBinArrayIndex(firstBinId);
 
-    const { bins, index } = await this.getBinArrayInfo({ binArrayIndex, payer });
+    const { bins, index } = await this.getBinArrayReserves({ binArrayIndex, payer });
 
     const firstBinIndex = index * BIN_ARRAY_SIZE;
     const binIds = Array.from(
@@ -924,13 +905,13 @@ export class SarosDLMMPair extends SarosBaseService {
       positionMint,
       payer,
       transaction: userTxn,
-      baseAmount,
-      quoteAmount,
+      amountTokenX,
+      amountTokenY,
       liquidityShape,
       binRange,
     } = params;
 
-    if (baseAmount <= 0n && quoteAmount <= 0n) {
+    if (amountTokenX <= 0n && amountTokenY <= 0n) {
       throw SarosDLMMError.CannotAddZero;
     }
 
@@ -981,7 +962,7 @@ export class SarosDLMMPair extends SarosBaseService {
       this.pairAccount.tokenMintX.equals(WRAP_SOL_PUBKEY)
     ) {
       const isNativeY = this.pairAccount.tokenMintY.equals(WRAP_SOL_PUBKEY);
-      const totalAmount = isNativeY ? quoteAmount : baseAmount;
+      const totalAmount = isNativeY ? amountTokenY : amountTokenX;
       const totalLiquid = liquidityDistribution.reduce(
         (prev, curr) => prev + (isNativeY ? curr.distributionY : curr.distributionX),
         0
@@ -1019,8 +1000,8 @@ export class SarosDLMMPair extends SarosBaseService {
 
     const ix = await this.lbProgram.methods
       .increasePosition(
-        new BN(baseAmount.toString()),
-        new BN(quoteAmount.toString()),
+        new BN(amountTokenX.toString()),
+        new BN(amountTokenY.toString()),
         liquidityDistribution
       )
       .accountsPartial({
@@ -1128,7 +1109,7 @@ export class SarosDLMMPair extends SarosBaseService {
 
         const positionAccount = await this.getPositionAccount(position);
 
-        const { index } = await this.getBinArrayInfo({
+        const { index } = await this.getBinArrayReserves({
           binArrayIndex: BinArrayManager.calculateBinArrayIndex(positionAccount.lowerBinId),
           payer,
         });
@@ -1154,7 +1135,7 @@ export class SarosDLMMPair extends SarosBaseService {
           spl.TOKEN_2022_PROGRAM_ID
         );
 
-        const reserveXY = await this.getPositionBinBalances({ position, payer });
+        const reserveXY = await this.getPositionReserves({ position, payer });
 
         const hookBinArrayLower = BinArrayManager.getHookBinArrayAddress(
           hook,

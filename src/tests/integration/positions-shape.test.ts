@@ -16,7 +16,6 @@ let testSetup: IntegrationTestSetup;
 beforeAll(async () => {
   await ensureTestEnvironment();
   testSetup = setupIntegrationTest();
-
 });
 
 async function runShapeTest(
@@ -29,8 +28,7 @@ async function runShapeTest(
   const { testWallet, connection, testPool } = testSetup;
   const pairAddress = new PublicKey(testPool.pair);
 
-
-  const sdk =  new SarosDLMM({mode: MODE.DEVNET, connection});
+  const sdk = new SarosDLMM({ mode: MODE.DEVNET, connection });
   const pair = await sdk.getPair(pairAddress);
   const positionKeypair = createTestKeypair();
 
@@ -48,8 +46,8 @@ async function runShapeTest(
     const addTx = await pair.addLiquidityByShape({
       positionMint: positionKeypair.publicKey,
       payer: testWallet.keypair.publicKey,
-      baseAmount,
-      quoteAmount,
+      amountTokenX: baseAmount,
+      amountTokenY: quoteAmount,
       liquidityShape: shape,
       binRange,
     });
@@ -61,17 +59,17 @@ async function runShapeTest(
     const positions = await pair.getUserPositions({
       payer: testWallet.keypair.publicKey,
     });
-    const position = positions.find(p => p.positionMint.equals(positionKeypair.publicKey));
+    const position = positions.find((p) => p.positionMint.equals(positionKeypair.publicKey));
     if (!position) throw new Error('Position not found');
 
-    const bins = await pair.getPositionBinBalances({
+    const bins = await pair.getPositionReserves({
       position: new PublicKey(position.position),
       payer: testWallet.keypair.publicKey,
     });
 
     validate(bins.filter((b) => b.baseReserve > 0n || b.quoteReserve > 0n));
   } finally {
-await cleanupLiquidity(pair, positionKeypair, testWallet, connection);
+    await cleanupLiquidity(pair, positionKeypair, testWallet, connection);
   }
 }
 

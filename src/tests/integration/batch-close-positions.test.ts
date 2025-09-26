@@ -134,69 +134,65 @@ beforeAll(async () => {
 });
 
 describe('Batch Position Closing', () => {
-  it(
-    'closes all user positions across all test pools to reclaim devnet SOL',
-    async () => {
-      console.log(`Starting batch position closing for ${testPools.length} pools`);
-      console.log(`User: ${testWallet.keypair.publicKey.toString()}`);
+  it('closes all user positions across all test pools to reclaim devnet SOL', async () => {
+    console.log(`Starting batch position closing for ${testPools.length} pools`);
+    console.log(`User: ${testWallet.keypair.publicKey.toString()}`);
 
-      const pairs = testPools.map((pool) => new PublicKey(pool.pair));
+    const pairs = testPools.map((pool) => new PublicKey(pool.pair));
 
-      console.log('\n📊 Fetching all user positions...');
-      const allPositions = await getAllUserPositions(pairs, testWallet.keypair.publicKey);
+    console.log('\n📊 Fetching all user positions...');
+    const allPositions = await getAllUserPositions(pairs, testWallet.keypair.publicKey);
 
-      console.log(`\n📋 Found ${allPositions.length} positions to clean up`);
+    console.log(`\n📋 Found ${allPositions.length} positions to clean up`);
 
-      if (allPositions.length === 0) {
-        console.log('✨ No positions found - nothing to clean up!');
-        expect(allPositions.length).toBe(0);
-        return;
-      }
+    if (allPositions.length === 0) {
+      console.log('✨ No positions found - nothing to clean up!');
+      expect(allPositions.length).toBe(0);
+      return;
+    }
 
-      const positionsByPool = allPositions.reduce(
-        (acc, pos) => {
-          const poolKey = pos.pair.toString();
-          acc[poolKey] = (acc[poolKey] || 0) + 1;
-          return acc;
-        },
-        {} as Record<string, number>
-      );
+    const positionsByPool = allPositions.reduce(
+      (acc, pos) => {
+        const poolKey = pos.pair.toString();
+        acc[poolKey] = (acc[poolKey] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
-      console.log('\n📍 Positions by pool:');
-      Object.entries(positionsByPool).forEach(([pool, count]) => {
-        console.log(`  ${pool}: ${count} positions`);
+    console.log('\n📍 Positions by pool:');
+    Object.entries(positionsByPool).forEach(([pool, count]) => {
+      console.log(`  ${pool}: ${count} positions`);
+    });
+
+    console.log('\n🧹 Starting batch liquidity removal...');
+    const results = await batchRemoveLiquidity(
+      allPositions.map((pos) => ({
+        pair: pos.pair,
+        positionMint: pos.positionMint,
+      }))
+    );
+
+    console.log('\n📊 Cleanup Results:');
+    console.log(`✅ Successful removals: ${results.successful}`);
+    console.log(`❌ Failed removals: ${results.failed}`);
+    console.log(`📊 Total positions processed: ${results.successful + results.failed}`);
+
+    if (results.errors.length > 0) {
+      console.log('\n❌ Errors encountered:');
+      results.errors.forEach((error, index) => {
+        console.log(`  ${index + 1}. ${error}`);
       });
+    }
 
-      console.log('\n🧹 Starting batch liquidity removal...');
-      const results = await batchRemoveLiquidity(
-        allPositions.map((pos) => ({
-          pair: pos.pair,
-          positionMint: pos.positionMint,
-        }))
+    expect(results.successful + results.failed).toBe(allPositions.length);
+
+    if (results.failed > 0) {
+      console.log(
+        '\n⚠️  Some positions failed to remove - this might be expected due to insufficient funds or other constraints'
       );
+    }
 
-      console.log('\n📊 Cleanup Results:');
-      console.log(`✅ Successful removals: ${results.successful}`);
-      console.log(`❌ Failed removals: ${results.failed}`);
-      console.log(`📊 Total positions processed: ${results.successful + results.failed}`);
-
-      if (results.errors.length > 0) {
-        console.log('\n❌ Errors encountered:');
-        results.errors.forEach((error, index) => {
-          console.log(`  ${index + 1}. ${error}`);
-        });
-      }
-
-      expect(results.successful + results.failed).toBe(allPositions.length);
-
-      if (results.failed > 0) {
-        console.log(
-          '\n⚠️  Some positions failed to remove - this might be expected due to insufficient funds or other constraints'
-        );
-      }
-
-      console.log('\n✨ Batch cleanup complete!');
-    },
-    300000 // 5 min timeout
-  );
+    console.log('\n✨ Batch cleanup complete!');
+  }, 300000); // 5 min timeout
 });

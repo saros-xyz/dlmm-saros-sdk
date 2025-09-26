@@ -4,8 +4,8 @@ import { SarosDLMMError } from './errors';
 export const getPriceFromId = (
   binStep: number,
   binId: number,
-  baseTokenDecimal: number,
-  quoteTokenDecimal: number
+  decimalTokenX: number,
+  decimalTokenY: number
 ): number => {
   if (binStep <= 0 || binStep > MAX_BASIS_POINTS) {
     throw SarosDLMMError.InvalidBinStep;
@@ -13,7 +13,7 @@ export const getPriceFromId = (
 
   const base = 1 + binStep / MAX_BASIS_POINTS;
   const exponent = binId - ACTIVE_ID;
-  const decimalPow = Math.pow(10, baseTokenDecimal - quoteTokenDecimal);
+  const decimalPow = Math.pow(10, decimalTokenX - decimalTokenY);
 
   return Math.pow(base, exponent) * decimalPow;
 };
@@ -21,8 +21,8 @@ export const getPriceFromId = (
 export const getIdFromPrice = (
   price: number,
   binStep: number,
-  baseTokenDecimal: number,
-  quoteTokenDecimal: number
+  decimalTokenX: number,
+  decimalTokenY: number
 ): number => {
   if (price <= 0) {
     throw SarosDLMMError.InvalidPrice;
@@ -31,7 +31,7 @@ export const getIdFromPrice = (
     throw SarosDLMMError.InvalidBinStep;
   }
 
-  const decimalPow = Math.pow(10, quoteTokenDecimal - baseTokenDecimal);
+  const decimalPow = Math.pow(10, decimalTokenY - decimalTokenX);
 
   const base = 1 + binStep / MAX_BASIS_POINTS;
   const exponent = Math.log(price * decimalPow) / Math.log(base);

@@ -5,20 +5,23 @@ import { SarosDLMMError } from '../../utils/errors';
 import { SarosDLMM } from '../../services';
 
 // Single connection + SDK instance for all tests
-const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
+const connection = new Connection(
+  process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
+  'confirmed'
+);
 const sdk = new SarosDLMM({ mode: MODE.MAINNET, connection });
 
 // Test constants
 const POOLS = {
   USDC_USDT: {
     address: '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk',
-    baseDecimals: 6,
-    quoteDecimals: 6,
+    tokenXDecimals: 6,
+    tokenYDecimals: 6,
   },
   SOL_USDC: {
     address: '8vZHTVMdYvcPFUoHBEbcFyfSKnjWtvbNgYpXg1aiC2uS',
-    baseDecimals: 9,
-    quoteDecimals: 6,
+    tokenXDecimals: 9,
+    tokenYDecimals: 6,
   },
   INVALID: {
     address: '11111111111111111111111111111111',
@@ -38,8 +41,8 @@ describe('Pool Metadata', () => {
     const metadata = pair.getPairMetadata();
 
     expect(metadata.pair.toString()).toBe(POOLS.SOL_USDC.address);
-    expect(metadata.baseToken.decimals).toBe(POOLS.SOL_USDC.baseDecimals);
-    expect(metadata.quoteToken.decimals).toBe(POOLS.SOL_USDC.quoteDecimals);
+    expect(metadata.tokenX.decimals).toBe(POOLS.SOL_USDC.tokenXDecimals);
+    expect(metadata.tokenY.decimals).toBe(POOLS.SOL_USDC.tokenYDecimals);
   });
 
   it('throws SarosDLMMError for invalid pool', async () => {
@@ -63,7 +66,7 @@ describe('Pool Discovery', () => {
 
     expect(Array.isArray(addresses)).toBe(true);
     expect(addresses.length).toBeGreaterThan(0);
-    addresses.forEach(address => {
+    addresses.forEach((address) => {
       expect(address).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
     });
   });
@@ -79,41 +82,51 @@ describe('Pool Discovery', () => {
     expect(Array.isArray(pairs)).toBe(true);
     expect(pairs.length).toBe(2);
 
-    pairs.forEach(pair => {
+    pairs.forEach((pair) => {
       expect(pair).toBeDefined();
       expect(pair.getPairMetadata()).toBeDefined();
     });
 
-    const solUsdcPair = pairs.find(p => p.getPairMetadata().pair.toString() === POOLS.SOL_USDC.address);
-    const usdcUsdtPair = pairs.find(p => p.getPairMetadata().pair.toString() === POOLS.USDC_USDT.address);
+    const solUsdcPair = pairs.find(
+      (p) => p.getPairMetadata().pair.toString() === POOLS.SOL_USDC.address
+    );
+    const usdcUsdtPair = pairs.find(
+      (p) => p.getPairMetadata().pair.toString() === POOLS.USDC_USDT.address
+    );
 
     expect(solUsdcPair).toBeDefined();
     expect(usdcUsdtPair).toBeDefined();
   });
 });
 
-describe('Pool Liquidity', () => {
-  it('returns liquidity data with default range', async () => {
-    const pair = await sdk.getPair(new PublicKey(POOLS.USDC_USDT.address));
-    const data = await pair.getPairLiquidity();
+describe('Fee Normalization', () => {
+  it('normalizes fees for pair 7LxJjKPdpQ4tRrpDTQgBdxyjG7Ve4GUE6ZMo8W98qn5Z', async () => {
+    const pair = await sdk.getPair(new PublicKey('7LxJjKPdpQ4tRrpDTQgBdxyjG7Ve4GUE6ZMo8W98qn5Z'));
+    const metadata = pair.getPairMetadata();
 
-    expect(typeof data.activeBin).toBe('number');
-    expect(data.binStep).toBeGreaterThan(0);
-    expect(data.bins.length).toBeGreaterThan(0);
+    expect(metadata.binStep).toEqual(100);
+    expect(metadata.baseFee).toEqual(1); // fixed base fee
+    expect(metadata.protocolFee).toEqual(0.2); // fixed % of base
+    expect(metadata.dynamicFee).toBeGreaterThanOrEqual(1); // can only increase
   });
 
-  it('respects custom arrayRange', async () => {
-    const pair = await sdk.getPair(new PublicKey(POOLS.USDC_USDT.address));
-    const [small, large] = await Promise.all([
-      pair.getPairLiquidity({ numberOfBinArrays: 1 }),
-      pair.getPairLiquidity({ numberOfBinArrays: 5 }),
-    ]);
+  it('normalizes fees for pair 7hc6hXjDPcFnhGBPBGTKUtViFsQuyWw8ph4ePHF1aTYG', async () => {
+    const pair = await sdk.getPair(new PublicKey('7hc6hXjDPcFnhGBPBGTKUtViFsQuyWw8ph4ePHF1aTYG'));
+    const metadata = pair.getPairMetadata();
 
-    const smallTotal = small.bins.reduce((sum, bin) => sum + bin.baseReserve + bin.quoteReserve, 0);
-    const largeTotal = large.bins.reduce((sum, bin) => sum + bin.baseReserve + bin.quoteReserve, 0);
+    expect(metadata.binStep).toEqual(1);
+    expect(metadata.baseFee).toEqual(0.01); // fixed base fee
+    expect(metadata.protocolFee).toEqual(0.002); // fixed % of base
+    expect(metadata.dynamicFee).toBeGreaterThanOrEqual(0.01);
+  });
 
-    expect(small.activeBin).toBe(large.activeBin);
-    expect(large.bins.length).toBeGreaterThanOrEqual(small.bins.length);
-    expect(largeTotal).toBeGreaterThanOrEqual(smallTotal);
+  it('normalizes fees for pair EBe9p6UWqE6SJDhZu87pbZ4wPwce92ubTJNV6ijU6vCc', async () => {
+    const pair = await sdk.getPair(new PublicKey('EBe9p6UWqE6SJDhZu87pbZ4wPwce92ubTJNV6ijU6vCc'));
+    const metadata = pair.getPairMetadata();
+
+    expect(metadata.binStep).toEqual(100);
+    expect(metadata.baseFee).toEqual(1);
+    expect(metadata.protocolFee).toEqual(0.2);
+    expect(metadata.dynamicFee).toBeGreaterThanOrEqual(1);
   });
 });

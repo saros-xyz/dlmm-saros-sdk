@@ -81,14 +81,14 @@ export function findTestPool(
   const wallet = getTestWallet();
   const pools = wallet.pools || [];
 
-  const baseToken = getTestToken(baseSymbol);
-  const quoteToken = getTestToken(quoteSymbol);
+  const tokenX = getTestToken(baseSymbol);
+  const tokenY = getTestToken(quoteSymbol);
 
   return (
     pools.find(
       (pool) =>
-        pool.baseToken === baseToken.mintAddress.toString() &&
-        pool.quoteToken === quoteToken.mintAddress.toString() &&
+        pool.tokenX === tokenX.mintAddress.toString() &&
+        pool.tokenY === tokenY.mintAddress.toString() &&
         pool.binStep === binStep
     ) || null
   );
@@ -128,10 +128,9 @@ export function createTestSarosDLMM(): SarosDLMM {
   const connection = getTestConnection();
   return new SarosDLMM({
     mode: MODE.DEVNET,
-   connection
+    connection,
   });
 }
-
 
 export async function cleanupLiquidity(
   pairInstance: SarosDLMMPair,
@@ -159,7 +158,6 @@ export async function cleanupLiquidity(
     // ignore cleanup failures
   }
 }
-
 
 export async function getTokenBalance(
   connection: Connection,
@@ -197,7 +195,7 @@ export function setupIntegrationTest(): IntegrationTestSetup {
 
   const pools = getAllTestPools();
   const testPool = pools.find(
-    (p) => p.baseToken === saros.mintAddress.toString() || p.quoteToken === saros.mintAddress.toString()
+    (p) => p.tokenX === saros.mintAddress.toString() || p.tokenY === saros.mintAddress.toString()
   );
   if (!testPool) throw new Error('No pool with SAROSDEV token');
 

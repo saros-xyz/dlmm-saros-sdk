@@ -39,8 +39,9 @@ export interface DLMMPairAccount {
  */
 export interface PositionAccount {
   pair: PublicKey;
+  /** position NFT */
   positionMint: PublicKey;
-  /** The derived position account address (PDA from positionMint using seeds: ["position", positionMint]) */
+  /** position PDA */
   position: PublicKey;
   liquidityShares: BN[];
   lowerBinId: number;
@@ -52,9 +53,9 @@ export interface PositionAccount {
  * Bin data for for a single price bin
  */
 export interface Bin {
-  /** Base token (X) reserves in this bin */
+  /** Token X (base token) reserves in this bin */
   reserveX: BN;
-  /** Quote token (Y) reserves in this bin */
+  /** Token Y (base token) reserves in this bin */
   reserveY: BN;
   /** Total liquidity supply in this bin across all positions */
   totalSupply: BN;

@@ -22,8 +22,8 @@ export interface TestTokenInfo {
 
 export interface TestPoolInfo {
   pair: string;
-  baseToken: string;
-  quoteToken: string;
+  tokenX: string;
+  tokenY: string;
   binStep: number;
   ratePrice: number;
   activeBin: number;
@@ -52,14 +52,14 @@ export class TestWalletSetup {
   private testDir: string;
   private connection: Connection;
 
-constructor(config: Partial<TestWalletConfig> = {}, connection?: Connection) {
+  constructor(config: Partial<TestWalletConfig> = {}, connection?: Connection) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.testDir = path.join(process.cwd(), 'test-data');
 
     if (!fs.existsSync(this.testDir)) {
       fs.mkdirSync(this.testDir, { recursive: true });
     }
-  this.connection = connection || new Connection(this.config.devnetRpcUrl, 'confirmed');
+    this.connection = connection || new Connection(this.config.devnetRpcUrl, 'confirmed');
   }
 
   private getWalletPath(): string {

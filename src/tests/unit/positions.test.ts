@@ -3,10 +3,13 @@ import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import { ACTIVE_ID } from '../../constants';
 import { LiquidityManager } from '../../utils/position/liquidity';
 import { SarosDLMM } from '../../services';
-import { MODE, PositionBinBalance, RemoveLiquidityType } from '../../types';
+import { MODE, PositionReserve, RemoveLiquidityType } from '../../types';
 
 // Single connection + SDK instance for all tests
-const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
+const connection = new Connection(
+  process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
+  'confirmed'
+);
 const sdk = new SarosDLMM({ mode: MODE.MAINNET, connection });
 
 const USDC_USDT = '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk';
@@ -39,7 +42,7 @@ describe('Position Operations', () => {
 });
 
 describe('LiquidityManager Logic', () => {
-  const mockPositionReserves: PositionBinBalance[] = [
+  const mockPositionReserves: PositionReserve[] = [
     {
       baseReserve: 1000000n, // 1 USDC (6 decimals)
       quoteReserve: 0n,
@@ -80,10 +83,10 @@ describe('LiquidityManager Logic', () => {
     expect(removedShares[2].toString()).toBe('125000');
   });
 
-  it('identifies base token only positions', () => {
+  it('identifies token x only positions', () => {
     const removedShares = LiquidityManager.calculateRemovedShares(
       mockPositionReserves,
-      RemoveLiquidityType.BaseToken,
+      RemoveLiquidityType.TokenX,
       ACTIVE_ID,
       ACTIVE_ID + 2
     );
@@ -93,10 +96,10 @@ describe('LiquidityManager Logic', () => {
     expect(removedShares[2].toString()).toBe('0');
   });
 
-  it('identifies quote token only positions', () => {
+  it('identifies token y only positions', () => {
     const removedShares = LiquidityManager.calculateRemovedShares(
       mockPositionReserves,
-      RemoveLiquidityType.QuoteToken,
+      RemoveLiquidityType.TokenY,
       ACTIVE_ID,
       ACTIVE_ID + 2
     );

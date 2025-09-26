@@ -55,9 +55,18 @@ export class SarosDLMMError extends Error {
   );
 
   // Generic operation errors
-  static readonly QuoteCalculationFailed = new SarosDLMMError('Quote calculation failed', 'QUOTE_CALCULATION_FAILED');
-  static readonly TransactionNotFound = new SarosDLMMError('Transaction not found', 'TRANSACTION_NOT_FOUND');
-  static readonly BinArrayInfoFailed = new SarosDLMMError('Failed to get bin array info', 'BIN_ARRAY_INFO_FAILED');
+  static readonly QuoteCalculationFailed = new SarosDLMMError(
+    'Quote calculation failed',
+    'QUOTE_CALCULATION_FAILED'
+  );
+  static readonly TransactionNotFound = new SarosDLMMError(
+    'Transaction not found',
+    'TRANSACTION_NOT_FOUND'
+  );
+  static readonly BinArrayInfoFailed = new SarosDLMMError(
+    'Failed to get bin array info',
+    'BIN_ARRAY_INFO_FAILED'
+  );
 
   /**
    * Handle errors by re-throwing SarosDLMMError or wrapping unknown errors

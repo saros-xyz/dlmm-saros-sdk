@@ -4,10 +4,14 @@ import {
   Transaction,
   PublicKey,
   Connection,
+  TransactionMessage,
 } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
+import { Buffer } from 'buffer';
 import { CCU_LIMIT, UNIT_PRICE_DEFAULT } from '../constants';
 import { BN } from '@coral-xyz/anchor';
+import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
+import { SarosDLMMError } from './errors';
 
 /**
  * Get optimal gas price from recent prioritization fees
@@ -81,3 +85,42 @@ export const addCloseAccountInstruction = (
 ): void => {
   transaction.add(spl.createCloseAccountInstruction(vault, payer, payer));
 };
+
+/**
+ * Extracts the pair address from an initialize_pair transaction by parsing the instruction accounts
+ * @param connection - Solana connection instance
+ * @param signature - Transaction signature containing the initialize_pair instruction
+ * @returns The pair PublicKey, or null if not found
+ */
+export async function extractPairFromTx(
+  connection: Connection,
+  signature: string
+): Promise<PublicKey | null> {
+  const parsedTransaction = await connection.getTransaction(signature, {
+    maxSupportedTransactionVersion: 0,
+  });
+  if (!parsedTransaction) throw SarosDLMMError.TransactionNotFound;
+
+  const compiledMessage = parsedTransaction.transaction.message;
+  const message = TransactionMessage.decompile(compiledMessage);
+  const instructions = message.instructions;
+  const initializePairStruct = LiquidityBookIDL.instructions.find(
+    (item) => item.name === 'initialize_pair'
+  )!;
+
+  const initializePairDescrimator = Buffer.from(initializePairStruct.discriminator);
+
+  for (const instruction of instructions) {
+    const descimatorInstruction = instruction.data.subarray(0, 8);
+    if (!descimatorInstruction.equals(initializePairDescrimator)) continue;
+
+    const accounts = initializePairStruct.accounts.map((item, index) => ({
+      name: item.name,
+      address: instruction.keys[index].pubkey,
+    }));
+
+    const pairAccount = accounts.find((item) => item.name === 'pair');
+    return pairAccount ? pairAccount.address : null;
+  }
+  return null;
+}

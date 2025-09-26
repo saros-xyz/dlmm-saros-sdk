@@ -34,9 +34,9 @@ export interface AddLiquidityByShapeParams {
   /** The distribution shape for the liquidity (Spot, Curve, Bid, Ask) */
   liquidityShape: LiquidityShape;
   /** Amount of base token to add (in token's smallest unit) */
-  baseAmount: bigint;
+  amountTokenX: bigint;
   /** Amount of quote token to add (in token's smallest unit) */
-  quoteAmount: bigint;
+  amountTokenY: bigint;
   /** Bin range [minBin, maxBin] relative to the current active bin */
   binRange: [number, number];
 }
@@ -49,7 +49,7 @@ export interface RemoveLiquidityParams {
   positionMints: PublicKey[];
   /** The wallet that owns the positions and will receive the tokens */
   payer: PublicKey;
-  /** Type of removal: All tokens, BaseToken only, or QuoteToken only */
+  /** Type of removal: All tokens, TokenX only, or TokenY only */
   type: RemoveLiquidityType;
 }
 
@@ -70,7 +70,7 @@ export interface RemoveLiquidityResponse {
 /**
  * Parameters for retrieving detailed bin-by-bin balances of a position
  */
-export interface GetPositionBinBalancesParams {
+export interface GetPositionReservesParams {
   /** The position account address (derived from position mint) */
   position: PublicKey;
   /** The wallet that owns the position */
@@ -80,7 +80,7 @@ export interface GetPositionBinBalancesParams {
 /**
  * Parameters for retrieving bin array information from a pair
  */
-export interface GetBinArrayInfoParams {
+export interface GetBinArrayReserversParams {
   /** The bin array index to fetch */
   binArrayIndex: number;
   /** The wallet requesting the information (used for transaction context if needed) */
@@ -90,7 +90,7 @@ export interface GetBinArrayInfoParams {
 /**
  * Detailed balance information for a single bin within a position
  */
-export interface PositionBinBalance {
+export interface PositionReserve {
   /** Amount of base token reserves in this bin */
   baseReserve: bigint;
   /** Amount of quote token reserves in this bin */

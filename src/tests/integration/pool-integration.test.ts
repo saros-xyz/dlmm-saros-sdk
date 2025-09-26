@@ -19,8 +19,8 @@ let sdk: SarosDLMM;
 
 async function createOrVerifyPool(
   params: {
-    baseToken: { mintAddress: PublicKey; decimals: number };
-    quoteToken: { mintAddress: PublicKey; decimals: number };
+    tokenX: { mintAddress: PublicKey; decimals: number };
+    tokenY: { mintAddress: PublicKey; decimals: number };
     binStep: number;
     ratePrice: number;
     payer: any;
@@ -43,13 +43,13 @@ async function createOrVerifyPool(
   // ✅ fetch via instance
   const pair = await sdk.getPair(result.pair);
   const metadata = pair.getPairMetadata();
-  expect(metadata.baseToken.mintAddress.toString()).toBe(params.baseToken.mintAddress.toString());
-  expect(metadata.quoteToken.mintAddress.toString()).toBe(params.quoteToken.mintAddress.toString());
+  expect(metadata.tokenX.mintAddress.toString()).toBe(params.tokenX.mintAddress.toString());
+  expect(metadata.tokenY.mintAddress.toString()).toBe(params.tokenY.mintAddress.toString());
 
   saveTestPool({
     pair: result.pair.toString(),
-    baseToken: params.baseToken.mintAddress.toString(),
-    quoteToken: params.quoteToken.mintAddress.toString(),
+    tokenX: params.tokenX.mintAddress.toString(),
+    tokenY: params.tokenY.mintAddress.toString(),
     binStep: params.binStep,
     ratePrice: params.ratePrice,
     activeBin: result.activeBin,
@@ -74,8 +74,8 @@ describe('Pool Creation Integration', () => {
     const saros = getTestToken('SAROSDEV');
     await expect(
       sdk.createPair({
-        baseToken: saros,
-        quoteToken: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
+        tokenX: saros,
+        tokenY: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
         binStep: 25,
         ratePrice: 0,
         payer: testWallet.keypair.publicKey,
@@ -92,8 +92,8 @@ describe('Pool Creation Integration', () => {
     }
     const result = await createOrVerifyPool(
       {
-        baseToken: saros,
-        quoteToken: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
+        tokenX: saros,
+        tokenY: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
         binStep: 25,
         ratePrice: 0.00001,
         payer: testWallet.keypair.publicKey,
@@ -112,8 +112,8 @@ describe('Pool Creation Integration', () => {
     }
     const result = await createOrVerifyPool(
       {
-        baseToken: wbtc,
-        quoteToken: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
+        tokenX: wbtc,
+        tokenY: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
         binStep: 20,
         ratePrice: 2000,
         payer: testWallet.keypair.publicKey,

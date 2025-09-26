@@ -1,10 +1,10 @@
 import { BN } from '@coral-xyz/anchor';
-import { PositionBinBalance, RemoveLiquidityType } from '../../types';
+import { PositionReserve, RemoveLiquidityType } from '../../types';
 import { FIXED_LENGTH } from '../../constants';
 
 export class LiquidityManager {
   public static calculateRemovedShares(
-    reserveXY: PositionBinBalance[],
+    reserveXY: PositionReserve[],
     type: RemoveLiquidityType,
     start: number,
     end: number
@@ -12,7 +12,7 @@ export class LiquidityManager {
     let removedShares: BN[] = [];
 
     if (type === RemoveLiquidityType.All) {
-      removedShares = reserveXY.map((reserve: PositionBinBalance) => {
+      removedShares = reserveXY.map((reserve: PositionReserve) => {
         const binId = reserve.binId;
         if (binId >= Number(start) && binId <= Number(end)) {
           return new BN(reserve.liquidityShare.toString());
@@ -21,8 +21,8 @@ export class LiquidityManager {
       });
     }
 
-    if (type === RemoveLiquidityType.BaseToken) {
-      removedShares = reserveXY.map((reserve: PositionBinBalance) => {
+    if (type === RemoveLiquidityType.TokenX) {
+      removedShares = reserveXY.map((reserve: PositionReserve) => {
         if (reserve.baseReserve > 0n && reserve.quoteReserve === 0n) {
           return new BN(reserve.liquidityShare.toString());
         }
@@ -30,8 +30,8 @@ export class LiquidityManager {
       });
     }
 
-    if (type === RemoveLiquidityType.QuoteToken) {
-      removedShares = reserveXY.map((reserve: PositionBinBalance) => {
+    if (type === RemoveLiquidityType.TokenY) {
+      removedShares = reserveXY.map((reserve: PositionReserve) => {
         if (reserve.quoteReserve > 0n && reserve.baseReserve === 0n) {
           return new BN(reserve.liquidityShare.toString());
         }
@@ -43,13 +43,13 @@ export class LiquidityManager {
   }
 
   public static getAvailableShares(
-    reserveXY: PositionBinBalance[],
+    reserveXY: PositionReserve[],
     type: RemoveLiquidityType
-  ): PositionBinBalance[] {
-    return reserveXY.filter((item: PositionBinBalance) =>
+  ): PositionReserve[] {
+    return reserveXY.filter((item: PositionReserve) =>
       type === RemoveLiquidityType.All
         ? item.liquidityShare > 0n
-        : type === RemoveLiquidityType.QuoteToken
+        : type === RemoveLiquidityType.TokenY
           ? item.baseReserve > 0n
           : item.quoteReserve > 0n
     );
@@ -59,7 +59,7 @@ export class LiquidityManager {
     type: RemoveLiquidityType,
     start: number,
     end: number,
-    availableShares: PositionBinBalance[]
+    availableShares: PositionReserve[]
   ): boolean {
     return (
       (type === RemoveLiquidityType.All && end - start + 1 >= availableShares.length) ||
