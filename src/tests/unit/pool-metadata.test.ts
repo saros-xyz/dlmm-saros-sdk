@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { MODE } from '../../types';
-import { PairServiceError } from '../../utils/errors';
+import { SarosDLMMError } from '../../utils/errors';
 import { SarosDLMM } from '../../services';
 
 // Single connection + SDK instance for all tests
@@ -41,9 +41,9 @@ describe('Pool Metadata', () => {
     expect(metadata.quoteToken.decimals).toBe(POOLS.SOL_USDC.quoteDecimals);
   });
 
-  it('throws PairServiceError for invalid pool', async () => {
+  it('throws SarosDLMMError for invalid pool', async () => {
     await expect(sdk.getPair(new PublicKey(POOLS.INVALID.address))).rejects.toThrow(
-      PairServiceError.Pair
+      SarosDLMMError.PairFetchFailed
     );
   });
 });

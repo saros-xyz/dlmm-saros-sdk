@@ -39,7 +39,7 @@ export class SarosDLMMError extends Error {
     'NO_VALID_BIN_ARRAYS'
   );
   static readonly BinArrayIndexMismatch = new SarosDLMMError(
-    'Bin arrays do not forma valid range',
+    'Bin arrays do not form a valid range',
     'BIN_ARRAY_INDEX_MISMATCH'
   );
 
@@ -53,4 +53,19 @@ export class SarosDLMMError extends Error {
     'Insufficient liquidity',
     'INSUFFICIENT_LIQUIDITY'
   );
+
+  // Generic operation errors
+  static readonly QuoteCalculationFailed = new SarosDLMMError('Quote calculation failed', 'QUOTE_CALCULATION_FAILED');
+  static readonly TransactionNotFound = new SarosDLMMError('Transaction not found', 'TRANSACTION_NOT_FOUND');
+  static readonly BinArrayInfoFailed = new SarosDLMMError('Failed to get bin array info', 'BIN_ARRAY_INFO_FAILED');
+
+  /**
+   * Handle errors by re-throwing SarosDLMMError or wrapping unknown errors
+   */
+  static handleError(error: unknown, fallbackError: SarosDLMMError): never {
+    if (error instanceof SarosDLMMError) {
+      throw error;
+    }
+    throw fallbackError;
+  }
 }

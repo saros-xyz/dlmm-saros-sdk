@@ -8,7 +8,7 @@ import { BinArrayManager } from '../utils/pair/bin-manager';
 import { CreatePairParams, CreatePairResponse } from '../types';
 import { getIdFromPrice } from '../utils/price';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
-import { PairServiceError } from '../utils/errors';
+import { SarosDLMMError } from '../utils/errors';
 
 export class SarosDLMM extends SarosBaseService {
   constructor(config: SarosConfig) {
@@ -21,8 +21,8 @@ export class SarosDLMM extends SarosBaseService {
   public async createPair(params: CreatePairParams): Promise<CreatePairResponse> {
     const { baseToken, quoteToken, binStep, ratePrice, payer } = params;
 
-    if (ratePrice <= 0) throw PairServiceError.InvalidPrice;
-    if (binStep < 1 || binStep > 10000) throw PairServiceError.InvalidBinStep;
+    if (ratePrice <= 0) throw SarosDLMMError.InvalidPrice;
+    if (binStep < 1 || binStep > 10000) throw SarosDLMMError.InvalidBinStep;
 
     try {
       const tokenX = new PublicKey(baseToken.mintAddress);
@@ -117,8 +117,7 @@ export class SarosDLMM extends SarosBaseService {
         activeBin: Number(id),
       };
     } catch (error) {
-      if (error instanceof PairServiceError) throw error;
-      throw PairServiceError.PairCreationFailed;
+      SarosDLMMError.handleError(error, SarosDLMMError.PairCreationFailed);
     }
   }
 
@@ -145,13 +144,13 @@ export class SarosDLMM extends SarosBaseService {
     try {
       const programId = this.getDexProgramId();
       const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
-      if (!pairAccount) throw PairServiceError.NoPairFound;
+      if (!pairAccount) throw SarosDLMMError.NoPairFound;
 
       const accounts = await this.connection.getProgramAccounts(new PublicKey(programId), {
         filters: [{ memcmp: { offset: 0, bytes: bs58.encode(pairAccount.discriminator) } }],
       });
 
-      if (accounts.length === 0) throw PairServiceError.NoPairFound;
+      if (accounts.length === 0) throw SarosDLMMError.NoPairFound;
 
       return accounts
         .filter(
@@ -160,8 +159,7 @@ export class SarosDLMM extends SarosBaseService {
         )
         .map((acc) => acc.pubkey.toString());
     } catch (error) {
-      if (error instanceof PairServiceError) throw error;
-      throw PairServiceError.NoPairFound;
+      SarosDLMMError.handleError(error, SarosDLMMError.NoPairFound);
     }
   }
 
@@ -190,7 +188,7 @@ export class SarosDLMM extends SarosBaseService {
     const parsedTx = await this.connection.getTransaction(signature, {
       maxSupportedTransactionVersion: 0,
     });
-    if (!parsedTx) throw new Error('Transaction not found');
+    if (!parsedTx) throw SarosDLMMError.TransactionNotFound;
 
     const message = TransactionMessage.decompile(parsedTx.transaction.message);
     const initializePairStruct = LiquidityBookIDL.instructions.find(

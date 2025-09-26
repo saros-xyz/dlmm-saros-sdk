@@ -85,8 +85,8 @@ export class SarosDLMMPair extends SarosBaseService {
 
       this.metadata = await this.buildPairMetadata();
     } catch (error) {
-      if (error instanceof SarosDLMMError) throw error;
-      throw SarosDLMMError.PairFetchFailed;
+      SarosDLMMError.handleError(error, SarosDLMMError.PairFetchFailed);
+    }
   }
 
   /**
@@ -168,64 +168,59 @@ export class SarosDLMMPair extends SarosBaseService {
   public async getPairLiquidity(params: GetPairLiquidityParams = {}): Promise<PairLiquidityData> {
     const { numberOfBinArrays: arrayRange = 1 } = params;
 
-    try {
-      const binArrayIndices = BinArrayManager.calculateBinArrayRange(
-        this.pairAccount.activeId,
-        arrayRange
-      );
-      const binArrayResults = await Promise.all(
-        binArrayIndices.map(async (index) => {
-          try {
-            const addr = BinArrayManager.getBinArrayAddress(
-              index,
-              this.pairAddress,
-              this.getDexProgramId()
-            );
-            //@ts-ignore
-            const acc = await this.lbProgram.account.binArray.fetch(addr);
-            return { index, bins: acc.bins };
-          } catch {
-            return { index, bins: [] };
-          }
-        })
-      );
+    const binArrayIndices = BinArrayManager.calculateBinArrayRange(
+      this.pairAccount.activeId,
+      arrayRange
+    );
+    const binArrayResults = await Promise.all(
+      binArrayIndices.map(async (index) => {
+        try {
+          const addr = BinArrayManager.getBinArrayAddress(
+            index,
+            this.pairAddress,
+            this.getDexProgramId()
+          );
+          //@ts-ignore
+          const acc = await this.lbProgram.account.binArray.fetch(addr);
+          return { index, bins: acc.bins };
+        } catch {
+          return { index, bins: [] };
+        }
+      })
+    );
 
-      const bins: BinLiquidityData[] = [];
-      binArrayResults.forEach(({ index, bins: arr }) => {
-        arr.forEach((bin: Bin, binIdx: number) => {
-          if (bin.reserveX.gt(new BN(0)) || bin.reserveY.gt(new BN(0))) {
-            const binId = index * BIN_ARRAY_SIZE + binIdx;
-            const price = getPriceFromId(
-              this.pairAccount.binStep,
-              binId,
-              this.metadata.baseToken.decimals,
-              this.metadata.quoteToken.decimals
-            );
-            bins.push({
-              binId,
-              price,
-              baseReserve: Number(bin.reserveX) / 10 ** this.metadata.baseToken.decimals,
-              quoteReserve: Number(bin.reserveY) / 10 ** this.metadata.quoteToken.decimals,
-            });
-          }
-        });
+    const bins: BinLiquidityData[] = [];
+    binArrayResults.forEach(({ index, bins: arr }) => {
+      arr.forEach((bin: Bin, binIdx: number) => {
+        if (bin.reserveX.gt(new BN(0)) || bin.reserveY.gt(new BN(0))) {
+          const binId = index * BIN_ARRAY_SIZE + binIdx;
+          const price = getPriceFromId(
+            this.pairAccount.binStep,
+            binId,
+            this.metadata.baseToken.decimals,
+            this.metadata.quoteToken.decimals
+          );
+          bins.push({
+            binId,
+            price,
+            baseReserve: Number(bin.reserveX) / 10 ** this.metadata.baseToken.decimals,
+            quoteReserve: Number(bin.reserveY) / 10 ** this.metadata.quoteToken.decimals,
+          });
+        }
       });
+    });
 
-      bins.sort((a, b) => a.binId - b.binId);
+    bins.sort((a, b) => a.binId - b.binId);
 
-      return { activeBin: this.pairAccount.activeId, binStep: this.pairAccount.binStep, bins };
-    } catch (error) {
-      if (error instanceof PairServiceError) throw error;
-      throw PairServiceError.Pair;
-    }
+    return { activeBin: this.pairAccount.activeId, binStep: this.pairAccount.binStep, bins };
   }
 
   /**
    * Get a quote for a swap on this pair
    */
   public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
-    if (params.amount <= 0n) throw SwapServiceError.ZeroAmount;
-    if (params.slippage < 0 || params.slippage >= 100) throw SwapServiceError.InvalidSlippage;
+    if (params.amount <= 0n) throw SarosDLMMError.ZeroAmount;
+    if (params.slippage < 0 || params.slippage >= 100) throw SarosDLMMError.InvalidSlippage;
 
     try {
       const { baseToken, quoteToken } = this.metadata;
@@ -263,12 +258,7 @@ export class SarosDLMMPair extends SarosBaseService {
         priceImpact: priceImpact,
       };
     } catch (error) {
-      if (error instanceof SwapServiceError) {
-        throw error;
-      }
-      throw new Error(
-        `Quote calculation failed: ${error instanceof Error ? error.message : error}`
-      );
+      SarosDLMMError.handleError(error, SarosDLMMError.QuoteCalculationFailed);
     }
   }
 
@@ -289,8 +279,8 @@ export class SarosDLMMPair extends SarosBaseService {
     // Use provided hook or default to instance hook config
     const hookConfig = hook || this.hooksConfig;
 
-    if (amount <= 0n) throw SwapServiceError.ZeroAmount;
-    if (otherAmountOffset < 0n) throw SwapServiceError.ZeroAmount;
+    if (amount <= 0n) throw SarosDLMMError.ZeroAmount;
+    if (otherAmountOffset < 0n) throw SarosDLMMError.ZeroAmount;
 
     const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(this.pairAccount.activeId);
 
@@ -311,7 +301,7 @@ export class SarosDLMMPair extends SarosBaseService {
     const validIndexes = surroundingIndexes.filter((_, i) => binArrayAccountsInfo[i]);
 
     if (validIndexes.length < 2) {
-      throw SwapServiceError.NoValidBinArrays;
+      throw SarosDLMMError.NoValidBinArrays;
     }
 
     let binArrayLowerIndex: number;
@@ -433,7 +423,7 @@ export class SarosDLMMPair extends SarosBaseService {
   ): Promise<GetMaxAmountOutWithFeeResponse> {
     try {
       const { amount, swapForY = false, decimalBase = 9, decimalQuote = 9 } = params;
-      if (amount <= 0n) throw SwapServiceError.ZeroAmount;
+      if (amount <= 0n) throw SarosDLMMError.ZeroAmount;
 
       const { activeId, binStep } = this.pairAccount;
 
@@ -522,12 +512,7 @@ export class SarosDLMMPair extends SarosBaseService {
         };
       }
     } catch (error) {
-      if (error instanceof SwapServiceError || error instanceof PairServiceError) {
-        throw error;
-      }
-      throw new Error(
-        `Quote calculation failed: ${error instanceof Error ? error.message : error}`
-      );
+      SarosDLMMError.handleError(error, SarosDLMMError.QuoteCalculationFailed);
     }
   }
 
@@ -583,7 +568,7 @@ export class SarosDLMMPair extends SarosBaseService {
       }
 
       if (totalBinUsed >= MAX_BIN_CROSSINGS) {
-        throw SwapServiceError.SwapExceedsMaxBinCrossings;
+        throw SarosDLMMError.SwapExceedsMaxBinCrossings;
       }
 
       return amountIn;
@@ -643,7 +628,7 @@ export class SarosDLMMPair extends SarosBaseService {
         activeId = this.moveActiveId(activeId, swapForY);
       }
       if (totalBinUsed >= MAX_BIN_CROSSINGS) {
-        throw SwapServiceError.SwapExceedsMaxBinCrossings;
+        throw SarosDLMMError.SwapExceedsMaxBinCrossings;
       }
 
       return amountOut;
@@ -668,7 +653,7 @@ export class SarosDLMMPair extends SarosBaseService {
     const binReserveOut = swapForY ? reserveY : reserveX;
 
     if (binReserveOut.isZero()) {
-      throw SwapServiceError.BinHasNoReserves;
+      throw SarosDLMMError.BinHasNoReserves;
     }
 
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
@@ -707,7 +692,7 @@ export class SarosDLMMPair extends SarosBaseService {
     const binReserveOut = swapForY ? reserveY : reserveX;
 
     if (binReserveOut.isZero()) {
-      throw SwapServiceError.BinHasNoReserves;
+      throw SarosDLMMError.BinHasNoReserves;
     }
 
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
@@ -804,8 +789,8 @@ export class SarosDLMMPair extends SarosBaseService {
           return { bins: currentBins, index: binArrayIndex };
         }
       }
-    } catch (error) {
-      throw new Error(`Failed to get bin array info for index ${binArrayIndex}: ${error}`);
+    } catch (_error) {
+      throw SarosDLMMError.BinArrayInfoFailed;
     }
   }
 
@@ -946,7 +931,7 @@ export class SarosDLMMPair extends SarosBaseService {
     } = params;
 
     if (baseAmount <= 0n && quoteAmount <= 0n) {
-      throw PositionServiceError.CannotAddZero;
+      throw SarosDLMMError.CannotAddZero;
     }
 
     const transaction = userTxn || new Transaction();
