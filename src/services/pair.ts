@@ -14,7 +14,6 @@ import {
   SCALE_OFFSET,
   WRAP_SOL_PUBKEY,
   MAX_BASIS_POINTS_BIGINT,
-  PRECISION_BIGINT,
 } from '../constants';
 import {
   DLMMPairAccount,
@@ -85,13 +84,7 @@ export class SarosDLMMPair extends SarosBaseService {
       SarosDLMMError.handleError(error, SarosDLMMError.PairFetchFailed);
     }
   }
-  /**
-   * Normalize fee bigint → number (percentage with fixed decimals).
-   * Example: 100000 => 0.01
-   */
-  private normalizeFee(raw: bigint, decimals = 6): number {
-    return parseFloat((Number(raw) / Number(PRECISION_BIGINT)).toFixed(decimals));
-  }
+
   /**
    * Build pair metadata from pair account data
    */
