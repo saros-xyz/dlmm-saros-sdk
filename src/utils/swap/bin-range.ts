@@ -1,6 +1,6 @@
 import { Bin, BinArray } from '../../types';
 import { BIN_ARRAY_SIZE } from '../../constants';
-import { SwapServiceError } from './errors';
+import { SarosDLMMError } from '../errors';
 
 export class BinArrayRange {
   private readonly bins: { [binId: number]: Bin };
@@ -10,7 +10,7 @@ export class BinArrayRange {
       binArrayCurrent.index !== binArrayPrevious.index + 1 ||
       binArrayNext.index !== binArrayCurrent.index + 1
     ) {
-      throw SwapServiceError.BinArrayIndexMismatch;
+      throw SarosDLMMError.BinArrayIndexMismatch;
     }
 
     this.bins = {};

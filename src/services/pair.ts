@@ -39,7 +39,7 @@ import {
 } from '../types';
 import { getPriceFromId } from '../utils/price';
 import { getPairVaultInfo, getUserVaultInfo, getTokenProgram } from '../utils/vaults';
-import { PairServiceError, SwapServiceError, PositionServiceError } from '../utils/errors';
+import { SarosDLMMError } from '../utils/errors';
 import {
   getAmountInByPrice,
   getAmountOutByPrice,
@@ -81,13 +81,12 @@ export class SarosDLMMPair extends SarosBaseService {
     try {
       //@ts-ignore
       this.pairAccount = await this.lbProgram.account.pair.fetch(this.pairAddress);
-      if (!this.pairAccount) throw PairServiceError.Pair;
+      if (!this.pairAccount) throw SarosDLMMError.PairFetchFailed;
 
       this.metadata = await this.buildPairMetadata();
     } catch (error) {
-      if (error instanceof PairServiceError) throw error;
-      throw PairServiceError.Pair;
-    }
+      if (error instanceof SarosDLMMError) throw error;
+      throw SarosDLMMError.PairFetchFailed;
   }
 
   /**

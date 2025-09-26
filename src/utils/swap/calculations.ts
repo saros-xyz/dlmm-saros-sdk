@@ -1,5 +1,5 @@
 import { PRECISION_BIGINT, SCALE_OFFSET, MAX_BASIS_POINTS_BIGINT } from '../../constants';
-import { SwapServiceError } from './errors';
+import { SarosDLMMError } from '../errors';
 
 /**
  * Calculates the input amount required for a swap based on the desired output amount and price.
@@ -68,7 +68,7 @@ export const getMaxInputWithSlippage = (amountIn: bigint, slippage: number): big
   const denominatorScaled = Number(PRECISION_BIGINT) - slippageScaled;
 
   if (denominatorScaled <= 0) {
-    throw SwapServiceError.InvalidSlippage;
+    throw SarosDLMMError.InvalidSlippage;
   }
   return (amountIn * PRECISION_BIGINT) / BigInt(denominatorScaled);
 };
