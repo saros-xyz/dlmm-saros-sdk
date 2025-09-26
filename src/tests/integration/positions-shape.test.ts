@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { PublicKey } from '@solana/web3.js';
-import { LiquidityShape } from '../../types';
+import { LiquidityShape, MODE } from '../../types';
 import { SarosDLMM } from '../../services';
 import {
   IntegrationTestSetup,
@@ -8,7 +8,6 @@ import {
   createTestKeypair,
   waitForConfirmation,
   cleanupLiquidity,
-  getTestConfig,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 
@@ -17,6 +16,7 @@ let testSetup: IntegrationTestSetup;
 beforeAll(async () => {
   await ensureTestEnvironment();
   testSetup = setupIntegrationTest();
+
 });
 
 async function runShapeTest(
@@ -28,8 +28,10 @@ async function runShapeTest(
 ) {
   const { testWallet, connection, testPool } = testSetup;
   const pairAddress = new PublicKey(testPool.pair);
-  const config = getTestConfig();
-  const pair = await SarosDLMM.createPair(config, pairAddress);
+
+
+  const sdk =  new SarosDLMM({mode: MODE.DEVNET, connection});
+  const pair = await sdk.getPair(pairAddress);
   const positionKeypair = createTestKeypair();
 
   try {
@@ -67,7 +69,7 @@ async function runShapeTest(
 
     validate(bins.filter((b) => b.baseReserve > 0n || b.quoteReserve > 0n));
   } finally {
-    await cleanupLiquidity(pair, positionKeypair, pairAddress, testWallet, connection);
+await cleanupLiquidity(pair, positionKeypair, testWallet, connection);
   }
 }
 

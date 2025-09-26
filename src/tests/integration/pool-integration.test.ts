@@ -9,12 +9,13 @@ import {
   NATIVE_SOL,
   getTestWallet,
   getTestConnection,
-  getTestConfig,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
+import { MODE } from '../../types';
 
 let testWallet: any;
 let connection: any;
+let sdk: SarosDLMM;
 
 async function createOrVerifyPool(
   params: {
@@ -28,7 +29,9 @@ async function createOrVerifyPool(
 ) {
   console.log(`Ensuring ${poolName} pool exists...`);
 
-  const result = await SarosDLMM.createNewPair(getTestConfig(), params);
+  // ✅ use instance method
+  const result = await sdk.createNewPair(params);
+
   try {
     const sig = await connection.sendTransaction(result.transaction, [testWallet.keypair]);
     await waitForConfirmation(sig, connection);
@@ -38,7 +41,8 @@ async function createOrVerifyPool(
     console.log(`Pool already exists: ${result.pair}`);
   }
 
-  const pair = await SarosDLMM.createPair(getTestConfig(), new PublicKey(result.pair));
+  // ✅ fetch via instance
+  const pair = await sdk.getPair(new PublicKey(result.pair));
   const metadata = pair.getPairMetadata();
   expect(metadata.baseToken.mintAddress).toBe(params.baseToken.mintAddress);
   expect(metadata.quoteToken.mintAddress).toBe(params.quoteToken.mintAddress);
@@ -62,13 +66,15 @@ beforeAll(async () => {
   await ensureTestEnvironment();
   testWallet = getTestWallet();
   connection = getTestConnection();
+  // ✅ instantiate SDK once
+  sdk = new SarosDLMM({ mode: MODE.DEVNET, connection });
 });
 
 describe('Pool Creation Integration', () => {
   it('rejects invalid parameters', async () => {
     const saros = getTestToken('SAROSDEV');
     await expect(
-      SarosDLMM.createNewPair(getTestConfig(), {
+      sdk.createNewPair({
         baseToken: saros,
         quoteToken: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
         binStep: 25,

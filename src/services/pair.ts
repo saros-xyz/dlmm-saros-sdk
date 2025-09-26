@@ -8,7 +8,13 @@ import { LiquidityManager } from '../utils/position/liquidity';
 import { FeeCalculator } from '../utils/swap/fees';
 import { VolatilityManager } from '../utils/swap/volatility';
 import { BinArrayRange } from '../utils/swap/bin-range';
-import { BIN_ARRAY_SIZE, MAX_BIN_CROSSINGS, SCALE_OFFSET, WRAP_SOL_PUBKEY, MAX_BASIS_POINTS_BIGINT } from '../constants';
+import {
+  BIN_ARRAY_SIZE,
+  MAX_BIN_CROSSINGS,
+  SCALE_OFFSET,
+  WRAP_SOL_PUBKEY,
+  MAX_BASIS_POINTS_BIGINT,
+} from '../constants';
 import {
   DLMMPairAccount,
   PairMetadata,
@@ -55,32 +61,10 @@ export class SarosDLMMPair extends SarosBaseService {
   private volatilityManager: VolatilityManager;
   bufferGas?: number;
 
-  private constructor(config: SarosConfig, pairAddress: PublicKey) {
+  constructor(config: SarosConfig, pairAddress: PublicKey) {
     super(config);
     this.pairAddress = pairAddress;
     this.volatilityManager = new VolatilityManager();
-  }
-
-  /**
-   * Create a SarosDLMMPair instance
-   */
-  public static async create(config: SarosConfig, pairAddress: PublicKey): Promise<SarosDLMMPair> {
-    const pair = new SarosDLMMPair(config, pairAddress);
-    await pair.loadPairData();
-    return pair;
-  }
-
-  /**
-   * Create multiple SarosDLMMPair instances
-   */
-  public static async createMultiple(
-    config: SarosConfig,
-    pairAddresses: PublicKey[]
-  ): Promise<SarosDLMMPair[]> {
-    const pairs = await Promise.all(
-      pairAddresses.map(address => SarosDLMMPair.create(config, address))
-    );
-    return pairs;
   }
 
   /**
@@ -193,7 +177,11 @@ export class SarosDLMMPair extends SarosBaseService {
       const binArrayResults = await Promise.all(
         binArrayIndices.map(async (index) => {
           try {
-            const addr = BinArrayManager.getBinArrayAddress(index, this.pairAddress, this.getDexProgramId());
+            const addr = BinArrayManager.getBinArrayAddress(
+              index,
+              this.pairAddress,
+              this.getDexProgramId()
+            );
             //@ts-ignore
             const acc = await this.lbProgram.account.binArray.fetch(addr);
             return { index, bins: acc.bins };
@@ -415,7 +403,7 @@ export class SarosDLMMPair extends SarosBaseService {
         tokenProgramX,
         tokenProgramY,
         user: payer,
-        hook: hook ? hook : hookConfig, // Default to hookConfig for now
+        hook: hookConfig,
         hooksProgram: this.hooksProgram.programId,
       })
       .remainingAccounts([
@@ -475,7 +463,9 @@ export class SarosDLMMPair extends SarosBaseService {
       options: { swapForY, isExactInput },
     } = params;
     try {
-      const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(this.pairAccount.activeId);
+      const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(
+        this.pairAccount.activeId
+      );
       const binArrayIndexes = [
         currentBinArrayIndex - 1,
         currentBinArrayIndex,
@@ -575,10 +565,7 @@ export class SarosDLMMPair extends SarosBaseService {
           this.volatilityManager.getVolatilityAccumulator()
         );
 
-        const {
-          amountInWithFees,
-          amountOut: amountOutOfBin,
-        } = this.swapExactOutput({
+        const { amountInWithFees, amountOut: amountOutOfBin } = this.swapExactOutput({
           binStep: pairInfo.binStep,
           activeId,
           amountOutLeft,
@@ -639,10 +626,7 @@ export class SarosDLMMPair extends SarosBaseService {
           this.volatilityManager.getVolatilityAccumulator()
         );
 
-        const {
-          amountInWithFees,
-          amountOut: amountOutOfBin,
-        } = this.swapExactInput({
+        const { amountInWithFees, amountOut: amountOutOfBin } = this.swapExactInput({
           binStep: pairInfo.binStep,
           activeId,
           amountInLeft,
@@ -1029,7 +1013,11 @@ export class SarosDLMMPair extends SarosBaseService {
     }
 
     const hook = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('hook')), this.hooksConfig.toBuffer(), this.pairAddress.toBuffer()],
+      [
+        Buffer.from(utils.bytes.utf8.encode('hook')),
+        this.hooksConfig.toBuffer(),
+        this.pairAddress.toBuffer(),
+      ],
       this.hooksProgram.programId
     )[0];
 
@@ -1082,9 +1070,7 @@ export class SarosDLMMPair extends SarosBaseService {
   /**
    * Remove liquidity from one or more positions in this pair
    */
-  public async removeLiquidity(
-    params: RemoveLiquidityParams
-  ): Promise<RemoveLiquidityResponse> {
+  public async removeLiquidity(params: RemoveLiquidityParams): Promise<RemoveLiquidityResponse> {
     const { positionMints, payer, type } = params;
 
     const tokenProgramX = await getTokenProgram(this.pairAccount.tokenMintX, this.connection);
@@ -1093,11 +1079,21 @@ export class SarosDLMMPair extends SarosBaseService {
     const setupTransaction = new Transaction();
 
     const associatedPairVaultX = await getPairVaultInfo(
-      { tokenMint: this.pairAccount.tokenMintX, pair: this.pairAddress, payer, transaction: setupTransaction },
+      {
+        tokenMint: this.pairAccount.tokenMintX,
+        pair: this.pairAddress,
+        payer,
+        transaction: setupTransaction,
+      },
       this.connection
     );
     const associatedPairVaultY = await getPairVaultInfo(
-      { tokenMint: this.pairAccount.tokenMintY, pair: this.pairAddress, payer, transaction: setupTransaction },
+      {
+        tokenMint: this.pairAccount.tokenMintY,
+        pair: this.pairAddress,
+        payer,
+        transaction: setupTransaction,
+      },
       this.connection
     );
     const associatedUserVaultX = await getUserVaultInfo(
@@ -1110,7 +1106,11 @@ export class SarosDLMMPair extends SarosBaseService {
     );
 
     const hook = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('hook')), this.hooksConfig.toBuffer(), this.pairAddress.toBuffer()],
+      [
+        Buffer.from(utils.bytes.utf8.encode('hook')),
+        this.hooksConfig.toBuffer(),
+        this.pairAddress.toBuffer(),
+      ],
       this.hooksProgram.programId
     )[0];
 

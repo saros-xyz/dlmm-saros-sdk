@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { SarosDLMM } from '../../services';
 import { PublicKey } from '@solana/web3.js';
-import { LiquidityShape } from '../../types';
+import { LiquidityShape, MODE } from '../../types';
 import {
   IntegrationTestSetup,
   setupIntegrationTest,
@@ -9,22 +9,25 @@ import {
   waitForConfirmation,
   cleanupLiquidity,
   getTokenBalance,
-  getTestConfig,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 
 let testSetup: IntegrationTestSetup;
+let sdk: SarosDLMM;
 
 beforeAll(async () => {
   await ensureTestEnvironment();
   testSetup = setupIntegrationTest();
+  sdk = new SarosDLMM({ mode: MODE.DEVNET, connection: testSetup.connection });
 });
 
 describe('Swap Integration with Seeded Liquidity', () => {
   it('adds liquidity, performs a swap, and verifies balances', async () => {
     const { testWallet, connection, testPool } = testSetup;
     const pairAddress = new PublicKey(testPool.pair);
-    const pair = await SarosDLMM.createPair(getTestConfig(), pairAddress);
+
+    // ✅ new instance usage
+    const pair = await sdk.getPair(pairAddress);
     const positionKeypair = createTestKeypair();
 
     try {
@@ -58,19 +61,11 @@ describe('Swap Integration with Seeded Liquidity', () => {
       // 3. Balances before swap
       const baseMint = new PublicKey(testPool.baseToken);
       const quoteMint = new PublicKey(testPool.quoteToken);
-      const balBeforeBase = await getTokenBalance(
-        connection,
-        testWallet.keypair.publicKey,
-        baseMint
-      );
-      const balBeforeQuote = await getTokenBalance(
-        connection,
-        testWallet.keypair.publicKey,
-        quoteMint
-      );
+      const balBeforeBase = await getTokenBalance(connection, testWallet.keypair.publicKey, baseMint);
+      const balBeforeQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, quoteMint);
 
       // 4. Get a quote
-      const amountIn = 1_000_000_000n; // 1 base token (with 9 decimals)
+      const amountIn = 1_000_000_000n; // 1 base token (9 decimals)
       const quote = await pair.getQuote({
         amount: amountIn,
         options: { swapForY: true, isExactInput: true },
@@ -78,11 +73,12 @@ describe('Swap Integration with Seeded Liquidity', () => {
       });
 
       expect(quote.amountOut).toBeGreaterThan(0n);
+
       // 5. Perform the swap
       const tx = await pair.swap({
         tokenIn: baseMint,
         tokenOut: quoteMint,
-        amount: quote.amountOut,
+        amount: quote.amountOut, // or `amountIn` if you want exact-in
         options: { swapForY: true, isExactInput: true },
         minTokenOut: quote.minTokenOut,
         payer: testWallet.keypair.publicKey,
@@ -93,29 +89,20 @@ describe('Swap Integration with Seeded Liquidity', () => {
       console.log(`Swap confirmed: ${sig}`);
 
       // 6. Balances after swap
-      const balAfterBase = await getTokenBalance(
-        connection,
-        testWallet.keypair.publicKey,
-        baseMint
-      );
-      const balAfterQuote = await getTokenBalance(
-        connection,
-        testWallet.keypair.publicKey,
-        quoteMint
-      );
+      const balAfterBase = await getTokenBalance(connection, testWallet.keypair.publicKey, baseMint);
+      const balAfterQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, quoteMint);
 
-      // 7. Calculate actual changes (let it fail if unexpected)
+      // 7. Calculate actual changes
       const spentBase = balBeforeBase - balAfterBase;
       const gainedQuote = balAfterQuote - balBeforeQuote;
-
       console.log(`Balance changes: spent ${spentBase} base, gained ${gainedQuote} quote`);
 
-      // 8. Assertions - these should all pass for a successful swap
+      // 8. Assertions
       expect(spentBase).toBeGreaterThan(0n);
       expect(gainedQuote).toBeGreaterThan(0n);
       expect(gainedQuote).toBeGreaterThanOrEqual(quote.minTokenOut);
     } finally {
-      await cleanupLiquidity(pair, positionKeypair, pairAddress, testWallet, connection);
+      await cleanupLiquidity(pair, positionKeypair, testWallet, connection);
     }
   });
 });

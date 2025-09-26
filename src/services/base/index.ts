@@ -1,39 +1,34 @@
-import { Commitment, Connection, ConnectionConfig, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { AnchorProvider, Idl, Program, Wallet } from '@coral-xyz/anchor';
-import { RPC_CONFIG } from '../../constants';
 import LiquidityBookIDL from '../../constants/idl/liquidity_book.json';
 import MdmaIDL from '../../constants/idl/mdma_hook.json';
 import LiquidityBookIDLDevnet from '../../constants/idl_devnet/liquidity_book.json';
 import MdmaIDLDevnet from '../../constants/idl_devnet/mdma_hook.json';
 import { MODE } from '../../types/config';
+import { DLMM_PROGRAM_IDS } from '../../constants';
 
 export interface SarosConfig {
   mode: MODE;
-  options?: {
-    rpcUrl: string;
-    commitmentOrConfig?: Commitment | ConnectionConfig;
-  };
+  connection: Connection;
 }
 
 export abstract class SarosBaseService {
+  protected config: SarosConfig; // ✅ persist config
   connection: Connection;
   lbProgram!: Program<Idl>;
   hooksProgram!: Program<Idl>;
-  mode!: MODE;
 
   constructor(config: SarosConfig) {
-    // Initialize RPC connection
-    this.connection = new Connection(
-      config.options?.rpcUrl || RPC_CONFIG[config.mode].rpc,
-      config.options?.commitmentOrConfig || 'confirmed'
-    );
+    this.config = config; // ✅ keep a reference for subservices
+
+    // Inherit Connection
+    this.connection = config.connection;
 
     const provider = new AnchorProvider(
       this.connection,
       {} as Wallet,
       AnchorProvider.defaultOptions()
     );
-    this.mode = config.mode;
 
     if (config.mode === MODE.DEVNET) {
       this.lbProgram = new Program(LiquidityBookIDLDevnet as Idl, provider);
@@ -54,16 +49,10 @@ export abstract class SarosBaseService {
   }
 
   get lbConfig(): PublicKey {
-    if (this.mode === MODE.DEVNET) {
-      return new PublicKey('DK6EoxvbMxJTkgcTAYfUnKyDZUTKb6wwPUFfpWsgeiR9');
-    }
-    return new PublicKey('BqPmjcPbAwE7mH23BY8q8VUEN4LSjhLUv41W87GsXVn8');
+    return DLMM_PROGRAM_IDS[this.config.mode].lb;
   }
 
   get hooksConfig(): PublicKey {
-    if (this.mode === MODE.DEVNET) {
-      return new PublicKey('2uAiHvYkmmvQkNh5tYtdR9sAUDwmbL7PjZcwAEYDqyES');
-    }
-    return new PublicKey('DgW5ARD9sU3W6SJqtyJSH3QPivxWt7EMvjER9hfFKWXF');
+    return DLMM_PROGRAM_IDS[this.config.mode].hooks;
   }
 }

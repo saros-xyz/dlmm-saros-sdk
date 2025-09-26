@@ -1,16 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { PublicKey, Keypair } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import { ACTIVE_ID } from '../../constants';
 import { LiquidityManager } from '../../utils/position/liquidity';
 import { SarosDLMM } from '../../services';
 import { MODE, PositionBinBalance, RemoveLiquidityType } from '../../types';
 
-const config = {
-  mode: MODE.MAINNET,
-  options: {
-    rpcUrl: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
-  },
-};
+// Single connection + SDK instance for all tests
+const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
+const sdk = new SarosDLMM({ mode: MODE.MAINNET, connection });
 
 const USDC_USDT = '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk';
 // any wallet with a DLMM position open
@@ -18,12 +15,11 @@ const TEST_WALLET = new PublicKey('4VGLP8wqFEHEoh8vjgYCMsUbZ6LtuYrxcJv226qCWNuT'
 
 describe('Position Operations', () => {
   it('fetches user positions for pool', async () => {
-    const pair = await SarosDLMM.createPair(config, new PublicKey(USDC_USDT));
+    const pair = await sdk.getPair(new PublicKey(USDC_USDT));
     const positions = await pair.getUserPositions({
       payer: TEST_WALLET,
     });
 
-    // console.log(positions);
     expect(Array.isArray(positions)).toBe(true);
     expect(positions.length).toBeGreaterThan(0);
 
@@ -33,7 +29,7 @@ describe('Position Operations', () => {
   });
 
   it('handles wallet with no positions', async () => {
-    const pair = await SarosDLMM.createPair(config, new PublicKey(USDC_USDT));
+    const pair = await sdk.getPair(new PublicKey(USDC_USDT));
     const positions = await pair.getUserPositions({
       payer: Keypair.generate().publicKey,
     });
@@ -42,7 +38,7 @@ describe('Position Operations', () => {
   });
 });
 
-describe('LiquidityHelper Logic', () => {
+describe('LiquidityManager Logic', () => {
   const mockPositionReserves: PositionBinBalance[] = [
     {
       baseReserve: 1000000n, // 1 USDC (6 decimals)
@@ -92,7 +88,6 @@ describe('LiquidityHelper Logic', () => {
       ACTIVE_ID + 2
     );
 
-    // Only first position has reserveX > 0 && reserveY === 0
     expect(removedShares[0].toString()).toBe('250000');
     expect(removedShares[1].toString()).toBe('0');
     expect(removedShares[2].toString()).toBe('0');
@@ -106,7 +101,6 @@ describe('LiquidityHelper Logic', () => {
       ACTIVE_ID + 2
     );
 
-    // Only second position has reserveY > 0 && reserveX === 0
     expect(removedShares[0].toString()).toBe('0');
     expect(removedShares[1].toString()).toBe('375000');
     expect(removedShares[2].toString()).toBe('0');

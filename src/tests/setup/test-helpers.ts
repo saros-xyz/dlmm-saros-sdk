@@ -4,6 +4,7 @@ import { TestWalletInfo, TestTokenInfo, TestWalletSetup, TestPoolInfo } from './
 import { WRAP_SOL_PUBKEY } from '../../constants';
 import { SarosDLMM } from '../../services';
 import { MODE, RemoveLiquidityType } from '../../types';
+import { SarosDLMMPair } from '../../services/pair';
 
 // Native SOL token info
 export const NATIVE_SOL: TestTokenInfo = {
@@ -124,23 +125,17 @@ export function createTestKeypair(): Keypair {
 
 // Shared integration test utilities
 export function createTestSarosDLMM(): SarosDLMM {
+  const connection = getTestConnection();
   return new SarosDLMM({
     mode: MODE.DEVNET,
-    options: { rpcUrl: process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com' },
+   connection
   });
 }
 
-export function getTestConfig() {
-  return {
-    mode: MODE.DEVNET,
-    options: { rpcUrl: process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com' },
-  };
-}
 
 export async function cleanupLiquidity(
-  pairInstance: any, // SarosDLMMPair or SarosDLMM for backward compatibility
+  pairInstance: SarosDLMMPair,
   positionKeypair: Keypair,
-  pairAddress: PublicKey,
   testWallet: TestWalletInfo,
   connection: Connection
 ): Promise<void> {
@@ -164,6 +159,7 @@ export async function cleanupLiquidity(
     // ignore cleanup failures
   }
 }
+
 
 export async function getTokenBalance(
   connection: Connection,

@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { MODE } from '../../types';
-import { PublicKey } from '@solana/web3.js';
 import { PairServiceError } from '../../utils/errors';
 import { SarosDLMM } from '../../services';
 
-const config = {
-  mode: MODE.MAINNET,
-  options: {
-    rpcUrl: process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
-  },
-};
+// Single connection + SDK instance for all tests
+const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
+const sdk = new SarosDLMM({ mode: MODE.MAINNET, connection });
 
 // Test constants
 const POOLS = {
@@ -30,7 +27,7 @@ const POOLS = {
 
 describe('Pool Metadata', () => {
   it('fetches SOL/USDC metadata', async () => {
-    const pair = await SarosDLMM.createPair(config, new PublicKey(POOLS.SOL_USDC.address));
+    const pair = await sdk.getPair(new PublicKey(POOLS.SOL_USDC.address));
     const metadata = pair.getPairMetadata();
 
     expect(metadata.pair).toBe(POOLS.SOL_USDC.address);
@@ -38,8 +35,8 @@ describe('Pool Metadata', () => {
     expect(metadata.quoteToken.decimals).toBe(POOLS.SOL_USDC.quoteDecimals);
   });
 
-  it('throws PoolNotFound for invalid pool', async () => {
-    await expect(SarosDLMM.createPair(config, new PublicKey(POOLS.INVALID.address))).rejects.toThrow(
+  it('throws PairServiceError for invalid pool', async () => {
+    await expect(sdk.getPair(new PublicKey(POOLS.INVALID.address))).rejects.toThrow(
       PairServiceError.Pair
     );
   });
@@ -47,7 +44,7 @@ describe('Pool Metadata', () => {
 
 describe('Pool Discovery', () => {
   it('returns array of pool addresses', async () => {
-    const addresses = await SarosDLMM.getAllPairAddresses(config);
+    const addresses = await sdk.getAllPairAddresses();
 
     expect(Array.isArray(addresses)).toBe(true);
     expect(addresses.length).toBeGreaterThan(0);
@@ -57,7 +54,7 @@ describe('Pool Discovery', () => {
 
 describe('Pool Liquidity', () => {
   it('returns liquidity data with default range', async () => {
-    const pair = await SarosDLMM.createPair(config, new PublicKey(POOLS.USDC_USDT.address));
+    const pair = await sdk.getPair(new PublicKey(POOLS.USDC_USDT.address));
     const data = await pair.getPairLiquidity();
 
     expect(typeof data.activeBin).toBe('number');
@@ -66,14 +63,10 @@ describe('Pool Liquidity', () => {
   });
 
   it('respects custom arrayRange', async () => {
-    const pair = await SarosDLMM.createPair(config, new PublicKey(POOLS.USDC_USDT.address));
+    const pair = await sdk.getPair(new PublicKey(POOLS.USDC_USDT.address));
     const [small, large] = await Promise.all([
-      pair.getPairLiquidity({
-        numberOfBinArrays: 1,
-      }),
-      pair.getPairLiquidity({
-        numberOfBinArrays: 5,
-      }),
+      pair.getPairLiquidity({ numberOfBinArrays: 1 }),
+      pair.getPairLiquidity({ numberOfBinArrays: 5 }),
     ]);
 
     const smallTotal = small.bins.reduce((sum, bin) => sum + bin.baseReserve + bin.quoteReserve, 0);

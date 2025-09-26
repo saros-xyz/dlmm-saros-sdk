@@ -16,7 +16,7 @@ npm install @saros-finance/dlmm-sdk
 
 ## Overview
 
-The Saros DLMM SDK provides a modern, pool-centric API for interacting with Dynamic Liquidity Market Maker pools on Solana. The SDK follows a factory pattern where you create pool instances that maintain context and provide optimized access to pool-specific operations.
+The Saros DLMM SDK provides a modern, pool-centric API for interacting with Dynamic Liquidity Market Maker pools on Solana.
 
 ## Architecture
 
@@ -25,44 +25,32 @@ The Saros DLMM SDK provides a modern, pool-centric API for interacting with Dyna
 - **`SarosDLMM`** - Static factory class for protocol-level operations (creating pairs, discovering pools)
 - **`SarosDLMMPair`** - Pair instance class with operations for a specific pair/pool
 
-### Key Benefits
-
-- **Performance**: Pool data is cached at initialization, eliminating redundant RPC calls
-- **Developer Experience**: Clean, intuitive API with proper TypeScript support
-- **Resource Efficient**: Batch operations and optimized data fetching
-
 ## Quick Start
 
 ### Basic Setup
 
 ```typescript
-import { SarosDLMM } from '@saros-finance/dlmm-sdk';
-import { PublicKey } from '@solana/web3.js';
-import { MODE } from '@saros-finance/dlmm-sdk';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { SarosDLMM, MODE } from '@saros-finance/dlmm-sdk';
 
-// Configure the SDK
-const config = {
-  mode: MODE.MAINNET, // or MODE.DEVNET
-  options: {
-    rpcUrl: 'https://api.mainnet-beta.solana.com',
-  },
-};
+const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+const sdk = new SarosDLMM({ mode: MODE.MAINNET, connection });
 
-// Get a pair instance (loads and caches pair data)
+// Get a pair instance
 const pairAddress = new PublicKey('9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk');
-const pair = await SarosDLMM.create(config, pairAddress);
+const pair = await sdk.getPair(pairAddress);
 ```
 
 ### Getting Pool Information
 
 ```typescript
-// Get pair metadata
+// Metadata
 const metadata = pair.getPairMetadata();
-console.log(`Pool: ${metadata.baseToken.symbol}/${metadata.quoteToken.symbol}`);
+console.log(`${metadata.baseToken.symbol}/${metadata.quoteToken.symbol}`);
 
-// Get current liquidity distribution
+// Liquidity distribution
 const liquidity = await pair.getPairLiquidity({ numberOfBinArrays: 3 });
-console.log(`Active bin: ${liquidity.activeBin}, Total bins: ${liquidity.bins.length}`);
+console.log(`Active bin: ${liquidity.activeBin}, bins: ${liquidity.bins.length}`);
 ```
 
 ### Swapping Tokens
@@ -87,7 +75,6 @@ const swapTx = await pair.swap({
   options: { swapForY: true, isExactInput: true },
   minTokenOut: quote.minTokenOut,
   payer: walletPublicKey,
-  // hook: customHookAddress, // Optional: custom hook for rewards
 });
 
 // Sign and send the transaction
@@ -97,30 +84,31 @@ const signature = await connection.sendTransaction(swapTx, [wallet]);
 ### Adding Liquidity
 
 ```typescript
-import { LiquidityShape } from '@saros-finance/dlmm-sdk';
 import { Keypair } from '@solana/web3.js';
+import { LiquidityShape } from '@saros-finance/dlmm-sdk';
+
+const positionKeypair = Keypair.generate();
 
 // Create a position NFT
-const positionKeypair = Keypair.generate();
 const createTx = await pair.createPosition({
   payer: walletPublicKey,
   positionMint: positionKeypair.publicKey,
-  binRange: [-5, 5], // 5 bins on each side of active bin
-});
-
-// Add liquidity with different distribution shapes
-const addLiquidityTx = await pair.addLiquidityByShape({
-  positionMint: positionKeypair.publicKey,
-  payer: walletPublicKey,
-  baseAmount: 1000000000n, // Amount of base token
-  quoteAmount: 1000000n,   // Amount of quote token
-  liquidityShape: LiquidityShape.Spot, // Spot, Curve, or BidAsk
   binRange: [-5, 5],
 });
 
-// Execute transactions
+// Add liquidity
+const addTx = await pair.addLiquidityByShape({
+  positionMint: positionKeypair.publicKey,
+  payer: walletPublicKey,
+  baseAmount: 1_000_000_000n,
+  quoteAmount: 1_000_000n,
+  liquidityShape: LiquidityShape.Spot,
+  binRange: [-5, 5],
+});
+
+// Execute
 await connection.sendTransaction(createTx, [wallet, positionKeypair]);
-await connection.sendTransaction(addLiquidityTx, [wallet]);
+await connection.sendTransaction(addTx, [wallet]);
 ```
 
 ### Managing Existing Positions
@@ -128,135 +116,56 @@ await connection.sendTransaction(addLiquidityTx, [wallet]);
 ```typescript
 import { RemoveLiquidityType } from '@saros-finance/dlmm-sdk';
 
-// Get user's positions for this pool
 const positions = await pair.getUserPositions({ payer: walletPublicKey });
 console.log(`Found ${positions.length} positions`);
 
-// Remove liquidity from specific positions
-const removeLiquidityResult = await pair.removeLiquidity({
-  positionMints: [positions[0].positionMint], // Use existing position
+const result = await pair.removeLiquidity({
+  positionMints: [positions[0].positionMint],
   payer: walletPublicKey,
-  type: RemoveLiquidityType.All, // All, BaseToken, or QuoteToken
+  type: RemoveLiquidityType.All,
 });
 
-// Execute remove liquidity transactions (may include setup/cleanup)
-if (removeLiquidityResult.setupTransaction) {
-  await connection.sendTransaction(removeLiquidityResult.setupTransaction, [wallet]);
+// Execute returned txs
+if (result.setupTransaction) {
+  await connection.sendTransaction(result.setupTransaction, [wallet]);
 }
-for (const tx of removeLiquidityResult.transactions) {
+for (const tx of result.transactions) {
   await connection.sendTransaction(tx, [wallet]);
 }
-if (removeLiquidityResult.cleanupTransaction) {
-  await connection.sendTransaction(removeLiquidityResult.cleanupTransaction, [wallet]);
+if (result.cleanupTransaction) {
+  await connection.sendTransaction(result.cleanupTransaction, [wallet]);
 }
 ```
 
 ### Protocol-Level Operations
 
 ```typescript
-// Discover all pairs in the protocol
-const allPairAddresses = await SarosDLMM.getAllPairAddresses(config);
-console.log(`Found ${allPairAddresses.length} pairs`);
+// Discover all pairs
+const allPairs = await sdk.getAllPairAddresses();
+console.log(`Found ${allPairs.length} pairs`);
 
-// Find pairs for specific tokens
-const tokenA = new PublicKey('TokenMintA...');
-const tokenB = new PublicKey('TokenMintB...');
-const matchingPairs = await SarosDLMM.findPoolsByTokens(config, tokenA, tokenB);
+// Find pools by tokens
+const tokenA = new PublicKey('...');
+const tokenB = new PublicKey('...');
+const matches = await sdk.findPoolsByTokens(tokenA, tokenB);
 
-// Create a new pair on-chain
-const createPairResult = await SarosDLMM.createNewPair(config, {
-  baseToken: { mintAddress: tokenA.toString(), decimals: 9 },
-  quoteToken: { mintAddress: tokenB.toString(), decimals: 6 },
-  binStep: 25, // 0.25% fee tier
-  ratePrice: 1.5, // Initial price
+// Create new pool
+const createResult = await sdk.createNewPair({
+  baseToken: { mintAddress: tokenA.toBase58(), decimals: 9 },
+  quoteToken: { mintAddress: tokenB.toBase58(), decimals: 6 },
+  binStep: 25,
+  ratePrice: 1.5,
   payer: walletPublicKey,
 });
 
-// Work with multiple pairs efficiently
-const pairs = await SarosDLMM.createMultiple(config, [
+// Work with multiple pools
+const pairs = await sdk.getMultiplePairs([
   new PublicKey('PairA...'),
   new PublicKey('PairB...'),
-  new PublicKey('PairC...'),
 ]);
-
-// Each pair instance has cached data and individual methods
-for (const pair of pairs) {
-  const metadata = pair.getPairMetadata();
-  console.log(`${metadata.baseToken.symbol}/${metadata.quoteToken.symbol}`);
-}
 ```
 
-## Error Handling
-
-The SDK provides specific error types for different scenarios:
-
-```typescript
-import { PairServiceError, SwapServiceError, PositionServiceError } from '@saros-finance/dlmm-sdk';
-
-try {
-  const quote = await pair.getQuote({
-    amount: 0n, // Invalid amount
-    options: { swapForY: true, isExactInput: true },
-    slippage: 1,
-  });
-} catch (error) {
-  if (error === SwapServiceError.ZeroAmount) {
-    console.error('Amount cannot be zero');
-  } else if (error === SwapServiceError.InvalidSlippage) {
-    console.error('Slippage must be between 0 and 100');
-  }
-}
-```
 
 ## Migration from Previous Versions
 
-If you're upgrading from a previous version that used the old service-based API:
-
-### Old Pattern (Deprecated)
-```typescript
-// ❌ Old way - required pair parameter in every call
-const lbServices = new SarosDLMM(config);
-const quote = await lbServices.getQuote({
-  pair: pairAddress,
-  amount: 1000000n,
-  options: { swapForY: true, isExactInput: true },
-  slippage: 1,
-});
-```
-
-### New Pattern (Recommended)
-```typescript
-// ✅ New way - pair context is managed by the instance
-const pair = await SarosDLMM.create(config, pairAddress);
-const quote = await pair.getQuote({
-  amount: 1000000n,
-  options: { swapForY: true, isExactInput: true },
-  slippage: 1,
-});
-```
-
-## Type Definitions
-
-The SDK exports clean, properly typed interfaces:
-
-```typescript
-import type {
-  // Instance method parameters (clean, no pair parameter)
-  PairQuoteParams,
-  PairSwapParams,
-  PairCreatePositionParams,
-
-  // Response types
-  QuoteResponse,
-  PairMetadata,
-  RemoveLiquidityResponse,
-
-  // Configuration
-  SarosConfig,
-  MODE,
-
-  // Enums
-  LiquidityShape,
-  RemoveLiquidityType,
-} from '@saros-finance/dlmm-sdk';
-```
+If run into any issues upgrading to the latest version please contact Saros support via 

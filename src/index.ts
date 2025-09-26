@@ -5,6 +5,9 @@
 export { SarosDLMM } from './services';
 export { SarosDLMMPair } from './services/pair';
 
+// Program IDs
+export { DLMM_PROGRAM_IDS } from './constants';
+
 // Public enums (values)
 export { MODE, LiquidityShape, RemoveLiquidityType } from './types';
 

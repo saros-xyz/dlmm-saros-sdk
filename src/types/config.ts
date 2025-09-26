@@ -1,5 +1,4 @@
 export enum MODE {
-  TESTNET = 'testnet',
   DEVNET = 'devnet',
   MAINNET = 'mainnet',
 }

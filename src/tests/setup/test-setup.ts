@@ -1,5 +1,6 @@
 import { TestWalletSetup } from './wallet-setup';
 import { createTokensIfNeeded } from './token-creator';
+import { Connection } from '@solana/web3.js';
 
 let setupPromise: Promise<void> | null = null;
 
@@ -11,8 +12,11 @@ async function setupTestEnvironment() {
 
   console.log('🔧 Setting up test environment...');
 
-  const walletSetup = new TestWalletSetup();
-
+  const connection = new Connection(
+    process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com',
+    'confirmed'
+  );
+  const walletSetup = new TestWalletSetup({}, connection);
   // Check if tokens exist, create them if not
   await createTokensIfNeeded(walletSetup);
 

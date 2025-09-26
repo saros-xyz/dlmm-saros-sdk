@@ -7,7 +7,6 @@ import { SarosDLMMPair } from './pair';
 import { BinArrayManager } from '../utils/pair/bin-manager';
 import {
   CreatePairParams,
-  DLMMPairAccount,
   CreatePairResponse,
 } from '../types';
 import { getIdFromPrice } from '../utils/price';
@@ -15,34 +14,30 @@ import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
 import { PairServiceError } from '../utils/errors';
 
 export class SarosDLMM extends SarosBaseService {
-  /**
-   * Get a SarosDLMMPair instance with loaded pair data
-   */
-  public static async createPair(config: SarosConfig, pairAddress: PublicKey): Promise<SarosDLMMPair> {
-    return await SarosDLMMPair.create(config, pairAddress);
+  constructor(config: SarosConfig) {
+    super(config);
   }
 
-  // /**
-  //  * Get multiple SarosDLMMPair instances
-  //  */
-  // public static async createMultiplePairs(
-  //   config: SarosConfig,
-  //   pairAddresses: PublicKey[]
-  // ): Promise<SarosDLMMPair[]> {
-  //   return await SarosDLMMPair.createMultiple(config, pairAddresses);
-  // }
+public async getPair(pairAddress: PublicKey): Promise<SarosDLMMPair> {
+  const pair = new SarosDLMMPair(this.config, pairAddress);
+  await pair.refetchStates();
+  return pair;
+}
+
+public async getMultiplePairs(pairAddresses: PublicKey[]): Promise<SarosDLMMPair[]> {
+  return await Promise.all(pairAddresses.map((addr) => this.getPair(addr)));
+}
 
   /**
    * Get list of all Saros DLMM pair addresses
    */
-  public static async getAllPairAddresses(config: SarosConfig): Promise<string[]> {
-    const service = new SarosDLMM(config);
+  public async getAllPairAddresses(): Promise<string[]> {
     try {
-      const programId = service.getDexProgramId();
+      const programId = this.getDexProgramId();
       const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
       if (!pairAccount) throw PairServiceError.NoPairFound;
 
-      const accounts = await service.connection.getProgramAccounts(new PublicKey(programId), {
+      const accounts = await this.connection.getProgramAccounts(new PublicKey(programId), {
         filters: [{ memcmp: { offset: 0, bytes: bs58.encode(pairAccount.discriminator) } }],
       });
 
@@ -61,10 +56,9 @@ export class SarosDLMM extends SarosBaseService {
   }
 
   /**
-   * Returns a transaction to create a new pair on-chain. Requires a new token pair or a new binStep and ratePrice.
+   * Returns a transaction to create a new pair on-chain.
    */
-  public static async createNewPair(config: SarosConfig, params: CreatePairParams): Promise<CreatePairResponse> {
-    const service = new SarosDLMM(config);
+  public async createNewPair(params: CreatePairParams): Promise<CreatePairResponse> {
     const { baseToken, quoteToken, binStep, ratePrice, payer } = params;
 
     if (ratePrice <= 0) throw PairServiceError.InvalidPrice;
@@ -83,37 +77,37 @@ export class SarosDLMM extends SarosBaseService {
       const binStepConfig = PublicKey.findProgramAddressSync(
         [
           Buffer.from(utils.bytes.utf8.encode('bin_step_config')),
-          service.lbConfig.toBuffer(),
+          this.lbConfig.toBuffer(),
           new Uint8Array([binStep]),
         ],
-        service.lbProgram.programId
+        this.lbProgram.programId
       )[0];
 
       const quoteAssetBadge = PublicKey.findProgramAddressSync(
         [
           Buffer.from(utils.bytes.utf8.encode('quote_asset_badge')),
-          service.lbConfig.toBuffer(),
+          this.lbConfig.toBuffer(),
           tokenY.toBuffer(),
         ],
-        service.lbProgram.programId
+        this.lbProgram.programId
       )[0];
 
       const pair = PublicKey.findProgramAddressSync(
         [
           Buffer.from(utils.bytes.utf8.encode('pair')),
-          service.lbConfig.toBuffer(),
+          this.lbConfig.toBuffer(),
           tokenX.toBuffer(),
           tokenY.toBuffer(),
           new Uint8Array([binStep]),
         ],
-        service.lbProgram.programId
+        this.lbProgram.programId
       )[0];
 
       // Initialize pair
-      const initializePairIx = await service.lbProgram.methods
+      const initializePairIx = await this.lbProgram.methods
         .initializePair(id)
         .accountsPartial({
-          liquidityBookConfig: service.lbConfig,
+          liquidityBookConfig: this.lbConfig,
           binStepConfig,
           quoteAssetBadge,
           pair,
@@ -131,27 +125,27 @@ export class SarosDLMM extends SarosBaseService {
         pair,
         payer,
         tx,
-        service.connection,
-        service.lbProgram
+        this.connection,
+        this.lbProgram
       );
       await BinArrayManager.addInitializeBinArrayInstruction(
         binArrayIndex + 1,
         pair,
         payer,
         tx,
-        service.connection,
-        service.lbProgram
+        this.connection,
+        this.lbProgram
       );
 
       const binArrayLower = BinArrayManager.getBinArrayAddress(
         binArrayIndex,
         pair,
-        service.lbProgram.programId
+        this.lbProgram.programId
       );
       const binArrayUpper = BinArrayManager.getBinArrayAddress(
         binArrayIndex + 1,
         pair,
-        service.lbProgram.programId
+        this.lbProgram.programId
       );
 
       return {
@@ -159,7 +153,7 @@ export class SarosDLMM extends SarosBaseService {
         pair: pair.toString(),
         binArrayLower: binArrayLower.toString(),
         binArrayUpper: binArrayUpper.toString(),
-        hooksConfig: service.hooksConfig.toString(),
+        hooksConfig: this.hooksConfig.toString(),
         activeBin: Number(id),
       };
     } catch (error) {
@@ -171,26 +165,24 @@ export class SarosDLMM extends SarosBaseService {
   /**
    * Listen for new pair addresses being created and call postTxFunction with the new address
    */
-  public static async listenNewPairAddress(
-    config: SarosConfig,
+  public async listenNewPairAddress(
     postTxFunction: (address: string) => Promise<void>
   ) {
-    const service = new SarosDLMM(config);
-    const LB_PROGRAM_ID = service.getDexProgramId();
-    const subscriptionId = service.connection.onLogs(
+    const LB_PROGRAM_ID = this.getDexProgramId();
+    const subscriptionId = this.connection.onLogs(
       LB_PROGRAM_ID,
       (logInfo) => {
         if (!logInfo.err) {
           for (const log of logInfo.logs || []) {
             if (log.includes('Instruction: InitializePair')) {
-              service.getPairAddressFromLogs(logInfo.signature).then(postTxFunction);
+              this.getPairAddressFromLogs(logInfo.signature).then(postTxFunction);
             }
           }
         }
       },
       'finalized'
     );
-    return () => service.connection.removeOnLogsListener(subscriptionId);
+    return () => this.connection.removeOnLogsListener(subscriptionId);
   }
 
   private async getPairAddressFromLogs(signature: string) {
@@ -221,33 +213,30 @@ export class SarosDLMM extends SarosBaseService {
   /**
    * Find pairs by token mints
    */
-  public static async findPoolsByTokens(
-    config: SarosConfig,
-    tokenA: PublicKey,
-    tokenB: PublicKey
-  ): Promise<string[]> {
-    const allPairs = await SarosDLMM.getAllPairAddresses(config);
-    const service = new SarosDLMM(config);
+public static async findPoolsByTokens(
+  config: SarosConfig,
+  tokenA: PublicKey,
+  tokenB: PublicKey
+): Promise<string[]> {
+  const service = new SarosDLMM(config);
+  const programId = service.getDexProgramId();
 
-    const matchingPairs: string[] = [];
+const accounts = await Promise.all([
+  service.connection.getProgramAccounts(new PublicKey(programId), {
+    filters: [
+      { memcmp: { offset: 43, bytes: tokenA.toBase58() } },
+      { memcmp: { offset: 75, bytes: tokenB.toBase58() } },
+    ],
+  }),
+  service.connection.getProgramAccounts(new PublicKey(programId), {
+    filters: [
+      { memcmp: { offset: 43, bytes: tokenB.toBase58() } },
+      { memcmp: { offset: 75, bytes: tokenA.toBase58() } },
+    ],
+  }),
+]);
 
-    for (const pairAddress of allPairs) {
-      try {
-        //@ts-ignore
-        const pairInfo: DLMMPairAccount = await service.lbProgram.account.pair.fetch(new PublicKey(pairAddress));
+  return [...accounts[0], ...accounts[1]].map((acc) => acc.pubkey.toString());
+}
 
-        if (
-          (pairInfo.tokenMintX.equals(tokenA) && pairInfo.tokenMintY.equals(tokenB)) ||
-          (pairInfo.tokenMintX.equals(tokenB) && pairInfo.tokenMintY.equals(tokenA))
-        ) {
-          matchingPairs.push(pairAddress);
-        }
-      } catch {
-        // Skip invalid pairs
-        continue;
-      }
-    }
-
-    return matchingPairs;
-  }
 }
