@@ -29,8 +29,7 @@ async function createOrVerifyPool(
 ) {
   console.log(`Ensuring ${poolName} pool exists...`);
 
-  // ✅ use instance method
-  const result = await sdk.createNewPair(params);
+  const result = await sdk.createPair(params);
 
   try {
     const sig = await connection.sendTransaction(result.transaction, [testWallet.keypair]);
@@ -74,7 +73,7 @@ describe('Pool Creation Integration', () => {
   it('rejects invalid parameters', async () => {
     const saros = getTestToken('SAROSDEV');
     await expect(
-      sdk.createNewPair({
+      sdk.createPair({
         baseToken: saros,
         quoteToken: { mintAddress: NATIVE_SOL.mintAddress, decimals: NATIVE_SOL.decimals },
         binStep: 25,

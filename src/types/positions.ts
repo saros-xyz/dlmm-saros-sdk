@@ -10,14 +10,6 @@ export interface GetUserPositionsParams {
 }
 
 /**
- * Parameters for retrieving user positions (static factory method)
- */
-export interface StaticGetUserPositionsParams extends GetUserPositionsParams {
-  /** The DLMM pair address to query positions for */
-  pair: PublicKey;
-}
-
-/**
  * Parameters for creating a new liquidity position
  */
 export interface CreatePositionParams {
@@ -27,14 +19,6 @@ export interface CreatePositionParams {
   positionMint: PublicKey;
   /** Bin range [minBin, maxBin] relative to the current active bin */
   binRange: [number, number];
-}
-
-/**
- * Parameters for creating a new position (static factory method)
- */
-export interface StaticCreatePositionParams extends CreatePositionParams {
-  /** The DLMM pair address where the position will be created */
-  pair: PublicKey;
 }
 
 /**
@@ -58,14 +42,6 @@ export interface AddLiquidityByShapeParams {
 }
 
 /**
- * Parameters for adding liquidity by shape (static factory method)
- */
-export interface StaticAddLiquidityByShapeParams extends AddLiquidityByShapeParams {
-  /** The DLMM pair address */
-  pair: PublicKey;
-}
-
-/**
  * Parameters for removing liquidity from positions
  */
 export interface RemoveLiquidityParams {
@@ -75,14 +51,6 @@ export interface RemoveLiquidityParams {
   payer: PublicKey;
   /** Type of removal: All tokens, BaseToken only, or QuoteToken only */
   type: RemoveLiquidityType;
-}
-
-/**
- * Parameters for removing liquidity (static factory method)
- */
-export interface StaticRemoveLiquidityParams extends RemoveLiquidityParams {
-  /** The DLMM pair address */
-  pair: PublicKey;
 }
 
 /**
@@ -110,14 +78,6 @@ export interface GetPositionBinBalancesParams {
 }
 
 /**
- * Parameters for retrieving position bin balances (static factory method)
- */
-export interface StaticGetPositionBinBalancesParams extends GetPositionBinBalancesParams {
-  /** The DLMM pair address */
-  pair: PublicKey;
-}
-
-/**
  * Parameters for retrieving bin array information from a pair
  */
 export interface GetBinArrayInfoParams {
@@ -125,14 +85,6 @@ export interface GetBinArrayInfoParams {
   binArrayIndex: number;
   /** The wallet requesting the information (used for transaction context if needed) */
   payer: PublicKey;
-}
-
-/**
- * Parameters for retrieving bin array info (static factory method)
- */
-export interface StaticGetBinArrayInfoParams extends GetBinArrayInfoParams {
-  /** The DLMM pair address */
-  pair: PublicKey;
 }
 
 /**

@@ -58,12 +58,14 @@ async function runShapeTest(
       connection
     );
 
-    const positionAddr = PublicKey.findProgramAddressSync(
-      [Buffer.from('position'), positionKeypair.publicKey.toBuffer()],
-      pair.lbProgram.programId
-    )[0];
+    const positions = await pair.getUserPositions({
+      payer: testWallet.keypair.publicKey,
+    });
+    const position = positions.find(p => p.positionMint.equals(positionKeypair.publicKey));
+    if (!position) throw new Error('Position not found');
+
     const bins = await pair.getPositionBinBalances({
-      position: positionAddr,
+      position: new PublicKey(position.position),
       payer: testWallet.keypair.publicKey,
     });
 

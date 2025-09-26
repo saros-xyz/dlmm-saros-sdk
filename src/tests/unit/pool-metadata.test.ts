@@ -25,6 +25,12 @@ const POOLS = {
   },
 } as const;
 
+// Token mint addresses
+const TOKEN_MINTS = {
+  USDC: '8f5df1A2pahY3qgrXTSx9jtYnE2idavDv9BK94smB528',
+  SOL: 'So11111111111111111111111111111111111111112',
+} as const;
+
 describe('Pool Metadata', () => {
   it('fetches SOL/USDC metadata', async () => {
     const pair = await sdk.getPair(new PublicKey(POOLS.SOL_USDC.address));
@@ -49,6 +55,50 @@ describe('Pool Discovery', () => {
     expect(Array.isArray(addresses)).toBe(true);
     expect(addresses.length).toBeGreaterThan(0);
     expect(addresses[0]).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/); // Base58 format
+  });
+
+  it('searches pairs by USDC token mint', async () => {
+    const addresses = await sdk.findPairs(new PublicKey(TOKEN_MINTS.USDC));
+
+    expect(Array.isArray(addresses)).toBe(true);
+    console.log(addresses);
+    expect(addresses.length).toBeGreaterThan(0);
+    addresses.forEach(address => {
+      expect(address).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
+    });
+  });
+
+  it('searches pairs by SOL token mint', async () => {
+    const addresses = await sdk.findPairs(new PublicKey(TOKEN_MINTS.SOL));
+
+    expect(Array.isArray(addresses)).toBe(true);
+    expect(addresses.length).toBeGreaterThan(0);
+    addresses.forEach(address => {
+      expect(address).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
+    });
+  });
+
+  it('fetches multiple pairs with getPairs', async () => {
+    const pairAddresses = [
+      new PublicKey(POOLS.SOL_USDC.address),
+      new PublicKey(POOLS.USDC_USDT.address),
+    ];
+
+    const pairs = await sdk.getPairs(pairAddresses);
+
+    expect(Array.isArray(pairs)).toBe(true);
+    expect(pairs.length).toBe(2);
+
+    pairs.forEach(pair => {
+      expect(pair).toBeDefined();
+      expect(pair.getPairMetadata()).toBeDefined();
+    });
+
+    const solUsdcPair = pairs.find(p => p.getPairMetadata().pair === POOLS.SOL_USDC.address);
+    const usdcUsdtPair = pairs.find(p => p.getPairMetadata().pair === POOLS.USDC_USDT.address);
+
+    expect(solUsdcPair).toBeDefined();
+    expect(usdcUsdtPair).toBeDefined();
   });
 });
 

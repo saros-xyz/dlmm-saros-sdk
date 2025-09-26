@@ -13,13 +13,13 @@ export interface SarosConfig {
 }
 
 export abstract class SarosBaseService {
-  protected config: SarosConfig; // ✅ persist config
+  protected config: SarosConfig;
   connection: Connection;
   lbProgram!: Program<Idl>;
   hooksProgram!: Program<Idl>;
 
   constructor(config: SarosConfig) {
-    this.config = config; // ✅ keep a reference for subservices
+    this.config = config;
 
     // Inherit Connection
     this.connection = config.connection;
