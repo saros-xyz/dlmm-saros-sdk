@@ -9,7 +9,7 @@ import { SarosDLMMPair } from '../../services/pair';
 // Native SOL token info
 export const NATIVE_SOL: TestTokenInfo = {
   symbol: 'wSOL',
-  mintAddress: WRAP_SOL_PUBKEY.toString(),
+  mintAddress: WRAP_SOL_PUBKEY,
   decimals: 9,
   name: 'Wrapped SOL',
   supply: 100000000,
@@ -87,8 +87,8 @@ export function findTestPool(
   return (
     pools.find(
       (pool) =>
-        pool.baseToken === baseToken.mintAddress &&
-        pool.quoteToken === quoteToken.mintAddress &&
+        pool.baseToken === baseToken.mintAddress.toString() &&
+        pool.quoteToken === quoteToken.mintAddress.toString() &&
         pool.binStep === binStep
     ) || null
   );
@@ -197,7 +197,7 @@ export function setupIntegrationTest(): IntegrationTestSetup {
 
   const pools = getAllTestPools();
   const testPool = pools.find(
-    (p) => p.baseToken === saros.mintAddress || p.quoteToken === saros.mintAddress
+    (p) => p.baseToken === saros.mintAddress.toString() || p.quoteToken === saros.mintAddress.toString()
   );
   if (!testPool) throw new Error('No pool with SAROSDEV token');
 

@@ -64,7 +64,7 @@ export interface RemoveLiquidityResponse {
   /** Execute LAST if present - closes empty accounts and unwraps SOL */
   cleanupTransaction?: Transaction;
   /** List of position mint addresses that will be completely closed and burned */
-  closedPositions: string[];
+  closedPositions: PublicKey[];
 }
 
 /**

@@ -40,7 +40,8 @@ export interface DLMMPairAccount {
 export interface PositionAccount {
   pair: PublicKey;
   positionMint: PublicKey;
-  position: string;
+  /** The derived position account address (PDA from positionMint using seeds: ["position", positionMint]) */
+  position: PublicKey;
   liquidityShares: BN[];
   lowerBinId: number;
   upperBinId: number;

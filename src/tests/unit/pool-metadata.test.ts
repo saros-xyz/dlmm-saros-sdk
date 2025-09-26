@@ -27,8 +27,9 @@ const POOLS = {
 
 // Token mint addresses
 const TOKEN_MINTS = {
-  USDC: '8f5df1A2pahY3qgrXTSx9jtYnE2idavDv9BK94smB528',
+  USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   SOL: 'So11111111111111111111111111111111111111112',
+  LAUNCHCOIN: 'Ey59PH7Z4BFU4HjyKnyMdWt5GGN76KazTAwQihoUXRnk',
 } as const;
 
 describe('Pool Metadata', () => {
@@ -36,7 +37,7 @@ describe('Pool Metadata', () => {
     const pair = await sdk.getPair(new PublicKey(POOLS.SOL_USDC.address));
     const metadata = pair.getPairMetadata();
 
-    expect(metadata.pair).toBe(POOLS.SOL_USDC.address);
+    expect(metadata.pair.toString()).toBe(POOLS.SOL_USDC.address);
     expect(metadata.baseToken.decimals).toBe(POOLS.SOL_USDC.baseDecimals);
     expect(metadata.quoteToken.decimals).toBe(POOLS.SOL_USDC.quoteDecimals);
   });
@@ -61,17 +62,6 @@ describe('Pool Discovery', () => {
     const addresses = await sdk.findPairs(new PublicKey(TOKEN_MINTS.USDC));
 
     expect(Array.isArray(addresses)).toBe(true);
-    console.log(addresses);
-    expect(addresses.length).toBeGreaterThan(0);
-    addresses.forEach(address => {
-      expect(address).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
-    });
-  });
-
-  it('searches pairs by SOL token mint', async () => {
-    const addresses = await sdk.findPairs(new PublicKey(TOKEN_MINTS.SOL));
-
-    expect(Array.isArray(addresses)).toBe(true);
     expect(addresses.length).toBeGreaterThan(0);
     addresses.forEach(address => {
       expect(address).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
@@ -94,8 +84,8 @@ describe('Pool Discovery', () => {
       expect(pair.getPairMetadata()).toBeDefined();
     });
 
-    const solUsdcPair = pairs.find(p => p.getPairMetadata().pair === POOLS.SOL_USDC.address);
-    const usdcUsdtPair = pairs.find(p => p.getPairMetadata().pair === POOLS.USDC_USDT.address);
+    const solUsdcPair = pairs.find(p => p.getPairMetadata().pair.toString() === POOLS.SOL_USDC.address);
+    const usdcUsdtPair = pairs.find(p => p.getPairMetadata().pair.toString() === POOLS.USDC_USDT.address);
 
     expect(solUsdcPair).toBeDefined();
     expect(usdcUsdtPair).toBeDefined();

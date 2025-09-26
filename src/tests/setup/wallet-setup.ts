@@ -14,7 +14,7 @@ export interface TestWalletConfig {
 export interface TestTokenInfo {
   name: string;
   symbol: string;
-  mintAddress: string;
+  mintAddress: PublicKey;
   decimals: number;
   supply: number;
   associatedTokenAccount?: string;

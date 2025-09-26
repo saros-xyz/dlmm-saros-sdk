@@ -16,7 +16,7 @@ export class SarosDLMM extends SarosBaseService {
   }
 
   /**
-   * Create a new pair on-chain
+   * Create a new Pair/Pool
    */
   public async createPair(params: CreatePairParams): Promise<CreatePairResponse> {
     const { baseToken, quoteToken, binStep, ratePrice, payer } = params;
@@ -110,11 +110,14 @@ export class SarosDLMM extends SarosBaseService {
 
       return {
         transaction: tx,
-        pair: pair.toString(),
-        binArrayLower: binArrayLower.toString(),
-        binArrayUpper: binArrayUpper.toString(),
-        hooksConfig: this.hooksConfig.toString(),
+        pair,
+        binArrayLower,
+        binArrayUpper,
+        hooksConfig: this.hooksConfig,
         activeBin: Number(id),
+        binStep,
+        tokenX,
+        tokenY,
       };
     } catch (error) {
       SarosDLMMError.handleError(error, SarosDLMMError.PairCreationFailed);
@@ -122,7 +125,7 @@ export class SarosDLMM extends SarosBaseService {
   }
 
   /**
-   * Get a pair instance with loaded data
+   * Get a Pair instance with loaded data
    */
   public async getPair(pairAddress: PublicKey): Promise<SarosDLMMPair> {
     const pair = new SarosDLMMPair(this.config, pairAddress);
@@ -131,7 +134,7 @@ export class SarosDLMM extends SarosBaseService {
   }
 
   /**
-   * Get multiple pair instances with loaded data
+   * Get multiple Pair instances with loaded data
    */
   public async getPairs(pairAddresses: PublicKey[]): Promise<SarosDLMMPair[]> {
     return await Promise.all(pairAddresses.map((addr) => this.getPair(addr)));

@@ -78,7 +78,7 @@ describe('Swap Integration with Seeded Liquidity', () => {
       const tx = await pair.swap({
         tokenIn: baseMint,
         tokenOut: quoteMint,
-        amount: quote.amountOut, // or `amountIn` if you want exact-in
+        amount: amountIn, // Use the input amount for exact-in swap
         options: { swapForY: true, isExactInput: true },
         minTokenOut: quote.minTokenOut,
         payer: testWallet.keypair.publicKey,

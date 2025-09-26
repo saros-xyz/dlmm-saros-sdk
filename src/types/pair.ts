@@ -14,29 +14,35 @@ export interface CreatePairResponse {
   /** Transaction to execute */
   transaction: Transaction;
   /** Address of the created LB pair */
-  pair: string;
+  pair: PublicKey;
   /** Active bin ID where initial liquidity will be placed */
   activeBin: number;
+  /** Bin step for this pair */
+  binStep: number;
   /** Lower bin array address */
-  binArrayLower: string;
+  binArrayLower: PublicKey;
   /** Upper bin array address */
-  binArrayUpper: string;
+  binArrayUpper: PublicKey;
   /** Address for hooks configuration */
-  hooksConfig: string;
+  hooksConfig: PublicKey;
+  /** Token X mint address */
+  tokenX: PublicKey;
+  /** Token Y mint address */
+  tokenY: PublicKey;
 }
 
 export interface PairMetadata {
-  pair: string;
+  pair: PublicKey;
   baseToken: TokenInfoWithReserve;
   quoteToken: TokenInfoWithReserve;
   tradeFee: number;
   extra: {
-    hook?: string;
+    hook?: PublicKey;
   };
 }
 
 export interface TokenInfo {
-  mintAddress: string;
+  mintAddress: PublicKey;
   decimals: number;
 }
 

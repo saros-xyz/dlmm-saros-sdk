@@ -42,7 +42,7 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
     tokens.push({
       name: 'Saros Dev',
       symbol: 'SAROSDEV',
-      mintAddress: sarosMint.toBase58(),
+      mintAddress: sarosMint,
       decimals: 9,
       supply: 1000000,
     });
@@ -69,7 +69,7 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
     tokens.push({
       name: 'Test USDC',
       symbol: 'TESTUSDC',
-      mintAddress: usdcMint.toBase58(),
+      mintAddress: usdcMint,
       decimals: 6,
       supply: 100000,
     });
@@ -96,7 +96,7 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
     tokens.push({
       name: 'Test Wrapped Bitcoin',
       symbol: 'TESTWBTC',
-      mintAddress: wbtcMint.toBase58(),
+      mintAddress: wbtcMint,
       decimals: 8,
       supply: 10,
     });

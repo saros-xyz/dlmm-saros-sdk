@@ -1,5 +1,5 @@
 import { ACTIVE_ID, MAX_BASIS_POINTS } from '../constants';
-import { PairServiceError } from './errors';
+import { SarosDLMMError } from './errors';
 
 export const getPriceFromId = (
   binStep: number,
@@ -8,7 +8,7 @@ export const getPriceFromId = (
   quoteTokenDecimal: number
 ): number => {
   if (binStep <= 0 || binStep > MAX_BASIS_POINTS) {
-    throw PairServiceError.InvalidBinStep;
+    throw SarosDLMMError.InvalidBinStep;
   }
 
   const base = 1 + binStep / MAX_BASIS_POINTS;
@@ -25,10 +25,10 @@ export const getIdFromPrice = (
   quoteTokenDecimal: number
 ): number => {
   if (price <= 0) {
-    throw PairServiceError.InvalidPrice;
+    throw SarosDLMMError.InvalidPrice;
   }
   if (binStep <= 0 || binStep > MAX_BASIS_POINTS) {
-    throw PairServiceError.InvalidBinStep;
+    throw SarosDLMMError.InvalidBinStep;
   }
 
   const decimalPow = Math.pow(10, quoteTokenDecimal - baseTokenDecimal);

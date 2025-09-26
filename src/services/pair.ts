@@ -125,19 +125,19 @@ export class SarosDLMMPair extends SarosBaseService {
         : 0;
 
     return {
-      pair: this.pairAddress.toString(),
+      pair: this.pairAddress,
       baseToken: {
-        mintAddress: this.pairAccount.tokenMintX.toString(),
+        mintAddress: this.pairAccount.tokenMintX,
         decimals: baseDecimals,
         reserve: baseReserve.value.amount,
       },
       quoteToken: {
-        mintAddress: this.pairAccount.tokenMintY.toString(),
+        mintAddress: this.pairAccount.tokenMintY,
         decimals: quoteDecimals,
         reserve: quoteReserve.value.amount,
       },
       tradeFee: (this.pairAccount.staticFeeParameters.baseFactor * this.pairAccount.binStep) / 1e6,
-      extra: { hook: this.pairAccount.hook?.toString() },
+      extra: { hook: this.pairAccount.hook || undefined },
     };
   }
 
@@ -1118,7 +1118,7 @@ export class SarosDLMMPair extends SarosBaseService {
       );
     }
 
-    const closedPositions: string[] = [];
+    const closedPositions: PublicKey[] = [];
     const transactions = await Promise.all(
       positionMints.map(async (positionMint) => {
         const position = PublicKey.findProgramAddressSync(
@@ -1211,7 +1211,7 @@ export class SarosDLMMPair extends SarosBaseService {
             })
             .instruction();
 
-          closedPositions.push(position.toString());
+          closedPositions.push(position);
           tx.add(ix);
         } else {
           const ix = await this.lbProgram.methods
@@ -1321,7 +1321,7 @@ export class SarosDLMMPair extends SarosBaseService {
           ...positions
             .map((p: any, i: number) =>
               p && p.pair.toString() === this.pairAddress.toString()
-                ? { ...p, position: c[i].toString() }
+                ? { ...p, position: c[i] }
                 : null
             )
             .filter(Boolean)
@@ -1336,7 +1336,7 @@ export class SarosDLMMPair extends SarosBaseService {
             //@ts-ignore
             const p = await this.lbProgram.account.position.fetch(pda);
             if (p.pair.toString() !== this.pairAddress.toString()) return null;
-            return { ...p, position: pda.toString() };
+            return { ...p, position: pda };
           } catch {
             return null;
           }

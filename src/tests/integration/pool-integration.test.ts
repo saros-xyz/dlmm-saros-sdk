@@ -19,8 +19,8 @@ let sdk: SarosDLMM;
 
 async function createOrVerifyPool(
   params: {
-    baseToken: { mintAddress: string; decimals: number };
-    quoteToken: { mintAddress: string; decimals: number };
+    baseToken: { mintAddress: PublicKey; decimals: number };
+    quoteToken: { mintAddress: PublicKey; decimals: number };
     binStep: number;
     ratePrice: number;
     payer: any;
@@ -41,20 +41,20 @@ async function createOrVerifyPool(
   }
 
   // ✅ fetch via instance
-  const pair = await sdk.getPair(new PublicKey(result.pair));
+  const pair = await sdk.getPair(result.pair);
   const metadata = pair.getPairMetadata();
-  expect(metadata.baseToken.mintAddress).toBe(params.baseToken.mintAddress);
-  expect(metadata.quoteToken.mintAddress).toBe(params.quoteToken.mintAddress);
+  expect(metadata.baseToken.mintAddress.toString()).toBe(params.baseToken.mintAddress.toString());
+  expect(metadata.quoteToken.mintAddress.toString()).toBe(params.quoteToken.mintAddress.toString());
 
   saveTestPool({
-    pair: result.pair,
-    baseToken: params.baseToken.mintAddress,
-    quoteToken: params.quoteToken.mintAddress,
+    pair: result.pair.toString(),
+    baseToken: params.baseToken.mintAddress.toString(),
+    quoteToken: params.quoteToken.mintAddress.toString(),
     binStep: params.binStep,
     ratePrice: params.ratePrice,
     activeBin: result.activeBin,
-    binArrayLower: result.binArrayLower,
-    binArrayUpper: result.binArrayUpper,
+    binArrayLower: result.binArrayLower.toString(),
+    binArrayUpper: result.binArrayUpper.toString(),
     signature: result.transaction.signatures?.[0].signature?.toString() ?? '',
   });
 
