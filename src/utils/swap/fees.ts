@@ -1,5 +1,13 @@
 import { DLMMPairAccount } from '../../types';
-import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT } from '../../constants';
+import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT, MAX_BASIS_POINTS } from '../../constants';
+
+
+  export interface FeeCalculationResult {
+  baseFee: number;      // in percentage (e.g., 1.0 for 1%)
+  variableFee: number;  // in percentage
+  dynamicFee: number;   // in percentage (baseFee + variableFee)
+  protocolFee: number;  // in percentage
+}
 
 export class FeeCalculator {
   public static getVariableFee(pairInfo: DLMMPairAccount, volatilityAccumulator: number): bigint {
@@ -39,5 +47,41 @@ export class FeeCalculator {
       this.getBaseFee(pairInfo.binStep, pairInfo.staticFeeParameters.baseFactor) +
       this.getVariableFee(pairInfo, volatilityAccumulator)
     );
+  }
+
+ /**
+   * Calculate user-facing fee percentages for pair metadata
+   * Returns clean percentage values that match actual swap fees
+   */
+  public static calculateFeePercentages(
+    binStep: number,
+    staticFeeParameters: DLMMPairAccount['staticFeeParameters'],
+    dynamicFeeParameters: DLMMPairAccount['dynamicFeeParameters']
+  ): FeeCalculationResult {
+    
+    // Calculate base fee: binStep * baseFactor * 10 / PRECISION
+    const baseFeeRaw = this.getBaseFee(binStep, staticFeeParameters.baseFactor);
+    const baseFeeDecimal = Number(baseFeeRaw) / Number(PRECISION_BIGINT);
+    
+    // Calculate variable fee from volatility
+    const variableFeeRaw = this.getVariableFee(
+      { binStep, staticFeeParameters } as DLMMPairAccount,
+      dynamicFeeParameters.volatilityAccumulator
+    );
+    const variableFeeDecimal = Number(variableFeeRaw) / Number(PRECISION_BIGINT);
+    
+    // Dynamic fee is sum of base + variable fees
+    const dynamicFeeDecimal = baseFeeDecimal + variableFeeDecimal;
+    
+    // Protocol fee is always protocolShare% of dynamic fee (typically 20%)
+    const protocolFeePercentage = (staticFeeParameters.protocolShare / MAX_BASIS_POINTS) * dynamicFeeDecimal;
+    
+    return {
+      // Convert to percentages
+      baseFee: baseFeeDecimal * 100,
+      variableFee: variableFeeDecimal * 100,
+      dynamicFee: dynamicFeeDecimal * 100,
+      protocolFee: protocolFeePercentage * 100
+    };
   }
 }

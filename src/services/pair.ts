@@ -57,6 +57,12 @@ export class SarosDLMMPair extends SarosBaseService {
   private volatilityManager: VolatilityManager;
   bufferGas?: number;
 
+  private tokenProgramX?: PublicKey;
+  private tokenProgramY?: PublicKey;
+  private vaultX?: PublicKey;
+  private vaultY?: PublicKey;
+  private binArrayAddresses = new Map<number, PublicKey>();
+
   constructor(config: SarosConfig, pairAddress: PublicKey) {
     super(config);
     this.pairAddress = pairAddress;
@@ -64,16 +70,16 @@ export class SarosDLMMPair extends SarosBaseService {
   }
 
   /**
-   * Refresh the pair data from on-chain
+   * Refresh live pair data from on-chain (keeps immutable cached values)
    */
   public async refetchStates(): Promise<void> {
-    await this.loadPairData();
+    await this.refreshPairData();
   }
 
   /**
-   * Load pair account and metadata from on-chain
+   * Refresh only live/dynamic pair data
    */
-  private async loadPairData(): Promise<void> {
+  private async refreshPairData(): Promise<void> {
     try {
       //@ts-ignore
       this.pairAccount = await this.lbProgram.account.pair.fetch(this.pairAddress);
@@ -89,16 +95,9 @@ export class SarosDLMMPair extends SarosBaseService {
    * Build pair metadata from pair account data
    */
   private async buildPairMetadata(): Promise<PairMetadata> {
-    const [baseVault, quoteVault] = await Promise.all([
-      getPairVaultInfo(
-        { tokenMint: this.pairAccount.tokenMintX, pair: this.pairAddress },
-        this.connection
-      ),
-      getPairVaultInfo(
-        { tokenMint: this.pairAccount.tokenMintY, pair: this.pairAddress },
-        this.connection
-      ),
-    ]);
+    await this.initializeTokenAccounts();
+    const baseVault = this.vaultX!;
+    const quoteVault = this.vaultY!;
 
     const [baseReserve, quoteReserve, baseMintInfo, quoteMintInfo] = await Promise.all([
       this.connection
@@ -120,30 +119,14 @@ export class SarosDLMMPair extends SarosBaseService {
         ? (quoteMintInfo.value.data.parsed.info.decimals ?? 0)
         : 0;
 
-    // --- fee normalization ---
-    // 1. Base fee = (baseFactor * binStep) / 1e6
-    // 2. Variable fee = (...) / 1e6
-    // 3. Dynamic fee = max(baseFee, variableFee)
-    // 4. Protocol fee = dynamicFee * (protocolShare / 1e4)
-
     const { binStep, staticFeeParameters, dynamicFeeParameters } = this.pairAccount;
 
-    // Base fee = (baseFactor * binStep) / 1e6
-    const baseFee = (staticFeeParameters.baseFactor * binStep) / 1_000_000;
-
-    // Variable fee = (volatilityAccumulator * binStep)^2 * control / 1e6
-    const variableFee =
-      staticFeeParameters.variableFeeControl > 0
-        ? (Math.pow(dynamicFeeParameters.volatilityAccumulator * binStep, 2) *
-            staticFeeParameters.variableFeeControl) /
-          1_000_000
-        : 0;
-
-    // Dynamic fee = max(baseFee, variableFee)
-    const dynamicFee = Math.max(baseFee, variableFee);
-
-    // Protocol fee = dynamicFee * (protocolShare / 10_000)
-    const protocolFee = dynamicFee * (staticFeeParameters.protocolShare / 10_000);
+    // Calculate clean fee percentages for user display
+    const feeInfo = FeeCalculator.calculateFeePercentages(
+      binStep,
+      staticFeeParameters,
+      dynamicFeeParameters
+    );
 
     return {
       pair: this.pairAddress,
@@ -158,9 +141,9 @@ export class SarosDLMMPair extends SarosBaseService {
         reserve: quoteReserve.value.amount,
       },
       binStep,
-      baseFee,
-      dynamicFee,
-      protocolFee,
+      baseFee: feeInfo.baseFee,
+      dynamicFee: feeInfo.dynamicFee,
+      protocolFee: feeInfo.protocolFee,
       extra: { hook: this.pairAccount.hook || undefined },
     };
   }
@@ -184,6 +167,27 @@ export class SarosDLMMPair extends SarosBaseService {
    */
   public getPairAddress(): PublicKey {
     return this.pairAddress;
+  }
+
+  private async initializeTokenAccounts(): Promise<void> {
+    if (!this.vaultX || !this.vaultY || !this.tokenProgramX || !this.tokenProgramY) {
+      const [vaultX, vaultY, tokenProgramX, tokenProgramY] = await Promise.all([
+        getPairVaultInfo(
+          { tokenMint: this.pairAccount.tokenMintX, pair: this.pairAddress },
+          this.connection
+        ),
+        getPairVaultInfo(
+          { tokenMint: this.pairAccount.tokenMintY, pair: this.pairAddress },
+          this.connection
+        ),
+        getTokenProgram(this.pairAccount.tokenMintX, this.connection),
+        getTokenProgram(this.pairAccount.tokenMintY, this.connection),
+      ]);
+      this.vaultX = vaultX;
+      this.vaultY = vaultY;
+      this.tokenProgramX = tokenProgramX;
+      this.tokenProgramY = tokenProgramY;
+    }
   }
 
   /**
@@ -298,11 +302,6 @@ export class SarosDLMMPair extends SarosBaseService {
       this.lbProgram.programId
     );
 
-    const [tokenProgramX, tokenProgramY] = await Promise.all([
-      getTokenProgram(tokenMintX, this.connection),
-      getTokenProgram(tokenMintY, this.connection),
-    ]);
-
     const latestBlockHash = await this.connection.getLatestBlockhash();
     const tx = new Transaction({
       feePayer: payer,
@@ -314,14 +313,14 @@ export class SarosDLMMPair extends SarosBaseService {
       tokenMintX,
       this.pairAddress,
       true,
-      tokenProgramX
+      this.tokenProgramX
     );
 
     const associatedPairVaultY = spl.getAssociatedTokenAddressSync(
       tokenMintY,
       this.pairAddress,
       true,
-      tokenProgramY
+      this.tokenProgramY
     );
 
     const associatedUserVaultX = await getUserVaultInfo(
@@ -360,8 +359,8 @@ export class SarosDLMMPair extends SarosBaseService {
         userVaultY: associatedUserVaultY,
         tokenMintX: tokenMintX,
         tokenMintY: tokenMintY,
-        tokenProgramX,
-        tokenProgramY,
+        tokenProgramX: this.tokenProgramX,
+        tokenProgramY: this.tokenProgramY,
         user: payer,
         hook: hookConfig,
         hooksProgram: this.hooksProgram.programId,
@@ -910,18 +909,6 @@ export class SarosDLMMPair extends SarosBaseService {
 
     const transaction = userTxn || new Transaction();
 
-    const tokenProgramX = await getTokenProgram(this.pairAccount.tokenMintX, this.connection);
-    const tokenProgramY = await getTokenProgram(this.pairAccount.tokenMintY, this.connection);
-
-    const associatedPairVaultX = await getPairVaultInfo(
-      { tokenMint: this.pairAccount.tokenMintX, pair: this.pairAddress, payer, transaction },
-      this.connection
-    );
-    const associatedPairVaultY = await getPairVaultInfo(
-      { tokenMint: this.pairAccount.tokenMintY, pair: this.pairAddress, payer, transaction },
-      this.connection
-    );
-
     const associatedUserVaultX = await getUserVaultInfo(
       { tokenMint: this.pairAccount.tokenMintX, payer, transaction },
       this.connection
@@ -1002,15 +989,15 @@ export class SarosDLMMPair extends SarosBaseService {
         position,
         binArrayLower,
         binArrayUpper,
-        tokenVaultX: associatedPairVaultX,
-        tokenVaultY: associatedPairVaultY,
+        tokenVaultX: this.vaultX,
+        tokenVaultY: this.vaultY,
         userVaultX: associatedUserVaultX,
         userVaultY: associatedUserVaultY,
         positionTokenAccount: positionVault,
         tokenMintX: this.pairAccount.tokenMintX,
         tokenMintY: this.pairAccount.tokenMintY,
-        tokenProgramX,
-        tokenProgramY,
+        tokenProgramX: this.tokenProgramX,
+        tokenProgramY: this.tokenProgramY,
         positionTokenProgram: spl.TOKEN_2022_PROGRAM_ID,
         hook,
         hooksProgram: this.hooksProgram.programId,
@@ -1031,29 +1018,14 @@ export class SarosDLMMPair extends SarosBaseService {
   public async removeLiquidity(params: RemoveLiquidityParams): Promise<RemoveLiquidityResponse> {
     const { positionMints, payer, type } = params;
 
-    const tokenProgramX = await getTokenProgram(this.pairAccount.tokenMintX, this.connection);
-    const tokenProgramY = await getTokenProgram(this.pairAccount.tokenMintY, this.connection);
+    // const tokenProgramX = this.tokenProgramX!;
+    // const tokenProgramY = this.tokenProgramY!;
 
     const setupTransaction = new Transaction();
 
-    const associatedPairVaultX = await getPairVaultInfo(
-      {
-        tokenMint: this.pairAccount.tokenMintX,
-        pair: this.pairAddress,
-        payer,
-        transaction: setupTransaction,
-      },
-      this.connection
-    );
-    const associatedPairVaultY = await getPairVaultInfo(
-      {
-        tokenMint: this.pairAccount.tokenMintY,
-        pair: this.pairAddress,
-        payer,
-        transaction: setupTransaction,
-      },
-      this.connection
-    );
+    const associatedPairVaultX = this.vaultX;
+    const associatedPairVaultY = this.vaultY;
+
     const associatedUserVaultX = await getUserVaultInfo(
       { tokenMint: this.pairAccount.tokenMintX, payer, transaction: setupTransaction },
       this.connection
@@ -1076,7 +1048,7 @@ export class SarosDLMMPair extends SarosBaseService {
       this.pairAccount.tokenMintY,
       hook,
       true,
-      tokenProgramY
+      this.tokenProgramY
     );
     const infoHookTokenY = await this.connection.getAccountInfo(associatedHookTokenY);
 
@@ -1087,7 +1059,7 @@ export class SarosDLMMPair extends SarosBaseService {
           associatedHookTokenY,
           hook,
           this.pairAccount.tokenMintY,
-          tokenProgramY
+          this.tokenProgramY
         )
       );
     }
@@ -1175,8 +1147,8 @@ export class SarosDLMMPair extends SarosBaseService {
               positionTokenAccount: positionVault,
               tokenMintX: this.pairAccount.tokenMintX,
               tokenMintY: this.pairAccount.tokenMintY,
-              tokenProgramX,
-              tokenProgramY,
+              tokenProgramX: this.tokenProgramX,
+              tokenProgramY: this.tokenProgramY,
               positionTokenProgram: spl.TOKEN_2022_PROGRAM_ID,
               hook,
               hooksProgram: this.hooksProgram.programId,
@@ -1202,8 +1174,8 @@ export class SarosDLMMPair extends SarosBaseService {
               positionTokenAccount: positionVault,
               tokenMintX: this.pairAccount.tokenMintX,
               tokenMintY: this.pairAccount.tokenMintY,
-              tokenProgramX,
-              tokenProgramY,
+              tokenProgramX: this.tokenProgramX,
+              tokenProgramY: this.tokenProgramY,
               positionTokenProgram: spl.TOKEN_2022_PROGRAM_ID,
               hook,
               hooksProgram: this.hooksProgram.programId,

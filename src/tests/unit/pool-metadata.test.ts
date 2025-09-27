@@ -11,7 +11,7 @@ const connection = new Connection(
 );
 const sdk = new SarosDLMM({ mode: MODE.MAINNET, connection });
 
-// Test constants
+// Test pool constants
 const POOLS = {
   USDC_USDT: {
     address: '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk',
@@ -25,6 +25,38 @@ const POOLS = {
   },
   INVALID: {
     address: '11111111111111111111111111111111',
+  },
+} as const;
+
+// Fee normalization test pools with expected values
+const FEE_TEST_POOLS = {
+  ZERO_VOLATILITY_100: {
+    address: '7LxJjKPdpQ4tRrpDTQgBdxyjG7Ve4GUE6ZMo8W98qn5Z',
+    expectedBinStep: 100,
+    expectedBaseFee: 1.0,
+    minProtocolFee: 0.2, // At least 20% of base fee
+    minDynamicFee: 1.0, // At least the base fee
+  },
+  ZERO_VOLATILITY_1: {
+    address: '7hc6hXjDPcFnhGBPBGTKUtViFsQuyWw8ph4ePHF1aTYG',
+    expectedBinStep: 1,
+    expectedBaseFee: 0.01,
+    minProtocolFee: 0.002,
+    minDynamicFee: 0.01,
+  },
+  HIGH_VOLATILITY: {
+    address: 'E3fgKeShQeUfXcbzWS71J674fQQ8kEkt5thrYA57MWfi',
+    expectedBinStep: 100,
+    expectedBaseFee: 1.0,
+    minProtocolFee: 0.2,
+    minDynamicFee: 1.0,
+  },
+  ORIGINAL_EXAMPLE: {
+    address: 'EBe9p6UWqE6SJDhZu87pbZ4wPwce92ubTJNV6ijU6vCc',
+    expectedBinStep: 100,
+    expectedBaseFee: 1.0,
+    minProtocolFee: 0.2,
+    minDynamicFee: 1.0,
   },
 } as const;
 
@@ -100,33 +132,28 @@ describe('Pool Discovery', () => {
 });
 
 describe('Fee Normalization', () => {
-  it('normalizes fees for pair 7LxJjKPdpQ4tRrpDTQgBdxyjG7Ve4GUE6ZMo8W98qn5Z', async () => {
-    const pair = await sdk.getPair(new PublicKey('7LxJjKPdpQ4tRrpDTQgBdxyjG7Ve4GUE6ZMo8W98qn5Z'));
-    const metadata = pair.getPairMetadata();
+  // Run for all FEE_TEST_POOLS
+  Object.entries(FEE_TEST_POOLS).forEach(([poolName, poolConfig]) => {
+    it(`correctly calculates fees for ${poolName.toLowerCase().replace(/_/g, ' ')} pool (${poolConfig.address})`, async () => {
+      const pair = await sdk.getPair(new PublicKey(poolConfig.address));
+      const metadata = pair.getPairMetadata();
 
-    expect(metadata.binStep).toEqual(100);
-    expect(metadata.baseFee).toEqual(1); // fixed base fee
-    expect(metadata.protocolFee).toEqual(0.2); // fixed % of base
-    expect(metadata.dynamicFee).toBeGreaterThanOrEqual(1); // can only increase
-  });
+      // Verify pool configuration
+      expect(metadata.binStep).toEqual(poolConfig.expectedBinStep);
 
-  it('normalizes fees for pair 7hc6hXjDPcFnhGBPBGTKUtViFsQuyWw8ph4ePHF1aTYG', async () => {
-    const pair = await sdk.getPair(new PublicKey('7hc6hXjDPcFnhGBPBGTKUtViFsQuyWw8ph4ePHF1aTYG'));
-    const metadata = pair.getPairMetadata();
+      // Verify base fee is exactly as expected
+      expect(metadata.baseFee).toEqual(poolConfig.expectedBaseFee);
 
-    expect(metadata.binStep).toEqual(1);
-    expect(metadata.baseFee).toEqual(0.01); // fixed base fee
-    expect(metadata.protocolFee).toEqual(0.002); // fixed % of base
-    expect(metadata.dynamicFee).toBeGreaterThanOrEqual(0.01);
-  });
+      // Verify dynamic fee is at least the base fee (can increase due to volatility)
+      expect(metadata.dynamicFee).toBeGreaterThanOrEqual(metadata.baseFee);
+      expect(metadata.dynamicFee).toBeGreaterThanOrEqual(poolConfig.minDynamicFee);
 
-  it('normalizes fees for pair EBe9p6UWqE6SJDhZu87pbZ4wPwce92ubTJNV6ijU6vCc', async () => {
-    const pair = await sdk.getPair(new PublicKey('EBe9p6UWqE6SJDhZu87pbZ4wPwce92ubTJNV6ijU6vCc'));
-    const metadata = pair.getPairMetadata();
+      // Verify protocol fee is at least the minimum (20% of dynamic fee)
+      expect(metadata.protocolFee).toBeGreaterThanOrEqual(poolConfig.minProtocolFee);
 
-    expect(metadata.binStep).toEqual(100);
-    expect(metadata.baseFee).toEqual(1);
-    expect(metadata.protocolFee).toEqual(0.2);
-    expect(metadata.dynamicFee).toBeGreaterThanOrEqual(1);
+      // Ensure protocol fee is reasonable (should be close to 20% of dynamic fee)
+      const expectedProtocolFee = metadata.dynamicFee * 0.2;
+      expect(metadata.protocolFee).toBeCloseTo(expectedProtocolFee, 2);
+    });
   });
 });
