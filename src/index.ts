@@ -13,8 +13,6 @@ export { MODE, LiquidityShape, RemoveLiquidityType } from './types';
 
 export { getPriceFromId, getIdFromPrice } from './utils/price';
 
-export type { GetPairVaultInfoParams, GetUserVaultInfoParams } from './utils/vaults';
-
 export type { Distribution } from './utils/position/bin-distribution';
 
 // Public types (type-only)

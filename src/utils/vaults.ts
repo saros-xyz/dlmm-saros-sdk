@@ -2,19 +2,6 @@ import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { WRAP_SOL_PUBKEY } from '../constants';
 
-export interface GetPairVaultInfoParams {
-  tokenMint: PublicKey;
-  pair: PublicKey;
-  payer?: PublicKey;
-  transaction?: Transaction;
-}
-
-export interface GetUserVaultInfoParams {
-  tokenMint: PublicKey;
-  payer: PublicKey;
-  transaction?: Transaction;
-}
-
 export interface PairTokenAccountsResult {
   vaultX: PublicKey;
   vaultY: PublicKey;
