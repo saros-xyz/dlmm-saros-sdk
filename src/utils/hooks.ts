@@ -1,6 +1,7 @@
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { utils } from '@coral-xyz/anchor';
+import { BinArrayManager } from './pair/bin-manager';
 
 export interface HookAccountsResult {
   hook: PublicKey;
@@ -71,7 +72,6 @@ export class HookManager {
       tokenProgramY
     );
 
-    const { BinArrayManager } = await import('./pair/bin-manager');
     const hookBinArrayLower = BinArrayManager.getHookBinArrayAddress(
       hook,
       hooksProgram.programId,
@@ -139,6 +139,17 @@ export class HookManager {
     }
 
     return associatedHookToken;
+  }
+
+  /**
+   * Get hook position for removal operations
+   */
+  public static getHookPosition(
+    hook: PublicKey,
+    position: PublicKey,
+    hooksProgram: any
+  ): PublicKey {
+    return this.deriveHookPosition(hook, position, hooksProgram.programId);
   }
 
   /**

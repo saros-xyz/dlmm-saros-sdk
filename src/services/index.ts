@@ -80,16 +80,8 @@ export class SarosDLMM extends SarosBaseService {
       tx.add(initializePairIx);
 
       // Initialize current + neighbor bin arrays
-      await BinArrayManager.addInitializeBinArrayInstruction(
-        binArrayIndex,
-        pair,
-        payer,
-        tx,
-        this.connection,
-        this.lbProgram
-      );
-      await BinArrayManager.addInitializeBinArrayInstruction(
-        binArrayIndex + 1,
+      await BinArrayManager.batchInitializeBinArrays(
+        [binArrayIndex, binArrayIndex + 1],
         pair,
         payer,
         tx,

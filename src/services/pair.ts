@@ -1,4 +1,4 @@
-import { BN, utils } from '@coral-xyz/anchor';
+import { BN } from '@coral-xyz/anchor';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { chunk } from 'lodash';
@@ -62,7 +62,6 @@ export class SarosDLMMPair extends SarosBaseService {
   private tokenProgramY?: PublicKey;
   private vaultX?: PublicKey;
   private vaultY?: PublicKey;
-  private binArrayAddresses = new Map<number, PublicKey>();
 
   constructor(config: SarosConfig, pairAddress: PublicKey) {
     super(config);
@@ -337,25 +336,11 @@ export class SarosDLMMPair extends SarosBaseService {
       options: { swapForY, isExactInput },
     } = params;
     try {
-      const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(
-        this.pairAccount.activeId
-      );
-      const binArrayIndexes = [
-        currentBinArrayIndex - 1,
-        currentBinArrayIndex,
-        currentBinArrayIndex + 1,
-      ];
-      const binArrayAddresses = binArrayIndexes.map((idx) =>
-        BinArrayManager.getBinArrayAddress(idx, this.pairAddress, this.lbProgram.programId)
-      );
-
-      const binArrays: BinArray[] = await Promise.all(
-        binArrayAddresses.map((address, i) =>
-          //@ts-ignore
-          this.lbProgram.account.binArray.fetch(address).catch(() => {
-            return { index: binArrayIndexes[i], bins: [] } as BinArray;
-          })
-        )
+      const { binArrays } = await BinArrayManager.getQuoteBinArrays(
+        this.pairAccount.activeId,
+        this.pairAddress,
+        this.connection,
+        this.lbProgram
       );
 
       const binRange = new BinArrayRange(binArrays[0], binArrays[1], binArrays[2]);
@@ -643,37 +628,11 @@ export class SarosDLMMPair extends SarosBaseService {
     const { binArrayIndex } = params;
 
     try {
-      const current = BinArrayManager.getBinArrayAddress(
+      return await BinArrayManager.getBinArrayWithAdjacent(
         binArrayIndex,
         this.pairAddress,
-        this.lbProgram.programId
+        this.lbProgram
       );
-      //@ts-ignore
-      const { bins: currentBins } = await this.lbProgram.account.binArray.fetch(current);
-
-      try {
-        const next = BinArrayManager.getBinArrayAddress(
-          binArrayIndex + 1,
-          this.pairAddress,
-          this.lbProgram.programId
-        );
-        //@ts-ignore
-        const { bins: nextBins } = await this.lbProgram.account.binArray.fetch(next);
-        return { bins: [...currentBins, ...nextBins], index: binArrayIndex };
-      } catch {
-        try {
-          const prev = BinArrayManager.getBinArrayAddress(
-            binArrayIndex - 1,
-            this.pairAddress,
-            this.lbProgram.programId
-          );
-          //@ts-ignore
-          const { bins: prevBins } = await this.lbProgram.account.binArray.fetch(prev);
-          return { bins: [...prevBins, ...currentBins], index: binArrayIndex - 1 };
-        } catch {
-          return { bins: currentBins, index: binArrayIndex };
-        }
-      }
     } catch (_error) {
       throw SarosDLMMError.BinArrayInfoFailed;
     }
@@ -927,20 +886,20 @@ export class SarosDLMMPair extends SarosBaseService {
 
         const positionAccount = await this.getPositionAccount(position);
 
-        const { index } = await this.getBinArrayReserves({
-          binArrayIndex: BinArrayManager.calculateBinArrayIndex(positionAccount.lowerBinId),
-          payer,
-        });
+        const binArrayIndex = BinArrayManager.calculateBinArrayIndex(positionAccount.lowerBinId);
+        const { index } = await this.getBinArrayReserves({ binArrayIndex, payer });
 
-        const binArrayLower = BinArrayManager.getBinArrayAddress(
+        const {
+          binArrayLower,
+          binArrayUpper,
+          hookBinArrayLower,
+          hookBinArrayUpper,
+        } = BinArrayManager.getBinArraysForRemoval(
           index,
           this.pairAddress,
-          this.lbProgram.programId
-        );
-        const binArrayUpper = BinArrayManager.getBinArrayAddress(
-          index + 1,
-          this.pairAddress,
-          this.lbProgram.programId
+          hook,
+          this.lbProgram.programId,
+          this.hooksProgram.programId
         );
 
         const tx = new Transaction();
@@ -950,21 +909,7 @@ export class SarosDLMMPair extends SarosBaseService {
 
         const reserveXY = await this.getPositionReserves({ position, payer });
 
-        const hookBinArrayLower = BinArrayManager.getHookBinArrayAddress(
-          hook,
-          this.hooksProgram.programId,
-          index
-        );
-        const hookBinArrayUpper = BinArrayManager.getHookBinArrayAddress(
-          hook,
-          this.hooksProgram.programId,
-          index + 1
-        );
-
-        const hookPosition = PublicKey.findProgramAddressSync(
-          [Buffer.from(utils.bytes.utf8.encode('position')), hook.toBuffer(), position.toBuffer()],
-          this.hooksProgram.programId
-        )[0];
+        const hookPosition = HookManager.getHookPosition(hook, position, this.hooksProgram);
 
         const removedShares = LiquidityManager.calculateRemovedShares(
           reserveXY,

@@ -23,25 +23,6 @@ export class BinArrayManager {
     return Math.floor(binId / BIN_ARRAY_SIZE);
   }
 
-  public static async addInitializeBinArrayInstruction(
-    binArrayIndex: number,
-    pair: PublicKey,
-    payer: PublicKey,
-    transaction: Transaction,
-    connection: Connection,
-    lbProgram: any
-  ): Promise<void> {
-    const binArray = this.getBinArrayAddress(binArrayIndex, pair, lbProgram.programId);
-    const binArrayInfo = await connection.getAccountInfo(binArray);
-
-    if (!binArrayInfo) {
-      const ix = await lbProgram.methods
-        .initializeBinArray(new BN(binArrayIndex))
-        .accountsPartial({ pair, binArray, user: payer })
-        .instruction();
-      transaction.add(ix);
-    }
-  }
 
   /**
    * Calculate a range of bin array indices around an active binId.
@@ -158,6 +139,87 @@ export class BinArrayManager {
     }
 
     return { binArrayLower, binArrayUpper };
+  }
+
+  /**
+   * Get bin arrays for quote calculations with fallback handling
+   */
+  public static async getQuoteBinArrays(
+    activeId: number,
+    pairAddress: PublicKey,
+    connection: Connection,
+    lbProgram: any
+  ): Promise<{ binArrays: any[]; binArrayIndexes: number[] }> {
+    const currentBinArrayIndex = this.calculateBinArrayIndex(activeId);
+    const binArrayIndexes = [
+      currentBinArrayIndex - 1,
+      currentBinArrayIndex,
+      currentBinArrayIndex + 1,
+    ];
+
+    const binArrayAddresses = binArrayIndexes.map((idx) =>
+      this.getBinArrayAddress(idx, pairAddress, lbProgram.programId)
+    );
+
+    const binArrays = await Promise.all(
+      binArrayAddresses.map((address, i) =>
+        lbProgram.account.binArray.fetch(address).catch(() => ({
+          index: binArrayIndexes[i],
+          bins: []
+        }))
+      )
+    );
+
+    return { binArrays, binArrayIndexes };
+  }
+
+  /**
+   * Get bin array reserves with adjacent fallback logic
+   */
+  public static async getBinArrayWithAdjacent(
+    binArrayIndex: number,
+    pairAddress: PublicKey,
+    lbProgram: any
+  ): Promise<{ bins: any[]; index: number }> {
+    const current = this.getBinArrayAddress(binArrayIndex, pairAddress, lbProgram.programId);
+    const { bins: currentBins } = await lbProgram.account.binArray.fetch(current);
+
+    try {
+      const next = this.getBinArrayAddress(binArrayIndex + 1, pairAddress, lbProgram.programId);
+      const { bins: nextBins } = await lbProgram.account.binArray.fetch(next);
+      return { bins: [...currentBins, ...nextBins], index: binArrayIndex };
+    } catch {
+      try {
+        const prev = this.getBinArrayAddress(binArrayIndex - 1, pairAddress, lbProgram.programId);
+        const { bins: prevBins } = await lbProgram.account.binArray.fetch(prev);
+        return { bins: [...prevBins, ...currentBins], index: binArrayIndex - 1 };
+      } catch {
+        return { bins: currentBins, index: binArrayIndex };
+      }
+    }
+  }
+
+  /**
+   * Get bin arrays and hook bin arrays for liquidity removal
+   */
+  public static getBinArraysForRemoval(
+    index: number,
+    pairAddress: PublicKey,
+    hook: PublicKey,
+    lbProgramId: PublicKey,
+    hooksProgramId: PublicKey
+  ): {
+    binArrayLower: PublicKey;
+    binArrayUpper: PublicKey;
+    hookBinArrayLower: PublicKey;
+    hookBinArrayUpper: PublicKey;
+  } {
+    return {
+      binArrayLower: this.getBinArrayAddress(index, pairAddress, lbProgramId),
+      binArrayUpper: this.getBinArrayAddress(index + 1, pairAddress, lbProgramId),
+      hookBinArrayLower: this.getHookBinArrayAddress(hook, hooksProgramId, index),
+      hookBinArrayUpper: this.getHookBinArrayAddress(hook, hooksProgramId, index + 1),
+    };
   }
 
   /**

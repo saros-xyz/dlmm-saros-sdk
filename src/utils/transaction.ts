@@ -150,13 +150,18 @@ export const handleSolWrapping = (
   const isNativeY = tokenMintY.equals(WRAP_SOL_PUBKEY);
   const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
 
-  if (options.isPreSwap && options.amount) {
+  if (options.isPreSwap && options.amount && options.swapForY !== undefined) {
+    // Pre-swap: Wrap SOL if we're swapping FROM the native token
     if ((isNativeY && !options.swapForY) || (!isNativeY && options.swapForY)) {
       addSolTransferInstructions(transaction, payer, associatedUserVault, options.amount);
     }
-  } else if (!options.isPreSwap) {
+  } else if (!options.isPreSwap && options.swapForY !== undefined) {
+    // Post-swap: Unwrap SOL if we swapped TO the native token
     if ((isNativeY && options.swapForY) || (!isNativeY && !options.swapForY)) {
       addCloseAccountInstruction(transaction, associatedUserVault, payer);
     }
+  } else if (!options.isPreSwap && options.swapForY === undefined) {
+    // Cleanup transaction: Always unwrap any remaining wrapped SOL
+    addCloseAccountInstruction(transaction, associatedUserVault, payer);
   }
 };

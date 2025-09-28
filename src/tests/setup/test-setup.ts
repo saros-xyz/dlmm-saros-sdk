@@ -29,7 +29,7 @@ async function setupTestEnvironment() {
   (global as any).testWalletSetup = walletSetup;
 
   console.log(
-    `✅ Ready: ${testWallet.address.slice(0, 8)}...${testWallet.address.slice(-4)} | ${testWallet.tokens.length} tokens | ${testWallet.balance.toFixed(2)} SOL`
+    `✅ Ready: ${testWallet.address} | ${testWallet.tokens.length} tokens | ${testWallet.balance.toFixed(2)} SOL`
   );
 }
 
