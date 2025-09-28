@@ -39,10 +39,13 @@ function getTestWalletSetup(): TestWalletSetup {
   return setup;
 }
 
+
 export function getTestToken(symbol?: string): TestTokenInfo {
-  // Handle native SOL/wSOL
   if (symbol === 'wSOL' || symbol === 'SOL') {
-    return NATIVE_SOL;
+    return {
+      ...NATIVE_SOL,
+      mintAddress: new PublicKey(NATIVE_SOL.mintAddress), // ensure PublicKey
+    };
   }
 
   const wallet = getTestWallet();
@@ -50,17 +53,20 @@ export function getTestToken(symbol?: string): TestTokenInfo {
     throw new Error('No test tokens available.');
   }
 
-  if (symbol) {
-    const token = wallet.tokens.find((t) => t.symbol === symbol);
-    if (!token) {
-      throw new Error(
-        `Test token ${symbol} not found. Available: ${wallet.tokens.map((t) => t.symbol).join(', ')}, wSOL`
-      );
-    }
-    return token;
+  const token = symbol
+    ? wallet.tokens.find((t) => t.symbol === symbol)
+    : wallet.tokens[0];
+
+  if (!token) {
+    throw new Error(
+      `Test token ${symbol} not found. Available: ${wallet.tokens.map((t) => t.symbol).join(', ')}, wSOL`
+    );
   }
 
-  return wallet.tokens[0];
+  return {
+    ...token,
+    mintAddress: new PublicKey(token.mintAddress), // force to PublicKey
+  };
 }
 
 export function getAllTestTokens(): TestTokenInfo[] {
