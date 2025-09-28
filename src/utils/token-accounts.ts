@@ -7,8 +7,8 @@ export interface PairTokenAccountsResult {
   vaultY: PublicKey;
   tokenProgramX: PublicKey;
   tokenProgramY: PublicKey;
-  baseReserve: { value: { amount: string; decimals: number } };
-  quoteReserve: { value: { amount: string; decimals: number } };
+  reserveX: { value: { amount: string; decimals: number } };
+  reserveY: { value: { amount: string; decimals: number } };
   baseDecimals: number;
   quoteDecimals: number;
 }
@@ -49,7 +49,7 @@ export async function getPairTokenAccounts(
     mintYInfo?.data && 'parsed' in mintYInfo.data ? (mintYInfo.data.parsed.info.decimals ?? 0) : 0;
 
   // Extract vault balances from parsed token account info
-  const baseReserve =
+  const reserveX =
     vaultXInfo?.data && 'parsed' in vaultXInfo.data
       ? {
           value: {
@@ -59,7 +59,7 @@ export async function getPairTokenAccounts(
         }
       : { value: { amount: '0', decimals: 0 } };
 
-  const quoteReserve =
+  const reserveY =
     vaultYInfo?.data && 'parsed' in vaultYInfo.data
       ? {
           value: {
@@ -74,30 +74,11 @@ export async function getPairTokenAccounts(
     vaultY,
     tokenProgramX,
     tokenProgramY,
-    baseReserve,
-    quoteReserve,
+    reserveX,
+    reserveY,
     baseDecimals,
     quoteDecimals,
   };
-}
-
-/**
- * Helper to determine token program from account info
- */
-function getTokenProgramFromAccountInfo(address: PublicKey, accountInfo: any): PublicKey {
-  // Special-case: WSOL is always legacy SPL
-  if (address.equals(WRAP_SOL_PUBKEY)) {
-    return spl.TOKEN_PROGRAM_ID;
-  }
-
-  if (!accountInfo) {
-    throw new Error(`Account info not found for ${address.toBase58()}`);
-  }
-
-  const owner = accountInfo.owner.toBase58();
-  return owner === spl.TOKEN_PROGRAM_ID.toBase58()
-    ? spl.TOKEN_PROGRAM_ID
-    : spl.TOKEN_2022_PROGRAM_ID;
 }
 
 /**
@@ -109,7 +90,7 @@ export async function getUserVaults(
   payer: PublicKey,
   connection: Connection,
   transaction?: Transaction
-): Promise<{ vaultX: PublicKey; vaultY: PublicKey }> {
+): Promise<{ userVaultX: PublicKey; userVaultY: PublicKey }> {
   // Step 1: Get token programs for both tokens
   const mintAccountInfos = await connection.getMultipleAccountsInfo([tokenMintX, tokenMintY]);
 
@@ -149,5 +130,24 @@ export async function getUserVaults(
     }
   }
 
-  return { vaultX, vaultY };
+  return { userVaultX: vaultX, userVaultY: vaultY };
+}
+
+/**
+ * Helper to determine token program from account info
+ */
+function getTokenProgramFromAccountInfo(address: PublicKey, accountInfo: any): PublicKey {
+  // Special-case: WSOL is always legacy SPL
+  if (address.equals(WRAP_SOL_PUBKEY)) {
+    return spl.TOKEN_PROGRAM_ID;
+  }
+
+  if (!accountInfo) {
+    throw new Error(`Account info not found for ${address.toBase58()}`);
+  }
+
+  const owner = accountInfo.owner.toBase58();
+  return owner === spl.TOKEN_PROGRAM_ID.toBase58()
+    ? spl.TOKEN_PROGRAM_ID
+    : spl.TOKEN_2022_PROGRAM_ID;
 }

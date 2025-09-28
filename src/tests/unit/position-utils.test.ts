@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import { ACTIVE_ID } from '../../constants';
-import { LiquidityManager } from '../../utils/liquidity';
+import { Liquidity } from '../../utils/liquidity';
 import { SarosDLMM } from '../../services';
 import { MODE, PositionReserve, RemoveLiquidityType } from '../../types';
 
@@ -41,7 +41,7 @@ describe('Position Operations', () => {
   });
 });
 
-describe('LiquidityManager Logic', () => {
+describe('Liquidity Logic', () => {
   const mockPositionReserves: PositionReserve[] = [
     {
       baseReserve: 1000000n, // 1 USDC (6 decimals)
@@ -70,7 +70,7 @@ describe('LiquidityManager Logic', () => {
   ];
 
   it('calculates full position removal correctly', () => {
-    const removedShares = LiquidityManager.calculateRemovedShares(
+    const removedShares = Liquidity.calculateRemovedShares(
       mockPositionReserves,
       RemoveLiquidityType.All,
       ACTIVE_ID,
@@ -84,7 +84,7 @@ describe('LiquidityManager Logic', () => {
   });
 
   it('identifies token x only positions', () => {
-    const removedShares = LiquidityManager.calculateRemovedShares(
+    const removedShares = Liquidity.calculateRemovedShares(
       mockPositionReserves,
       RemoveLiquidityType.TokenX,
       ACTIVE_ID,
@@ -97,7 +97,7 @@ describe('LiquidityManager Logic', () => {
   });
 
   it('identifies token y only positions', () => {
-    const removedShares = LiquidityManager.calculateRemovedShares(
+    const removedShares = Liquidity.calculateRemovedShares(
       mockPositionReserves,
       RemoveLiquidityType.TokenY,
       ACTIVE_ID,
@@ -110,12 +110,12 @@ describe('LiquidityManager Logic', () => {
   });
 
   it('determines when to close position', () => {
-    const availableShares = LiquidityManager.getAvailableShares(
+    const availableShares = Liquidity.getAvailableShares(
       mockPositionReserves,
       RemoveLiquidityType.All
     );
 
-    const shouldClose = LiquidityManager.shouldClosePosition(
+    const shouldClose = Liquidity.shouldClosePosition(
       RemoveLiquidityType.All,
       ACTIVE_ID,
       ACTIVE_ID + 2, // covers all 3 bins
@@ -126,12 +126,12 @@ describe('LiquidityManager Logic', () => {
   });
 
   it('determines when not to close position', () => {
-    const availableShares = LiquidityManager.getAvailableShares(
+    const availableShares = Liquidity.getAvailableShares(
       mockPositionReserves,
       RemoveLiquidityType.All
     );
 
-    const shouldClose = LiquidityManager.shouldClosePosition(
+    const shouldClose = Liquidity.shouldClosePosition(
       RemoveLiquidityType.All,
       ACTIVE_ID,
       ACTIVE_ID,

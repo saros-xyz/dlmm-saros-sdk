@@ -1,7 +1,7 @@
 import { MAX_BASIS_POINTS } from '../constants';
 import { DLMMPairAccount } from '../types';
 
-export class VolatilityManager {
+export class Volatility {
   private volatilityAccumulator: number = 0;
   private volatilityReference: number = 0;
   private timeLastUpdated: number = 0;

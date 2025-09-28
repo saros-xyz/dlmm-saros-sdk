@@ -3,7 +3,7 @@ import { PublicKey, Transaction, Connection } from '@solana/web3.js';
 import { BIN_ARRAY_SIZE } from '../constants';
 import { SarosDLMMError } from './errors';
 
-export class BinArrayManager {
+export class BinArrays {
   public static getBinArrayAddress(
     binArrayIndex: number,
     pair: PublicKey,
@@ -22,7 +22,6 @@ export class BinArrayManager {
   public static calculateBinArrayIndex(binId: number): number {
     return Math.floor(binId / BIN_ARRAY_SIZE);
   }
-
 
   /**
    * Calculate a range of bin array indices around an active binId.
@@ -56,6 +55,34 @@ export class BinArrayManager {
       ],
       programId
     )[0];
+  }
+
+  /**
+   * Get adjacent hook bin array addresses (lower and upper) in one call
+   */
+  public static getHookBinArrayAddresses(
+    hook: PublicKey,
+    programId: PublicKey,
+    binArrayIndex: number
+  ): { hookBinArrayLower: PublicKey; hookBinArrayUpper: PublicKey } {
+    return {
+      hookBinArrayLower: this.getHookBinArrayAddress(hook, programId, binArrayIndex),
+      hookBinArrayUpper: this.getHookBinArrayAddress(hook, programId, binArrayIndex + 1),
+    };
+  }
+
+  /**
+   * Get adjacent bin array addresses (lower and upper) in one call
+   */
+  public static getBinArrayAddresses(
+    binArrayIndex: number,
+    pairAddress: PublicKey,
+    programId: PublicKey
+  ): { binArrayLower: PublicKey; binArrayUpper: PublicKey } {
+    return {
+      binArrayLower: this.getBinArrayAddress(binArrayIndex, pairAddress, programId),
+      binArrayUpper: this.getBinArrayAddress(binArrayIndex + 1, pairAddress, programId),
+    };
   }
 
   /**
@@ -124,7 +151,7 @@ export class BinArrayManager {
 
     if (transaction && payer && lbProgram) {
       const indexes = lowerIndex === upperIndex ? [lowerIndex] : [lowerIndex, upperIndex];
-      const addresses = indexes.map(idx => this.getBinArrayAddress(idx, pairAddress, programId));
+      const addresses = indexes.map((idx) => this.getBinArrayAddress(idx, pairAddress, programId));
 
       const accountInfos = await connection.getMultipleAccountsInfo(addresses);
       for (let i = 0; i < indexes.length; i++) {
@@ -147,7 +174,6 @@ export class BinArrayManager {
   public static async getQuoteBinArrays(
     activeId: number,
     pairAddress: PublicKey,
-    connection: Connection,
     lbProgram: any
   ): Promise<{ binArrays: any[]; binArrayIndexes: number[] }> {
     const currentBinArrayIndex = this.calculateBinArrayIndex(activeId);
@@ -165,7 +191,7 @@ export class BinArrayManager {
       binArrayAddresses.map((address, i) =>
         lbProgram.account.binArray.fetch(address).catch(() => ({
           index: binArrayIndexes[i],
-          bins: []
+          bins: [],
         }))
       )
     );
@@ -235,7 +261,7 @@ export class BinArrayManager {
   ): Promise<void> {
     if (binArrayIndexes.length === 0) return;
 
-    const binArrayAddresses = binArrayIndexes.map(idx =>
+    const binArrayAddresses = binArrayIndexes.map((idx) =>
       this.getBinArrayAddress(idx, pairAddress, lbProgram.programId)
     );
 
@@ -247,7 +273,7 @@ export class BinArrayManager {
           .accountsPartial({
             pair: pairAddress,
             binArray: binArrayAddresses[i],
-            user: payer
+            user: payer,
           })
           .instruction();
         transaction.add(ix);

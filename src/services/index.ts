@@ -1,9 +1,8 @@
-import { utils } from '@coral-xyz/anchor';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { SarosBaseService, SarosConfig } from './base/index';
 import { SarosDLMMPair } from './pair';
-import { BinArrayManager } from '../utils/bin-manager';
+import { Pairs } from '../utils/pairs';
 import { CreatePairParams, CreatePairResponse } from '../types';
 import { getIdFromPrice } from '../utils/price';
 import { extractPairFromTx } from '../utils/transaction';
@@ -27,77 +26,20 @@ export class SarosDLMM extends SarosBaseService {
     try {
       const tokenXMint = tokenX.mintAddress;
       const tokenYMint = tokenY.mintAddress;
-
       const id = getIdFromPrice(ratePrice, binStep, tokenX.decimals, tokenY.decimals);
-      const binArrayIndex = BinArrayManager.calculateBinArrayIndex(id);
 
       const tx = new Transaction();
 
-      // PDAs
-      const binStepConfig = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from(utils.bytes.utf8.encode('bin_step_config')),
-          this.lbConfig.toBuffer(),
-          new Uint8Array([binStep]),
-        ],
-        this.lbProgram.programId
-      )[0];
-
-      const quoteAssetBadge = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from(utils.bytes.utf8.encode('quote_asset_badge')),
-          this.lbConfig.toBuffer(),
-          tokenYMint.toBuffer(),
-        ],
-        this.lbProgram.programId
-      )[0];
-
-      const pair = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from(utils.bytes.utf8.encode('pair')),
-          this.lbConfig.toBuffer(),
-          tokenXMint.toBuffer(),
-          tokenYMint.toBuffer(),
-          new Uint8Array([binStep]),
-        ],
-        this.lbProgram.programId
-      )[0];
-
-      // Initialize pair
-      const initializePairIx = await this.lbProgram.methods
-        .initializePair(id)
-        .accountsPartial({
-          liquidityBookConfig: this.lbConfig,
-          binStepConfig,
-          quoteAssetBadge,
-          pair,
-          tokenMintX: tokenXMint,
-          tokenMintY: tokenYMint,
-          user: payer,
-        })
-        .instruction();
-
-      tx.add(initializePairIx);
-
-      // Initialize current + neighbor bin arrays
-      await BinArrayManager.batchInitializeBinArrays(
-        [binArrayIndex, binArrayIndex + 1],
-        pair,
+      const { pair, binArrayLower, binArrayUpper } = await Pairs.createPairWithBinArrays(
+        this.lbConfig,
+        tokenXMint,
+        tokenYMint,
+        binStep,
+        id,
         payer,
         tx,
         this.connection,
         this.lbProgram
-      );
-
-      const binArrayLower = BinArrayManager.getBinArrayAddress(
-        binArrayIndex,
-        pair,
-        this.lbProgram.programId
-      );
-      const binArrayUpper = BinArrayManager.getBinArrayAddress(
-        binArrayIndex + 1,
-        pair,
-        this.lbProgram.programId
       );
 
       return {
@@ -121,7 +63,7 @@ export class SarosDLMM extends SarosBaseService {
    */
   public async getPair(pairAddress: PublicKey): Promise<SarosDLMMPair> {
     const pair = new SarosDLMMPair(this.config, pairAddress);
-    await pair.refetchStates();
+    await pair.refetchState();
     return pair;
   }
 
@@ -187,17 +129,6 @@ export class SarosDLMM extends SarosBaseService {
    * Search for pairs by token mint
    */
   public async findPairs(mintAddress: PublicKey): Promise<string[]> {
-    const programId = this.getDexProgramId();
-
-    const accounts = await Promise.all([
-      this.connection.getProgramAccounts(new PublicKey(programId), {
-        filters: [{ memcmp: { offset: 43, bytes: mintAddress.toBase58() } }],
-      }),
-      this.connection.getProgramAccounts(new PublicKey(programId), {
-        filters: [{ memcmp: { offset: 75, bytes: mintAddress.toBase58() } }],
-      }),
-    ]);
-
-    return [...accounts[0], ...accounts[1]].map((acc) => acc.pubkey.toString());
+    return Pairs.findPairsByTokens(mintAddress, this.connection, this.getDexProgramId());
   }
 }

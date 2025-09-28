@@ -88,9 +88,6 @@ export const addCloseAccountInstruction = (
 
 /**
  * Extracts the pair address from an initialize_pair transaction by parsing the instruction accounts
- * @param connection - Solana connection instance
- * @param signature - Transaction signature containing the initialize_pair instruction
- * @returns The pair PublicKey, or null if not found
  */
 export async function extractPairFromTx(
   connection: Connection,
