@@ -1,6 +1,6 @@
-import { Bin, BinArray } from '../../types';
-import { BIN_ARRAY_SIZE } from '../../constants';
-import { SarosDLMMError } from '../errors';
+import { Bin, BinArray } from '../types';
+import { BIN_ARRAY_SIZE } from '../constants';
+import { SarosDLMMError } from './errors';
 
 export class BinArrayRange {
   private readonly bins: { [binId: number]: Bin };

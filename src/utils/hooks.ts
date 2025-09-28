@@ -1,7 +1,7 @@
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { utils } from '@coral-xyz/anchor';
-import { BinArrayManager } from './pair/bin-manager';
+import { BinArrayManager } from './bin-manager';
 
 export interface HookAccountsResult {
   hook: PublicKey;

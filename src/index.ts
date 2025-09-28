@@ -13,7 +13,7 @@ export { MODE, LiquidityShape, RemoveLiquidityType } from './types';
 
 export { getPriceFromId, getIdFromPrice } from './utils/price';
 
-export type { Distribution } from './utils/position/bin-distribution';
+export type { Distribution } from './utils/bin-distribution';
 
 // Public types (type-only)
 export type {

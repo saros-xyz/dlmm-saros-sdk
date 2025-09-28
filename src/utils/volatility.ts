@@ -1,5 +1,5 @@
-import { MAX_BASIS_POINTS } from '../../constants';
-import { DLMMPairAccount } from '../../types';
+import { MAX_BASIS_POINTS } from '../constants';
+import { DLMMPairAccount } from '../types';
 
 export class VolatilityManager {
   private volatilityAccumulator: number = 0;

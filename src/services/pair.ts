@@ -3,11 +3,11 @@ import { PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { chunk } from 'lodash';
 import { SarosBaseService, SarosConfig } from './base/index';
-import { BinArrayManager } from '../utils/pair/bin-manager';
-import { LiquidityManager } from '../utils/position/liquidity';
-import { FeeCalculator } from '../utils/swap/fees';
-import { VolatilityManager } from '../utils/swap/volatility';
-import { BinArrayRange } from '../utils/swap/bin-range';
+import { BinArrayManager } from '../utils/bin-manager';
+import { LiquidityManager } from '../utils/liquidity';
+import { FeeCalculator } from '../utils/fees';
+import { VolatilityManager } from '../utils/volatility';
+import { BinArrayRange } from '../utils/bin-range';
 import {
   BIN_ARRAY_SIZE,
   MAX_BIN_CROSSINGS,
@@ -41,14 +41,14 @@ import {
   getPriceImpact,
   getMinOutputWithSlippage,
   getMaxInputWithSlippage,
-} from '../utils/swap/calculations';
+} from '../utils/calculations';
 import {
   addSolTransferInstructions,
   addOptimalComputeBudget,
 } from '../utils/transaction';
-import { createUniformDistribution, Distribution, calculateDistributionAmounts } from '../utils/position/bin-distribution';
+import { createUniformDistribution, Distribution, calculateDistributionAmounts } from '../utils/bin-distribution';
 import { HookManager } from '../utils/hooks';
-import { PositionManager } from '../utils/position/position-manager';
+import { PositionManager } from '../utils/position-manager';
 import { handleSolWrapping } from '../utils/transaction';
 
 export class SarosDLMMPair extends SarosBaseService {

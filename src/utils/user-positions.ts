@@ -2,7 +2,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { utils } from '@coral-xyz/anchor';
 import { chunk } from 'lodash';
-import { PositionAccount } from '../../types';
+import { PositionAccount } from '../types';
 
 /**
  * User position discovery and management utilities
@@ -17,7 +17,7 @@ export class UserPositionManager {
     connection: Connection,
     lbProgram: any
   ): Promise<PositionAccount[]> {
-    // Position mints are always TOKEN_2022, so we only need to check that program
+    // Verify: Position mints are always TOKEN_2022?
     const token2022AccountsResp = await connection.getParsedTokenAccountsByOwner(payer, {
       programId: spl.TOKEN_2022_PROGRAM_ID,
     });

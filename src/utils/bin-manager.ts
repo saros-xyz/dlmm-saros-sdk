@@ -1,7 +1,7 @@
 import { BN, utils } from '@coral-xyz/anchor';
 import { PublicKey, Transaction, Connection } from '@solana/web3.js';
-import { BIN_ARRAY_SIZE } from '../../constants';
-import { SarosDLMMError } from '../errors';
+import { BIN_ARRAY_SIZE } from '../constants';
+import { SarosDLMMError } from './errors';
 
 export class BinArrayManager {
   public static getBinArrayAddress(

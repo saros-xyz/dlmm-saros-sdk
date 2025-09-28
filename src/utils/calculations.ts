@@ -1,5 +1,5 @@
-import { PRECISION_BIGINT, SCALE_OFFSET, MAX_BASIS_POINTS_BIGINT } from '../../constants';
-import { SarosDLMMError } from '../errors';
+import { PRECISION_BIGINT, SCALE_OFFSET, MAX_BASIS_POINTS_BIGINT } from '../constants';
+import { SarosDLMMError } from './errors';
 
 /**
  * Calculates the input amount required for a swap based on the desired output amount and price.

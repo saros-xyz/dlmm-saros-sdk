@@ -1,5 +1,5 @@
-import { DLMMPairAccount } from '../../types';
-import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT, MAX_BASIS_POINTS } from '../../constants';
+import { DLMMPairAccount } from '../types';
+import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT, MAX_BASIS_POINTS } from '../constants';
 
 
   export interface FeeCalculationResult {

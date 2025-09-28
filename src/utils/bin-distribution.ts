@@ -1,6 +1,6 @@
-import { MAX_BASIS_POINTS, MAX_BASIS_POINTS_BIGINT } from '../../constants';
-import { LiquidityShape } from '../../types';
-import { divRem } from '../../utils/math';
+import { MAX_BASIS_POINTS, MAX_BASIS_POINTS_BIGINT } from '../constants';
+import { LiquidityShape } from '../types';
+import { divRem } from './math';
 import { BN } from '@coral-xyz/anchor';
 
 interface CreateLiquidityDistributionParams {
@@ -8,7 +8,7 @@ interface CreateLiquidityDistributionParams {
   binRange: [number, number];
 }
 
-// this.lbProgram.methods.increasePosition expects distributionX/Y (not base/quote)
+// this.lbProgram.methods.increasePosition expects Distribution
 export interface Distribution {
   relativeBinId: number;
   /** Percentage (0-100) */

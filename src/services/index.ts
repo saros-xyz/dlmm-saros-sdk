@@ -3,7 +3,7 @@ import { PublicKey, Transaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { SarosBaseService, SarosConfig } from './base/index';
 import { SarosDLMMPair } from './pair';
-import { BinArrayManager } from '../utils/pair/bin-manager';
+import { BinArrayManager } from '../utils/bin-manager';
 import { CreatePairParams, CreatePairResponse } from '../types';
 import { getIdFromPrice } from '../utils/price';
 import { extractPairFromTx } from '../utils/transaction';
