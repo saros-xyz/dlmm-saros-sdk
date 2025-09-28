@@ -1,6 +1,7 @@
-import { MAX_BASIS_POINTS } from '../../constants';
+import { MAX_BASIS_POINTS, MAX_BASIS_POINTS_BIGINT } from '../../constants';
 import { LiquidityShape } from '../../types';
 import { divRem } from '../../utils/math';
+import { BN } from '@coral-xyz/anchor';
 
 interface CreateLiquidityDistributionParams {
   shape: LiquidityShape;
@@ -431,3 +432,29 @@ const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribut
   });
   return liquidityDistribution;
 };
+
+/**
+ * Calculate scaled token amounts based on liquidity distribution percentages
+ */
+export function calculateDistributionAmounts(
+  liquidityDistribution: Distribution[],
+  amountTokenX: bigint,
+  amountTokenY: bigint,
+  useTokenY: boolean
+): { totalLiquidityPoints: number; scaledAmount: BN } {
+  const totalLiquidityPoints = liquidityDistribution.reduce(
+    (prev, curr) => prev + (useTokenY ? curr.distributionY : curr.distributionX),
+    0
+  );
+
+  if (!totalLiquidityPoints) {
+    return { totalLiquidityPoints: 0, scaledAmount: new BN(0) };
+  }
+
+  const totalAmount = useTokenY ? amountTokenY : amountTokenX;
+  const scaledAmount = new BN(totalLiquidityPoints)
+    .mul(new BN(totalAmount.toString()))
+    .div(new BN(MAX_BASIS_POINTS_BIGINT.toString()));
+
+  return { totalLiquidityPoints, scaledAmount };
+}

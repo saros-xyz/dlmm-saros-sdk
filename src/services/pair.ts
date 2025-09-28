@@ -13,7 +13,6 @@ import {
   MAX_BIN_CROSSINGS,
   SCALE_OFFSET,
   WRAP_SOL_PUBKEY,
-  MAX_BASIS_POINTS_BIGINT,
 } from '../constants';
 import {
   DLMMPairAccount,
@@ -45,10 +44,12 @@ import {
 } from '../utils/swap/calculations';
 import {
   addSolTransferInstructions,
-  addCloseAccountInstruction,
   addOptimalComputeBudget,
 } from '../utils/transaction';
-import { createUniformDistribution, Distribution } from '../utils/position/bin-distribution';
+import { createUniformDistribution, Distribution, calculateDistributionAmounts } from '../utils/position/bin-distribution';
+import { HookManager } from '../utils/hooks';
+import { PositionManager } from '../utils/position/position-manager';
+import { handleSolWrapping } from '../utils/transaction';
 
 export class SarosDLMMPair extends SarosBaseService {
   private pairAddress: PublicKey;
@@ -223,48 +224,10 @@ export class SarosDLMMPair extends SarosBaseService {
     if (amount <= 0n) throw SarosDLMMError.ZeroAmount;
     if (otherAmountOffset < 0n) throw SarosDLMMError.ZeroAmount;
 
-    const currentBinArrayIndex = BinArrayManager.calculateBinArrayIndex(this.pairAccount.activeId);
-
-    const surroundingIndexes = [
-      currentBinArrayIndex - 1,
-      currentBinArrayIndex,
-      currentBinArrayIndex + 1,
-    ];
-
-    const binArrayAddresses = await Promise.all(
-      surroundingIndexes.map(async (idx) =>
-        BinArrayManager.getBinArrayAddress(idx, this.pairAddress, this.lbProgram.programId)
-      )
-    );
-
-    const binArrayAccountsInfo = await this.connection.getMultipleAccountsInfo(binArrayAddresses);
-
-    const validIndexes = surroundingIndexes.filter((_, i) => binArrayAccountsInfo[i]);
-
-    if (validIndexes.length < 2) {
-      throw SarosDLMMError.NoValidBinArrays;
-    }
-
-    let binArrayLowerIndex: number;
-    let binArrayUpperIndex: number;
-    if (validIndexes.length === 2) {
-      [binArrayLowerIndex, binArrayUpperIndex] = validIndexes;
-    } else {
-      const activeOffset = this.pairAccount.activeId % BIN_ARRAY_SIZE;
-      const [first, second, third] = validIndexes;
-      [binArrayLowerIndex, binArrayUpperIndex] =
-        activeOffset < BIN_ARRAY_SIZE / 2 ? [first, second] : [second, third];
-    }
-
-    const binArrayLower = BinArrayManager.getBinArrayAddress(
-      binArrayLowerIndex,
+    const { binArrayLower, binArrayUpper } = await BinArrayManager.getSwapBinArrays(
+      this.pairAccount.activeId,
       this.pairAddress,
-      this.lbProgram.programId
-    );
-
-    const binArrayUpper = BinArrayManager.getBinArrayAddress(
-      binArrayUpperIndex,
-      this.pairAddress,
+      this.connection,
       this.lbProgram.programId
     );
 
@@ -286,14 +249,11 @@ export class SarosDLMMPair extends SarosBaseService {
       tx
     );
 
-    if (tokenMintY.equals(WRAP_SOL_PUBKEY) || tokenMintX.equals(WRAP_SOL_PUBKEY)) {
-      const isNativeY = tokenMintY.equals(WRAP_SOL_PUBKEY);
-      const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
-
-      if ((isNativeY && !swapForY) || (!isNativeY && swapForY)) {
-        addSolTransferInstructions(tx, payer, associatedUserVault, amount);
-      }
-    }
+    handleSolWrapping(tx, tokenMintX, tokenMintY, associatedUserVaultX, associatedUserVaultY, payer, {
+      swapForY,
+      amount,
+      isPreSwap: true,
+    });
 
     const swapInstructions = await this.lbProgram.methods
       .swap(
@@ -327,13 +287,10 @@ export class SarosDLMMPair extends SarosBaseService {
 
     tx.add(swapInstructions);
 
-    if (tokenMintY.equals(WRAP_SOL_PUBKEY) || tokenMintX.equals(WRAP_SOL_PUBKEY)) {
-      const isNativeY = tokenMintY.equals(WRAP_SOL_PUBKEY);
-      const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
-      if ((isNativeY && swapForY) || (!isNativeY && !swapForY)) {
-        addCloseAccountInstruction(tx, associatedUserVault, payer);
-      }
-    }
+    handleSolWrapping(tx, tokenMintX, tokenMintY, associatedUserVaultX, associatedUserVaultY, payer, {
+      swapForY,
+      isPreSwap: false,
+    });
 
     return tx;
   }
@@ -791,39 +748,21 @@ export class SarosDLMMPair extends SarosBaseService {
 
     const transaction = new Transaction();
 
-    await BinArrayManager.addInitializeBinArrayInstruction(
-      BinArrayManager.calculateBinArrayIndex(lowerBinId),
+    await BinArrayManager.getLiquidityBinArrays(
+      lowerBinId,
+      upperBinId,
       this.pairAddress,
-      payer,
-      transaction,
       this.connection,
+      this.lbProgram.programId,
+      transaction,
+      payer,
       this.lbProgram
     );
 
-    if (
-      BinArrayManager.calculateBinArrayIndex(lowerBinId) !==
-      BinArrayManager.calculateBinArrayIndex(upperBinId)
-    ) {
-      await BinArrayManager.addInitializeBinArrayInstruction(
-        BinArrayManager.calculateBinArrayIndex(upperBinId),
-        this.pairAddress,
-        payer,
-        transaction,
-        this.connection,
-        this.lbProgram
-      );
-    }
-
-    const position = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('position')), positionMint.toBuffer()],
-      this.lbProgram.programId
-    )[0];
-
-    const positionVault = spl.getAssociatedTokenAddressSync(
+    const { position, positionVault } = PositionManager.getPositionAddresses(
       positionMint,
       payer,
-      true,
-      spl.TOKEN_2022_PROGRAM_ID
+      this.lbProgram.programId
     );
 
     const ix = await this.lbProgram.methods
@@ -878,14 +817,11 @@ export class SarosDLMMPair extends SarosBaseService {
     const lowerBinId = this.pairAccount.activeId + binRange[0];
     const upperBinId = this.pairAccount.activeId + binRange[1];
 
-    const binArrayLower = BinArrayManager.getBinArrayAddress(
-      BinArrayManager.calculateBinArrayIndex(lowerBinId),
+    const { binArrayLower, binArrayUpper } = await BinArrayManager.getLiquidityBinArrays(
+      lowerBinId,
+      upperBinId,
       this.pairAddress,
-      this.lbProgram.programId
-    );
-    const binArrayUpper = BinArrayManager.getBinArrayAddress(
-      BinArrayManager.calculateBinArrayIndex(upperBinId),
-      this.pairAddress,
+      this.connection,
       this.lbProgram.programId
     );
 
@@ -894,41 +830,28 @@ export class SarosDLMMPair extends SarosBaseService {
       this.pairAccount.tokenMintX.equals(WRAP_SOL_PUBKEY)
     ) {
       const isNativeY = this.pairAccount.tokenMintY.equals(WRAP_SOL_PUBKEY);
-      const totalAmount = isNativeY ? amountTokenY : amountTokenX;
-      const totalLiquid = liquidityDistribution.reduce(
-        (prev, curr) => prev + (isNativeY ? curr.distributionY : curr.distributionX),
-        0
+      const { scaledAmount } = calculateDistributionAmounts(
+        liquidityDistribution,
+        amountTokenX,
+        amountTokenY,
+        isNativeY
       );
 
-      if (totalLiquid) {
-        const amount = new BN(totalLiquid)
-          .mul(new BN(totalAmount.toString()))
-          .div(new BN(MAX_BASIS_POINTS_BIGINT.toString()));
+      if (!scaledAmount.isZero()) {
         const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
-        addSolTransferInstructions(tx, payer, associatedUserVault, amount);
+        addSolTransferInstructions(tx, payer, associatedUserVault, scaledAmount);
       }
     }
 
-    const hook = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('hook')),
-        this.hooksConfig.toBuffer(),
-        this.pairAddress.toBuffer(),
-      ],
+    const hook = HookManager.deriveHookAddress(
+      this.hooksConfig,
+      this.pairAddress,
       this.hooksProgram.programId
-    )[0];
-
-    const position = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('position')), positionMint.toBuffer()],
-      this.lbProgram.programId
-    )[0];
-
-    const positionVault = spl.getAssociatedTokenAddressSync(
-      positionMint,
-      payer,
-      true,
-      spl.TOKEN_2022_PROGRAM_ID
     );
+
+    const position = PositionManager.derivePositionAddress(positionMint, this.lbProgram.programId);
+
+    const positionVault = PositionManager.derivePositionVault(positionMint, payer);
 
     const ix = await this.lbProgram.methods
       .increasePosition(
@@ -982,42 +905,25 @@ export class SarosDLMMPair extends SarosBaseService {
       this.connection,
       setupTransaction
     );
-    const hook = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('hook')),
-        this.hooksConfig.toBuffer(),
-        this.pairAddress.toBuffer(),
-      ],
+    const hook = HookManager.deriveHookAddress(
+      this.hooksConfig,
+      this.pairAddress,
       this.hooksProgram.programId
-    )[0];
-
-    const associatedHookTokenY = spl.getAssociatedTokenAddressSync(
-      this.pairAccount.tokenMintY,
-      hook,
-      true,
-      this.tokenProgramY
     );
-    const infoHookTokenY = await this.connection.getAccountInfo(associatedHookTokenY);
 
-    if (!infoHookTokenY) {
-      setupTransaction.add(
-        spl.createAssociatedTokenAccountInstruction(
-          payer,
-          associatedHookTokenY,
-          hook,
-          this.pairAccount.tokenMintY,
-          this.tokenProgramY
-        )
-      );
-    }
+    await HookManager.ensureHookTokenAccount(
+      hook,
+      this.pairAccount.tokenMintY,
+      this.tokenProgramY!,
+      payer,
+      this.connection,
+      setupTransaction
+    );
 
     const closedPositions: PublicKey[] = [];
     const transactions = await Promise.all(
       positionMints.map(async (positionMint) => {
-        const position = PublicKey.findProgramAddressSync(
-          [Buffer.from(utils.bytes.utf8.encode('position')), positionMint.toBuffer()],
-          this.lbProgram.programId
-        )[0];
+        const position = PositionManager.derivePositionAddress(positionMint, this.lbProgram.programId);
 
         const positionAccount = await this.getPositionAccount(position);
 
@@ -1040,12 +946,7 @@ export class SarosDLMMPair extends SarosBaseService {
         const tx = new Transaction();
         await addOptimalComputeBudget(tx, this.connection, this.bufferGas);
 
-        const positionVault = spl.getAssociatedTokenAddressSync(
-          positionMint,
-          payer,
-          true,
-          spl.TOKEN_2022_PROGRAM_ID
-        );
+        const positionVault = PositionManager.derivePositionVault(positionMint, payer);
 
         const reserveXY = await this.getPositionReserves({ position, payer });
 
@@ -1147,14 +1048,15 @@ export class SarosDLMMPair extends SarosBaseService {
     );
 
     const cleanupTransaction = new Transaction();
-    if (
-      this.pairAccount.tokenMintY.equals(WRAP_SOL_PUBKEY) ||
-      this.pairAccount.tokenMintX.equals(WRAP_SOL_PUBKEY)
-    ) {
-      const isNativeY = this.pairAccount.tokenMintY.equals(WRAP_SOL_PUBKEY);
-      const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
-      addCloseAccountInstruction(cleanupTransaction, associatedUserVault, payer);
-    }
+    handleSolWrapping(
+      cleanupTransaction,
+      this.pairAccount.tokenMintX,
+      this.pairAccount.tokenMintY,
+      associatedUserVaultX,
+      associatedUserVaultY,
+      payer,
+      { isPreSwap: false }
+    );
 
     return {
       transactions,
@@ -1190,12 +1092,8 @@ export class SarosDLMMPair extends SarosBaseService {
         )
     ).map((m) => new PublicKey(m));
 
-    const positionPdas = mints.map(
-      (mint) =>
-        PublicKey.findProgramAddressSync(
-          [Buffer.from(utils.bytes.utf8.encode('position')), mint.toBuffer()],
-          this.lbProgram.programId
-        )[0]
+    const positionPdas = mints.map(mint =>
+      PositionManager.derivePositionAddress(mint, this.lbProgram.programId)
     );
 
     const positions = await this.getPositionAccounts(positionPdas);

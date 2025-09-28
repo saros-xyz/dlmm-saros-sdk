@@ -1,6 +1,7 @@
 import { BN, utils } from '@coral-xyz/anchor';
 import { PublicKey, Transaction, Connection } from '@solana/web3.js';
 import { BIN_ARRAY_SIZE } from '../../constants';
+import { SarosDLMMError } from '../errors';
 
 export class BinArrayManager {
   public static getBinArrayAddress(
@@ -74,5 +75,121 @@ export class BinArrayManager {
       ],
       programId
     )[0];
+  }
+
+  /**
+   * Get valid bin arrays for swap operations
+   */
+  public static async getSwapBinArrays(
+    activeId: number,
+    pairAddress: PublicKey,
+    connection: Connection,
+    programId: PublicKey
+  ): Promise<{ binArrayLower: PublicKey; binArrayUpper: PublicKey }> {
+    const currentBinArrayIndex = this.calculateBinArrayIndex(activeId);
+    const surroundingIndexes = [
+      currentBinArrayIndex - 1,
+      currentBinArrayIndex,
+      currentBinArrayIndex + 1,
+    ];
+
+    const binArrayAddresses = surroundingIndexes.map((idx) =>
+      this.getBinArrayAddress(idx, pairAddress, programId)
+    );
+
+    const binArrayAccountsInfo = await connection.getMultipleAccountsInfo(binArrayAddresses);
+    const validIndexes = surroundingIndexes.filter((_, i) => binArrayAccountsInfo[i]);
+
+    if (validIndexes.length < 2) {
+      throw SarosDLMMError.NoValidBinArrays;
+    }
+
+    let binArrayLowerIndex: number;
+    let binArrayUpperIndex: number;
+
+    if (validIndexes.length === 2) {
+      [binArrayLowerIndex, binArrayUpperIndex] = validIndexes;
+    } else {
+      const activeOffset = activeId % BIN_ARRAY_SIZE;
+      const [first, second, third] = validIndexes;
+      [binArrayLowerIndex, binArrayUpperIndex] =
+        activeOffset < BIN_ARRAY_SIZE / 2 ? [first, second] : [second, third];
+    }
+
+    return {
+      binArrayLower: this.getBinArrayAddress(binArrayLowerIndex, pairAddress, programId),
+      binArrayUpper: this.getBinArrayAddress(binArrayUpperIndex, pairAddress, programId),
+    };
+  }
+
+  /**
+   * Get bin arrays for liquidity operations with initialization support
+   */
+  public static async getLiquidityBinArrays(
+    lowerBinId: number,
+    upperBinId: number,
+    pairAddress: PublicKey,
+    connection: Connection,
+    programId: PublicKey,
+    transaction?: Transaction,
+    payer?: PublicKey,
+    lbProgram?: any
+  ): Promise<{ binArrayLower: PublicKey; binArrayUpper: PublicKey }> {
+    const lowerIndex = this.calculateBinArrayIndex(lowerBinId);
+    const upperIndex = this.calculateBinArrayIndex(upperBinId);
+
+    const binArrayLower = this.getBinArrayAddress(lowerIndex, pairAddress, programId);
+    const binArrayUpper = this.getBinArrayAddress(upperIndex, pairAddress, programId);
+
+    if (transaction && payer && lbProgram) {
+      const indexes = lowerIndex === upperIndex ? [lowerIndex] : [lowerIndex, upperIndex];
+      const addresses = indexes.map(idx => this.getBinArrayAddress(idx, pairAddress, programId));
+
+      const accountInfos = await connection.getMultipleAccountsInfo(addresses);
+      for (let i = 0; i < indexes.length; i++) {
+        if (!accountInfos[i]) {
+          const ix = await lbProgram.methods
+            .initializeBinArray(new BN(indexes[i]))
+            .accountsPartial({ pair: pairAddress, binArray: addresses[i], user: payer })
+            .instruction();
+          transaction.add(ix);
+        }
+      }
+    }
+
+    return { binArrayLower, binArrayUpper };
+  }
+
+  /**
+   * Initialize multiple bin arrays in batch
+   */
+  public static async batchInitializeBinArrays(
+    binArrayIndexes: number[],
+    pairAddress: PublicKey,
+    payer: PublicKey,
+    transaction: Transaction,
+    connection: Connection,
+    lbProgram: any
+  ): Promise<void> {
+    if (binArrayIndexes.length === 0) return;
+
+    const binArrayAddresses = binArrayIndexes.map(idx =>
+      this.getBinArrayAddress(idx, pairAddress, lbProgram.programId)
+    );
+
+    const accountInfos = await connection.getMultipleAccountsInfo(binArrayAddresses);
+    for (let i = 0; i < binArrayIndexes.length; i++) {
+      if (!accountInfos[i]) {
+        const ix = await lbProgram.methods
+          .initializeBinArray(new BN(binArrayIndexes[i]))
+          .accountsPartial({
+            pair: pairAddress,
+            binArray: binArrayAddresses[i],
+            user: payer
+          })
+          .instruction();
+        transaction.add(ix);
+      }
+    }
   }
 }

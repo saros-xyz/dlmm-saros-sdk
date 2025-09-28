@@ -8,7 +8,7 @@ import {
 } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { Buffer } from 'buffer';
-import { CCU_LIMIT, UNIT_PRICE_DEFAULT } from '../constants';
+import { CCU_LIMIT, UNIT_PRICE_DEFAULT, WRAP_SOL_PUBKEY } from '../constants';
 import { BN } from '@coral-xyz/anchor';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
 import { SarosDLMMError } from './errors';
@@ -124,3 +124,39 @@ export async function extractPairFromTx(
   }
   return null;
 }
+
+export interface SolWrappingOptions {
+  swapForY?: boolean;
+  amount?: bigint | BN;
+  isPreSwap?: boolean;
+}
+
+/**
+ * Handle SOL wrapping/unwrapping for swap and liquidity operations
+ */
+export const handleSolWrapping = (
+  transaction: Transaction,
+  tokenMintX: PublicKey,
+  tokenMintY: PublicKey,
+  associatedUserVaultX: PublicKey,
+  associatedUserVaultY: PublicKey,
+  payer: PublicKey,
+  options: SolWrappingOptions
+): void => {
+  if (!tokenMintY.equals(WRAP_SOL_PUBKEY) && !tokenMintX.equals(WRAP_SOL_PUBKEY)) {
+    return;
+  }
+
+  const isNativeY = tokenMintY.equals(WRAP_SOL_PUBKEY);
+  const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
+
+  if (options.isPreSwap && options.amount) {
+    if ((isNativeY && !options.swapForY) || (!isNativeY && options.swapForY)) {
+      addSolTransferInstructions(transaction, payer, associatedUserVault, options.amount);
+    }
+  } else if (!options.isPreSwap) {
+    if ((isNativeY && options.swapForY) || (!isNativeY && !options.swapForY)) {
+      addCloseAccountInstruction(transaction, associatedUserVault, payer);
+    }
+  }
+};
