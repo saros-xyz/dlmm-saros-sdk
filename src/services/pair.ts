@@ -460,10 +460,7 @@ export class SarosDLMMPair extends SarosBaseService {
           break;
         }
 
-        const fee = Fees.getTotalFee(
-          pairInfo,
-          this.volatilityManager.getVolatilityAccumulator()
-        );
+        const fee = Fees.getTotalFee(pairInfo, this.volatilityManager.getVolatilityAccumulator());
 
         const { amountInWithFees, amountOut: amountOutOfBin } = this.swapExactInput({
           binStep: pairInfo.binStep,
@@ -578,9 +575,7 @@ export class SarosDLMMPair extends SarosBaseService {
     }
 
     const protocolFeeAmount =
-      protocolShare > BigInt(0)
-        ? Fees.getProtocolFee(feeAmount, protocolShareBigInt)
-        : BigInt(0);
+      protocolShare > BigInt(0) ? Fees.getProtocolFee(feeAmount, protocolShareBigInt) : BigInt(0);
 
     return {
       amountInWithFees: amountIn + feeAmount,

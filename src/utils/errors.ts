@@ -7,7 +7,7 @@ export class SarosDLMMError extends Error {
     this.name = 'SarosDLMMError';
   }
 
-  // Pair/Pool errors
+  // Pair errors
   static readonly PairFetchFailed = new SarosDLMMError(
     'Failed to fetch pair account',
     'PAIR_FETCH_FAILED'
@@ -54,6 +54,24 @@ export class SarosDLMMError extends Error {
     'INSUFFICIENT_LIQUIDITY'
   );
 
+  // Account fetch errors
+  static readonly AccountFetchFailed = new SarosDLMMError(
+    'Failed to fetch account data',
+    'ACCOUNT_FETCH_FAILED'
+  );
+  static readonly TokenMintNotFound = new SarosDLMMError(
+    'Token mint account not found',
+    'TOKEN_MINT_NOT_FOUND'
+  );
+  static readonly TokenAccountNotFound = new SarosDLMMError(
+    'Token account not found',
+    'TOKEN_ACCOUNT_NOT_FOUND'
+  );
+  static readonly BinArrayNotFound = new SarosDLMMError(
+    'Bin array account not found',
+    'BIN_ARRAY_NOT_FOUND'
+  );
+
   // Generic operation errors
   static readonly QuoteCalculationFailed = new SarosDLMMError(
     'Quote calculation failed',
@@ -76,5 +94,12 @@ export class SarosDLMMError extends Error {
       throw error;
     }
     throw fallbackError;
+  }
+
+  /**
+   * Create account-specific error with address for debugging
+   */
+  static createAccountError(baseError: SarosDLMMError, address: string): SarosDLMMError {
+    return new SarosDLMMError(`${baseError.message}: ${address}`, baseError.code);
   }
 }

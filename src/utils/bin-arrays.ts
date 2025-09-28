@@ -105,29 +105,37 @@ export class BinArrays {
       this.getBinArrayAddress(idx, pairAddress, programId)
     );
 
-    const binArrayAccountsInfo = await connection.getMultipleAccountsInfo(binArrayAddresses);
-    const validIndexes = surroundingIndexes.filter((_, i) => binArrayAccountsInfo[i]);
+    try {
+      const binArrayAccountsInfo = await connection.getMultipleAccountsInfo(binArrayAddresses);
+      const validIndexes = surroundingIndexes.filter((_, i) => binArrayAccountsInfo[i]);
 
-    if (validIndexes.length < 2) {
-      throw SarosDLMMError.NoValidBinArrays;
+      if (validIndexes.length < 2) {
+        const missingAddresses = binArrayAddresses
+          .filter((_, i) => !binArrayAccountsInfo[i])
+          .map((addr) => addr.toBase58())
+          .join(', ');
+        throw SarosDLMMError.createAccountError(SarosDLMMError.BinArrayNotFound, missingAddresses);
+      }
+
+      let binArrayLowerIndex: number;
+      let binArrayUpperIndex: number;
+
+      if (validIndexes.length === 2) {
+        [binArrayLowerIndex, binArrayUpperIndex] = validIndexes;
+      } else {
+        const activeOffset = activeId % BIN_ARRAY_SIZE;
+        const [first, second, third] = validIndexes;
+        [binArrayLowerIndex, binArrayUpperIndex] =
+          activeOffset < BIN_ARRAY_SIZE / 2 ? [first, second] : [second, third];
+      }
+
+      return {
+        binArrayLower: this.getBinArrayAddress(binArrayLowerIndex, pairAddress, programId),
+        binArrayUpper: this.getBinArrayAddress(binArrayUpperIndex, pairAddress, programId),
+      };
+    } catch (error) {
+      SarosDLMMError.handleError(error, SarosDLMMError.BinArrayInfoFailed);
     }
-
-    let binArrayLowerIndex: number;
-    let binArrayUpperIndex: number;
-
-    if (validIndexes.length === 2) {
-      [binArrayLowerIndex, binArrayUpperIndex] = validIndexes;
-    } else {
-      const activeOffset = activeId % BIN_ARRAY_SIZE;
-      const [first, second, third] = validIndexes;
-      [binArrayLowerIndex, binArrayUpperIndex] =
-        activeOffset < BIN_ARRAY_SIZE / 2 ? [first, second] : [second, third];
-    }
-
-    return {
-      binArrayLower: this.getBinArrayAddress(binArrayLowerIndex, pairAddress, programId),
-      binArrayUpper: this.getBinArrayAddress(binArrayUpperIndex, pairAddress, programId),
-    };
   }
 
   /**
@@ -265,19 +273,23 @@ export class BinArrays {
       this.getBinArrayAddress(idx, pairAddress, lbProgram.programId)
     );
 
-    const accountInfos = await connection.getMultipleAccountsInfo(binArrayAddresses);
-    for (let i = 0; i < binArrayIndexes.length; i++) {
-      if (!accountInfos[i]) {
-        const ix = await lbProgram.methods
-          .initializeBinArray(new BN(binArrayIndexes[i]))
-          .accountsPartial({
-            pair: pairAddress,
-            binArray: binArrayAddresses[i],
-            user: payer,
-          })
-          .instruction();
-        transaction.add(ix);
+    try {
+      const accountInfos = await connection.getMultipleAccountsInfo(binArrayAddresses);
+      for (let i = 0; i < binArrayIndexes.length; i++) {
+        if (!accountInfos[i]) {
+          const ix = await lbProgram.methods
+            .initializeBinArray(new BN(binArrayIndexes[i]))
+            .accountsPartial({
+              pair: pairAddress,
+              binArray: binArrayAddresses[i],
+              user: payer,
+            })
+            .instruction();
+          transaction.add(ix);
+        }
       }
+    } catch (error) {
+      SarosDLMMError.handleError(error, SarosDLMMError.BinArrayInfoFailed);
     }
   }
 }

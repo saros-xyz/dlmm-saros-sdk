@@ -1,6 +1,7 @@
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { WRAP_SOL_PUBKEY } from '../constants';
+import { SarosDLMMError } from './errors';
 
 export interface PairTokenAccountsResult {
   vaultX: PublicKey;
@@ -23,62 +24,97 @@ export async function getPairTokenAccounts(
   pairAddress: PublicKey,
   connection: Connection
 ): Promise<PairTokenAccountsResult> {
-  // Step 1: Get token programs for both tokens
-  const mintAccountInfos = await connection.getMultipleAccountsInfo([tokenMintX, tokenMintY]);
+  try {
+    // Step 1: Get token programs for both tokens
+    const mintAccountInfos = await connection.getMultipleAccountsInfo([tokenMintX, tokenMintY]);
 
-  const tokenProgramX = getTokenProgramFromAccountInfo(tokenMintX, mintAccountInfos[0]);
-  const tokenProgramY = getTokenProgramFromAccountInfo(tokenMintY, mintAccountInfos[1]);
+    if (!mintAccountInfos[0]) {
+      throw SarosDLMMError.createAccountError(
+        SarosDLMMError.TokenMintNotFound,
+        tokenMintX.toBase58()
+      );
+    }
+    if (!mintAccountInfos[1]) {
+      throw SarosDLMMError.createAccountError(
+        SarosDLMMError.TokenMintNotFound,
+        tokenMintY.toBase58()
+      );
+    }
 
-  // Step 2: Calculate vault addresses
-  const vaultX = spl.getAssociatedTokenAddressSync(tokenMintX, pairAddress, true, tokenProgramX);
+    const tokenProgramX = getTokenProgramFromAccountInfo(tokenMintX, mintAccountInfos[0]);
+    const tokenProgramY = getTokenProgramFromAccountInfo(tokenMintY, mintAccountInfos[1]);
 
-  const vaultY = spl.getAssociatedTokenAddressSync(tokenMintY, pairAddress, true, tokenProgramY);
+    // Step 2: Calculate vault addresses
+    const vaultX = spl.getAssociatedTokenAddressSync(tokenMintX, pairAddress, true, tokenProgramX);
 
-  // Step 3: Get mint decimals + vault balances
-  const allAccounts = [tokenMintX, tokenMintY, vaultX, vaultY];
-  const parsedAccountsResponse = await connection.getMultipleParsedAccounts(allAccounts);
-  const parsedAccounts = parsedAccountsResponse.value;
+    const vaultY = spl.getAssociatedTokenAddressSync(tokenMintY, pairAddress, true, tokenProgramY);
 
-  const [mintXInfo, mintYInfo, vaultXInfo, vaultYInfo] = parsedAccounts;
+    // Step 3: Get mint decimals + vault balances
+    const allAccounts = [tokenMintX, tokenMintY, vaultX, vaultY];
+    const parsedAccountsResponse = await connection.getMultipleParsedAccounts(allAccounts);
+    const parsedAccounts = parsedAccountsResponse.value;
 
-  // Extract decimals from mint info
-  const baseDecimals =
-    mintXInfo?.data && 'parsed' in mintXInfo.data ? (mintXInfo.data.parsed.info.decimals ?? 0) : 0;
+    const [mintXInfo, mintYInfo, vaultXInfo, vaultYInfo] = parsedAccounts;
 
-  const quoteDecimals =
-    mintYInfo?.data && 'parsed' in mintYInfo.data ? (mintYInfo.data.parsed.info.decimals ?? 0) : 0;
+    // Validate vault accounts exist
+    if (!vaultXInfo) {
+      throw SarosDLMMError.createAccountError(
+        SarosDLMMError.TokenAccountNotFound,
+        vaultX.toBase58()
+      );
+    }
+    if (!vaultYInfo) {
+      throw SarosDLMMError.createAccountError(
+        SarosDLMMError.TokenAccountNotFound,
+        vaultY.toBase58()
+      );
+    }
 
-  // Extract vault balances from parsed token account info
-  const reserveX =
-    vaultXInfo?.data && 'parsed' in vaultXInfo.data
-      ? {
-          value: {
-            amount: vaultXInfo.data.parsed.info.tokenAmount.amount,
-            decimals: vaultXInfo.data.parsed.info.tokenAmount.decimals,
-          },
-        }
-      : { value: { amount: '0', decimals: 0 } };
+    // Extract decimals from mint info
+    const baseDecimals =
+      mintXInfo?.data && 'parsed' in mintXInfo.data
+        ? (mintXInfo.data.parsed.info.decimals ?? 0)
+        : 0;
 
-  const reserveY =
-    vaultYInfo?.data && 'parsed' in vaultYInfo.data
-      ? {
-          value: {
-            amount: vaultYInfo.data.parsed.info.tokenAmount.amount,
-            decimals: vaultYInfo.data.parsed.info.tokenAmount.decimals,
-          },
-        }
-      : { value: { amount: '0', decimals: 0 } };
+    const quoteDecimals =
+      mintYInfo?.data && 'parsed' in mintYInfo.data
+        ? (mintYInfo.data.parsed.info.decimals ?? 0)
+        : 0;
 
-  return {
-    vaultX,
-    vaultY,
-    tokenProgramX,
-    tokenProgramY,
-    reserveX,
-    reserveY,
-    baseDecimals,
-    quoteDecimals,
-  };
+    // Extract vault balances from parsed token account info
+    const reserveX =
+      vaultXInfo?.data && 'parsed' in vaultXInfo.data
+        ? {
+            value: {
+              amount: vaultXInfo.data.parsed.info.tokenAmount.amount,
+              decimals: vaultXInfo.data.parsed.info.tokenAmount.decimals,
+            },
+          }
+        : { value: { amount: '0', decimals: 0 } };
+
+    const reserveY =
+      vaultYInfo?.data && 'parsed' in vaultYInfo.data
+        ? {
+            value: {
+              amount: vaultYInfo.data.parsed.info.tokenAmount.amount,
+              decimals: vaultYInfo.data.parsed.info.tokenAmount.decimals,
+            },
+          }
+        : { value: { amount: '0', decimals: 0 } };
+
+    return {
+      vaultX,
+      vaultY,
+      tokenProgramX,
+      tokenProgramY,
+      reserveX,
+      reserveY,
+      baseDecimals,
+      quoteDecimals,
+    };
+  } catch (error) {
+    SarosDLMMError.handleError(error, SarosDLMMError.AccountFetchFailed);
+  }
 }
 
 /**
@@ -91,46 +127,63 @@ export async function getUserVaults(
   connection: Connection,
   transaction?: Transaction
 ): Promise<{ userVaultX: PublicKey; userVaultY: PublicKey }> {
-  // Step 1: Get token programs for both tokens
-  const mintAccountInfos = await connection.getMultipleAccountsInfo([tokenMintX, tokenMintY]);
+  try {
+    // Step 1: Get token programs for both tokens
+    const mintAccountInfos = await connection.getMultipleAccountsInfo([tokenMintX, tokenMintY]);
 
-  const tokenProgramX = getTokenProgramFromAccountInfo(tokenMintX, mintAccountInfos[0]);
-  const tokenProgramY = getTokenProgramFromAccountInfo(tokenMintY, mintAccountInfos[1]);
-
-  // Step 2: Calculate vault addresses
-  const vaultX = spl.getAssociatedTokenAddressSync(tokenMintX, payer, true, tokenProgramX);
-  const vaultY = spl.getAssociatedTokenAddressSync(tokenMintY, payer, true, tokenProgramY);
-
-  // Step 3: Check if vaults exist and add create instructions if needed
-  if (transaction) {
-    const vaultAccountInfos = await connection.getMultipleAccountsInfo([vaultX, vaultY]);
-
-    // Add create ATA instruction for vaultX if it doesn't exist
-    if (!vaultAccountInfos[0]) {
-      const createVaultXIx = spl.createAssociatedTokenAccountInstruction(
-        payer,
-        vaultX,
-        payer,
-        tokenMintX,
-        tokenProgramX
+    if (!mintAccountInfos[0]) {
+      throw SarosDLMMError.createAccountError(
+        SarosDLMMError.TokenMintNotFound,
+        tokenMintX.toBase58()
       );
-      transaction.add(createVaultXIx);
+    }
+    if (!mintAccountInfos[1]) {
+      throw SarosDLMMError.createAccountError(
+        SarosDLMMError.TokenMintNotFound,
+        tokenMintY.toBase58()
+      );
     }
 
-    // Add create ATA instruction for vaultY if it doesn't exist
-    if (!vaultAccountInfos[1]) {
-      const createVaultYIx = spl.createAssociatedTokenAccountInstruction(
-        payer,
-        vaultY,
-        payer,
-        tokenMintY,
-        tokenProgramY
-      );
-      transaction.add(createVaultYIx);
+    const tokenProgramX = getTokenProgramFromAccountInfo(tokenMintX, mintAccountInfos[0]);
+    const tokenProgramY = getTokenProgramFromAccountInfo(tokenMintY, mintAccountInfos[1]);
+
+    // Step 2: Calculate vault addresses
+    const vaultX = spl.getAssociatedTokenAddressSync(tokenMintX, payer, true, tokenProgramX);
+    const vaultY = spl.getAssociatedTokenAddressSync(tokenMintY, payer, true, tokenProgramY);
+
+    // Step 3: Check if vaults exist and add create instructions if needed
+    if (transaction) {
+      const vaultAccountInfos = await connection.getMultipleAccountsInfo([vaultX, vaultY]);
+
+      // Add create ATA instruction for vaultX if it doesn't exist
+      if (!vaultAccountInfos[0]) {
+        const createVaultXIx = spl.createAssociatedTokenAccountInstruction(
+          payer,
+          vaultX,
+          payer,
+          tokenMintX,
+          tokenProgramX
+        );
+        transaction.add(createVaultXIx);
+      }
+
+      // Add create ATA instruction for vaultY if it doesn't exist
+      if (!vaultAccountInfos[1]) {
+        const createVaultYIx = spl.createAssociatedTokenAccountInstruction(
+          payer,
+          vaultY,
+          payer,
+          tokenMintY,
+          tokenProgramY
+        );
+        transaction.add(createVaultYIx);
+      }
     }
+
+    return { userVaultX: vaultX, userVaultY: vaultY };
+  } catch (error) {
+    SarosDLMMError.handleError(error, SarosDLMMError.AccountFetchFailed);
   }
-
-  return { userVaultX: vaultX, userVaultY: vaultY };
 }
 
 /**
@@ -143,7 +196,7 @@ function getTokenProgramFromAccountInfo(address: PublicKey, accountInfo: any): P
   }
 
   if (!accountInfo) {
-    throw new Error(`Account info not found for ${address.toBase58()}`);
+    throw SarosDLMMError.createAccountError(SarosDLMMError.TokenMintNotFound, address.toBase58());
   }
 
   const owner = accountInfo.owner.toBase58();
