@@ -125,10 +125,40 @@ export class SarosDLMM extends SarosBaseService {
     return () => this.connection.removeOnLogsListener(subscriptionId);
   }
 
-  /**
-   * Search for pairs by token mint
-   */
-  public async findPairs(mintAddress: PublicKey): Promise<string[]> {
-    return Pairs.findPairsByTokens(mintAddress, this.connection, this.getDexProgramId());
+/**
+ * Search for pairs by one or two token mints
+ */
+public async findPairs(
+  mintA: PublicKey,
+  mintB?: PublicKey
+): Promise<string[]> {
+  const programId = this.getDexProgramId();
+
+  const [accountsX, accountsY] = await Promise.all([
+    this.connection.getProgramAccounts(new PublicKey(programId), {
+      filters: [{ memcmp: { offset: 43, bytes: mintA.toBase58() } }],
+    }),
+    this.connection.getProgramAccounts(new PublicKey(programId), {
+      filters: [{ memcmp: { offset: 75, bytes: mintA.toBase58() } }],
+    }),
+  ]);
+
+  let matches = [...accountsX, ...accountsY];
+
+  if (mintB) {
+    // filter results to only those where other side is mintB
+    matches = matches.filter((acc) => {
+      const data = acc.account.data;
+      const tokenX = new PublicKey(data.slice(43, 75));
+      const tokenY = new PublicKey(data.slice(75, 107));
+      return (
+        (tokenX.equals(mintA) && tokenY.equals(mintB)) ||
+        (tokenX.equals(mintB) && tokenY.equals(mintA))
+      );
+    });
   }
+
+  return matches.map((acc) => acc.pubkey.toString());
+}
+
 }
