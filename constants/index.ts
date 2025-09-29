@@ -13,9 +13,9 @@ export const RPC_CONFIG = {
 };
 
 
-export const ACTIVE_ID = 8388608; // 2^23
+export const CENTER_BIN_ID = 8388608; // 2^23
 export const BIN_ARRAY_SIZE = 256;
-export const BIN_ARRAY_INDEX = ACTIVE_ID / BIN_ARRAY_SIZE - 1;
+export const BIN_ARRAY_INDEX = CENTER_BIN_ID / BIN_ARRAY_SIZE - 1;
 export const MAX_BASIS_POINTS = 10_000;
 export const SCALE_OFFSET = 64;
 export const BASIS_POINT_MAX = 10_000;
@@ -26,3 +26,4 @@ export const UNIT_PRICE_DEFAULT = 1_000_000;
 export const CCU_LIMIT = 400_000;
 export const WRAP_SOL_ADDRESS = 'So11111111111111111111111111111111111111112';
 export const FIXED_LENGTH = 16;
+export const MAX_BIN_CROSSINGS = 30; // max bin crossings allowed for a swap

@@ -71,11 +71,11 @@ export interface GetTokenOutputResponse {
 
 export interface Pair {
   bump: number[];
-  liquidityBookConfig: PublicKey; // Change from string
+  liquidityBookConfig: PublicKey;
   binStep: number;
   binStepSeed: number[];
-  tokenMintX: PublicKey; // Change from string
-  tokenMintY: PublicKey; // Change from string
+  tokenMintX: PublicKey;
+  tokenMintY: PublicKey;
   staticFeeParameters: {
     baseFactor: number;
     filterPeriod: number;
@@ -94,9 +94,9 @@ export interface Pair {
     idReference: number;
     space: [number, number, number, number];
   };
-  protocolFeesX: BN; // Change from string
-  protocolFeesY: BN; // Change from string
-  hook: PublicKey | null; // Change from string
+  protocolFeesX: BN;
+  protocolFeesY: BN;
+  hook: PublicKey | null;
 }
 
 export interface CreatePairWithConfigParams {

@@ -1,6 +1,6 @@
 import { Connection } from '@solana/web3.js';
-import { ACTIVE_ID, FIXED_LENGTH, MAX_BASIS_POINTS, UNIT_PRICE_DEFAULT } from '../constants';
-import { Distribution, LiquidityShape, PositionInfo } from '../types/services';
+import { FIXED_LENGTH, MAX_BASIS_POINTS, UNIT_PRICE_DEFAULT } from '../constants';
+import { Distribution, LiquidityShape } from '../types/services';
 import { divRem } from './math';
 
 interface CreateLiquidityDistributionParams {
@@ -393,7 +393,8 @@ export function createUniformDistribution(params: CreateLiquidityDistributionPar
 }
 
 
-// UNUSED - What is intended purpose?
+// UNUSED - Multiple unused functions here. Are these old and can be removed
+// or intended for new methods?
 // export const getMaxPosition = (range: [number, number], activeId: number) => {
 //   const leftRangeIndex = Math.floor(activeId / 16);
 //   const rangeFromIndex = [Math.floor((activeId + range[0]) / 16), Math.floor((activeId + range[1]) / 16)];
@@ -404,7 +405,7 @@ export function createUniformDistribution(params: CreateLiquidityDistributionPar
 
 //   return positions;
 // };
-
+// UNUSED
 // export const getMaxBinArray = (range: [number, number], activeId: number) => {
 //   const arrayIndex = [activeId + range[0], activeId + range[1]];
 
@@ -439,13 +440,14 @@ export const getBinRange = (index: number, activeId: number) => {
   };
 };
 
-export const findPosition =
-  (index: number, activeBin = ACTIVE_ID) =>
-  (position: PositionInfo) => {
-    const { binLower, binUpper } = getBinRange(index, activeBin);
+// UNUSED
+// export const findPosition =
+//   (index: number, activeBin = CENTER_BIN_ID) =>
+//   (position: PositionInfo) => {
+//     const { binLower, binUpper } = getBinRange(index, activeBin);
 
-    return position.lowerBinId <= binLower && position.upperBinId >= binUpper;
-  };
+//     return position.lowerBinId <= binLower && position.upperBinId >= binUpper;
+//   };
 
 export const getGasPrice = async (connection: Connection): Promise<number> => {
   const buffNum = 100;
