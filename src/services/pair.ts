@@ -105,6 +105,7 @@ export class SarosDLMMPair extends SarosBaseService {
    */
   private async buildPairMetadata(): Promise<PairMetadata> {
     const { tokenMintX, tokenMintY, hook } = this.pairAccount;
+    
     const tokenAccountsData = await getPairTokenAccounts(
       tokenMintX,
       tokenMintY,
@@ -747,6 +748,17 @@ export class SarosDLMMPair extends SarosBaseService {
         tx
       );
 
+    // Get pair vault addresses (and create them if needed) using the fixed getPairTokenAccounts
+    const pairTokenAccounts = await getPairTokenAccounts(
+      this.pairAccount.tokenMintX,
+      this.pairAccount.tokenMintY,
+      this.pairAddress,
+      this.connection,
+      { payer, transaction: tx, createVaultsIfNeeded: true }
+    );
+    const associatedPairVaultX = pairTokenAccounts.vaultX;
+    const associatedPairVaultY = pairTokenAccounts.vaultY;
+
     const liquidityDistribution: Distribution[] = createUniformDistribution({
       shape: liquidityShape,
       binRange,
@@ -801,8 +813,8 @@ export class SarosDLMMPair extends SarosBaseService {
         position,
         binArrayLower,
         binArrayUpper,
-        tokenVaultX: this.tokenVaultX,
-        tokenVaultY: this.tokenVaultY,
+        tokenVaultX: associatedPairVaultX,
+        tokenVaultY: associatedPairVaultY,
         userVaultX: associatedUserVaultX,
         userVaultY: associatedUserVaultY,
         positionTokenAccount: positionVault,
@@ -860,11 +872,9 @@ export class SarosDLMMPair extends SarosBaseService {
     const closedPositions: PublicKey[] = [];
     const transactions = await Promise.all(
       positionMints.map(async (positionMint) => {
-        const position = Positions.derivePositionAddress(positionMint, this.lbProgram.programId);
-
-        const positionAccount = await this.getPositionAccount(position);
         const { tokenMintX, tokenMintY } = this.pairAccount;
-
+        const position = Positions.derivePositionAddress(positionMint, this.lbProgram.programId);
+        const positionAccount = await this.getPositionAccount(position);
         const binArrayIndex = BinArrays.calculateBinArrayIndex(positionAccount.lowerBinId);
         const { index } = await this.getBinArrayReserves({ binArrayIndex, payer });
 
@@ -883,7 +893,6 @@ export class SarosDLMMPair extends SarosBaseService {
         const positionVault = Positions.derivePositionVault(positionMint, payer);
 
         const reserveXY = await this.getPositionReserves({ position, payer });
-
         const hookPosition = Hooks.getHookPosition(hook, position, this.hooksProgram);
 
         const removedShares = Liquidity.calculateRemovedShares(
