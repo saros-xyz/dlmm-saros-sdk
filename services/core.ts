@@ -17,8 +17,7 @@ import {
   WRAP_SOL_ADDRESS,
 } from '../constants';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
-import { LiquidityBookAbstract } from '../interface/liquidityBookAbstract';
-import { MODE, PoolMetadata } from '../types';
+import {  PoolMetadata } from '../types';
 import {
   AddLiquidityIntoPositionParams,
   BinReserveInfo,
@@ -40,24 +39,11 @@ import { getGasPrice } from '../utils';
 import { mulDivBN, mulShr, shlDiv } from '../utils/math';
 import { getIdFromPrice, getPriceFromId } from '../utils/price';
 import { getProgram } from './getProgram';
-import { LBSwapService } from './swap';
+import { DLMMPair } from './pair';
+import { DLMMBase } from './base';
 
-export class LiquidityBookServices extends LiquidityBookAbstract {
+export class SarosSDK extends DLMMBase {
   bufferGas?: number;
-
-  get lbConfig() {
-    if (this.mode === MODE.DEVNET) {
-      return new PublicKey('DK6EoxvbMxJTkgcTAYfUnKyDZUTKb6wwPUFfpWsgeiR9');
-    }
-    return new PublicKey('BqPmjcPbAwE7mH23BY8q8VUEN4LSjhLUv41W87GsXVn8');
-  }
-
-  get hooksConfig() {
-    if (this.mode === MODE.DEVNET) {
-      return new PublicKey('2uAiHvYkmmvQkNh5tYtdR9sAUDwmbL7PjZcwAEYDqyES');
-    }
-    return new PublicKey('DgW5ARD9sU3W6SJqtyJSH3QPivxWt7EMvjER9hfFKWXF');
-  }
 
   public async getPairAccount(pair: PublicKey) {
     //@ts-ignore
@@ -900,7 +886,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
   public async getQuote(params: GetTokenOutputParams): Promise<GetTokenOutputResponse> {
     try {
-      const data = await LBSwapService.fromLbConfig(this.lbProgram, this.connection).calculateInOutAmount(params);
+      const data = await DLMMPair.fromLbConfig(this.lbProgram, this.connection).calculateInOutAmount(params);
       const { amountIn, amountOut } = data;
 
       const slippageFraction = params.slippage / 100;
@@ -952,7 +938,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       const pair = await this.getPairAccount(pairAddress);
       const activeId = pair?.activeId;
       const binStep = pair?.binStep;
-      const swapService = LBSwapService.fromLbConfig(this.lbProgram, this.connection);
+      const swapService = DLMMPair.fromLbConfig(this.lbProgram, this.connection);
       const feePrice = swapService.getTotalFee(pair);
       const activePrice = getPriceFromId(binStep, activeId, 9, 9);
       const price = getPriceFromId(binStep, activeId, decimalBase, decimalQuote);
@@ -967,14 +953,6 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     } catch {}
 
     return { maxAmountOut: 0, price: 0 };
-  }
-
-  public getDexName() {
-    return 'Saros DLMM';
-  }
-
-  public getDexProgramId() {
-    return this.lbProgram.programId;
   }
 
   public async fetchPoolAddresses() {

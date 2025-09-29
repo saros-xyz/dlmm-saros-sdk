@@ -9,7 +9,7 @@ import { Volatility } from '../utils/volatility';
 import { getFeeAmount, getFeeForAmount, getProtocolFee, getTotalFee } from '../utils/fees';
 import { BinArrayRange } from '../utils/bin-range';
 
-export class LBSwapService {
+export class DLMMPair {
   lbProgram!: Program<Idl>;
   private volatility: Volatility;
   connection: Connection;
@@ -21,7 +21,7 @@ export class LBSwapService {
   }
 
   static fromLbConfig(lbProgram: Program<Idl>, connection: Connection) {
-    return new LBSwapService(lbProgram, connection);
+    return new DLMMPair(lbProgram, connection);
   }
 
   getBinArray(params: GetBinArrayParams) {

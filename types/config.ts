@@ -1,12 +1,10 @@
 import { BN } from '@coral-xyz/anchor';
 import { Commitment, ConnectionConfig } from '@solana/web3.js';
+import { MODE } from '../constants';
 
-export enum MODE {
-  TESTNET = 'testnet',
-  DEVNET = 'devnet',
-  MAINNET = 'mainnet',
-}
 
+
+// TODO: remove. replace with SarosConfig
 export interface ILiquidityBookConfig {
   mode: MODE;
   options?: {

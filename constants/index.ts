@@ -1,17 +1,33 @@
-import { MODE } from '../types';
+import { PublicKey } from '@solana/web3.js';
+
+export enum MODE {
+  DEVNET = 'devnet',
+  MAINNET = 'mainnet',
+  // TESTNET = 'testnet',
+}
 
 export const RPC_CONFIG = {
-  [MODE.TESTNET]: {
-    rpc: 'https://api.testnet.solana.com',
-  },
   [MODE.DEVNET]: {
     rpc: 'https://api.devnet.solana.com',
   },
   [MODE.MAINNET]: {
     rpc: 'https://api.mainnet-beta.solana.com',
   },
+  //   [MODE.TESTNET]: {
+  //     rpc: 'https://api.testnet.solana.com',
+  //   },
 };
 
+export const DLMM_PROGRAM_IDS: Record<MODE, { lb: PublicKey; hooks: PublicKey }> = {
+  [MODE.MAINNET]: {
+    lb: new PublicKey('BqPmjcPbAwE7mH23BY8q8VUEN4LSjhLUv41W87GsXVn8'),
+    hooks: new PublicKey('DgW5ARD9sU3W6SJqtyJSH3QPivxWt7EMvjER9hfFKWXF'),
+  },
+  [MODE.DEVNET]: {
+    lb: new PublicKey('DK6EoxvbMxJTkgcTAYfUnKyDZUTKb6wwPUFfpWsgeiR9'),
+    hooks: new PublicKey('2uAiHvYkmmvQkNh5tYtdR9sAUDwmbL7PjZcwAEYDqyES'),
+  },
+};
 
 export const CENTER_BIN_ID = 8388608; // 2^23
 export const BIN_ARRAY_SIZE = 256;
