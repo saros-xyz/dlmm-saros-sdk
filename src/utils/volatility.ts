@@ -41,8 +41,7 @@ export class Volatility {
 
   public updateVolatilityReference(pairInfo: DLMMPairAccount): void {
     this.volatilityReference =
-      (pairInfo.dynamicFeeParameters.volatilityAccumulator *
-        pairInfo.staticFeeParameters.reductionFactor) /
+      (pairInfo.dynamicFeeParameters.volatilityAccumulator * pairInfo.staticFeeParameters.reductionFactor) /
       MAX_BASIS_POINTS;
   }
 

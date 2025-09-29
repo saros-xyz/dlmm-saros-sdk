@@ -9,17 +9,9 @@ export class Hooks {
   /**
    * Derive hook PDA address
    */
-  public static deriveHookAddress(
-    hooksConfig: PublicKey,
-    pairAddress: PublicKey,
-    programId: PublicKey
-  ): PublicKey {
+  public static deriveHookAddress(hooksConfig: PublicKey, pairAddress: PublicKey, programId: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('hook')),
-        hooksConfig.toBuffer(),
-        pairAddress.toBuffer(),
-      ],
+      [Buffer.from(utils.bytes.utf8.encode('hook')), hooksConfig.toBuffer(), pairAddress.toBuffer()],
       programId
     )[0];
   }
@@ -27,11 +19,7 @@ export class Hooks {
   /**
    * Derive hook position PDA
    */
-  public static deriveHookPosition(
-    hook: PublicKey,
-    position: PublicKey,
-    programId: PublicKey
-  ): PublicKey {
+  public static deriveHookPosition(hook: PublicKey, position: PublicKey, programId: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
       [Buffer.from(utils.bytes.utf8.encode('position')), hook.toBuffer(), position.toBuffer()],
       programId
@@ -49,23 +37,12 @@ export class Hooks {
     connection: Connection,
     transaction: Transaction
   ): Promise<PublicKey> {
-    const associatedHookToken = spl.getAssociatedTokenAddressSync(
-      tokenMint,
-      hook,
-      true,
-      tokenProgram
-    );
+    const associatedHookToken = spl.getAssociatedTokenAddressSync(tokenMint, hook, true, tokenProgram);
 
     const info = await connection.getAccountInfo(associatedHookToken);
     if (!info) {
       transaction.add(
-        spl.createAssociatedTokenAccountInstruction(
-          payer,
-          associatedHookToken,
-          hook,
-          tokenMint,
-          tokenProgram
-        )
+        spl.createAssociatedTokenAccountInstruction(payer, associatedHookToken, hook, tokenMint, tokenProgram)
       );
     }
 
@@ -75,11 +52,7 @@ export class Hooks {
   /**
    * Get hook position for removal operations
    */
-  public static getHookPosition(
-    hook: PublicKey,
-    position: PublicKey,
-    hooksProgram: any
-  ): PublicKey {
+  public static getHookPosition(hook: PublicKey, position: PublicKey, hooksProgram: any): PublicKey {
     return this.deriveHookPosition(hook, position, hooksProgram.programId);
   }
 }

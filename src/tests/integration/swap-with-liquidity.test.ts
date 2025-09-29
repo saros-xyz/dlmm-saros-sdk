@@ -53,24 +53,13 @@ describe('Swap Integration with Seeded Liquidity', () => {
         liquidityShape: LiquidityShape.Spot,
         binRange: [-3, 3],
       });
-      await waitForConfirmation(
-        await connection.sendTransaction(addTx, [testWallet.keypair]),
-        connection
-      );
+      await waitForConfirmation(await connection.sendTransaction(addTx, [testWallet.keypair]), connection);
 
       // 3. Balances before swap
       const baseMint = new PublicKey(testPool.tokenX);
       const quoteMint = new PublicKey(testPool.tokenY);
-      const balBeforeBase = await getTokenBalance(
-        connection,
-        testWallet.keypair.publicKey,
-        baseMint
-      );
-      const balBeforeQuote = await getTokenBalance(
-        connection,
-        testWallet.keypair.publicKey,
-        quoteMint
-      );
+      const balBeforeBase = await getTokenBalance(connection, testWallet.keypair.publicKey, baseMint);
+      const balBeforeQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, quoteMint);
 
       // 4. Get a quote
       const amountIn = 1_000_000_000n; // 1 base token (9 decimals)
@@ -97,16 +86,8 @@ describe('Swap Integration with Seeded Liquidity', () => {
       console.log(`Swap confirmed: ${sig}`);
 
       // 6. Balances after swap
-      const balAfterBase = await getTokenBalance(
-        connection,
-        testWallet.keypair.publicKey,
-        baseMint
-      );
-      const balAfterQuote = await getTokenBalance(
-        connection,
-        testWallet.keypair.publicKey,
-        quoteMint
-      );
+      const balAfterBase = await getTokenBalance(connection, testWallet.keypair.publicKey, baseMint);
+      const balAfterQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, quoteMint);
 
       // 7. Calculate actual changes
       const spentBase = balBeforeBase - balAfterBase;

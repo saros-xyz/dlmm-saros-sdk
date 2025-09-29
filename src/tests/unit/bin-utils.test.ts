@@ -54,13 +54,7 @@ describe('BinArrays', () => {
       expect(result).toHaveLength(5);
 
       const centerIndex = BinArrays.calculateBinArrayIndex(activeId);
-      expect(result).toEqual([
-        centerIndex - 2,
-        centerIndex - 1,
-        centerIndex,
-        centerIndex + 1,
-        centerIndex + 2,
-      ]);
+      expect(result).toEqual([centerIndex - 2, centerIndex - 1, centerIndex, centerIndex + 1, centerIndex + 2]);
     });
 
     it('handles even arrayRange correctly', () => {
@@ -70,13 +64,7 @@ describe('BinArrays', () => {
       expect(result).toHaveLength(5);
 
       const centerIndex = BinArrays.calculateBinArrayIndex(activeId);
-      expect(result).toEqual([
-        centerIndex - 2,
-        centerIndex - 1,
-        centerIndex,
-        centerIndex + 1,
-        centerIndex + 2,
-      ]);
+      expect(result).toEqual([centerIndex - 2, centerIndex - 1, centerIndex, centerIndex + 1, centerIndex + 2]);
     });
   });
 

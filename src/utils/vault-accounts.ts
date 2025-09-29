@@ -15,7 +15,7 @@ export interface PairTokenAccountsResult {
 }
 
 /**
- * Get both pair token account info.  
+ * Get both pair token account info.
  * if createVaultsIfNeeded is true: creates missing vault accounts (i.e in createPair)
  */
 export async function getPairTokenAccounts(
@@ -34,16 +34,10 @@ export async function getPairTokenAccounts(
     const mintAccountInfos = await connection.getMultipleAccountsInfo([tokenMintX, tokenMintY]);
 
     if (!mintAccountInfos[0]) {
-      throw SarosDLMMError.createAccountError(
-        SarosDLMMError.TokenMintNotFound,
-        tokenMintX.toBase58()
-      );
+      throw SarosDLMMError.createAccountError(SarosDLMMError.TokenMintNotFound, tokenMintX.toBase58());
     }
     if (!mintAccountInfos[1]) {
-      throw SarosDLMMError.createAccountError(
-        SarosDLMMError.TokenMintNotFound,
-        tokenMintY.toBase58()
-      );
+      throw SarosDLMMError.createAccountError(SarosDLMMError.TokenMintNotFound, tokenMintY.toBase58());
     }
 
     const tokenProgramX = getTokenProgramFromAccountInfo(tokenMintX, mintAccountInfos[0]);
@@ -91,15 +85,10 @@ export async function getPairTokenAccounts(
     const [mintXInfo, mintYInfo, vaultXInfo, vaultYInfo] = parsedAccounts;
 
     // Extract decimals from mint info
-    const baseDecimals =
-      mintXInfo?.data && 'parsed' in mintXInfo.data
-        ? (mintXInfo.data.parsed.info.decimals ?? 0)
-        : 0;
+    const baseDecimals = mintXInfo?.data && 'parsed' in mintXInfo.data ? (mintXInfo.data.parsed.info.decimals ?? 0) : 0;
 
     const quoteDecimals =
-      mintYInfo?.data && 'parsed' in mintYInfo.data
-        ? (mintYInfo.data.parsed.info.decimals ?? 0)
-        : 0;
+      mintYInfo?.data && 'parsed' in mintYInfo.data ? (mintYInfo.data.parsed.info.decimals ?? 0) : 0;
 
     // Handle vault accounts that might not exist yet (for new pools)
     // Extract vault balances from parsed token account info, defaulting to 0 if vault doesn't exist
@@ -153,16 +142,10 @@ export async function getUserVaults(
     const mintAccountInfos = await connection.getMultipleAccountsInfo([tokenMintX, tokenMintY]);
 
     if (!mintAccountInfos[0]) {
-      throw SarosDLMMError.createAccountError(
-        SarosDLMMError.TokenMintNotFound,
-        tokenMintX.toBase58()
-      );
+      throw SarosDLMMError.createAccountError(SarosDLMMError.TokenMintNotFound, tokenMintX.toBase58());
     }
     if (!mintAccountInfos[1]) {
-      throw SarosDLMMError.createAccountError(
-        SarosDLMMError.TokenMintNotFound,
-        tokenMintY.toBase58()
-      );
+      throw SarosDLMMError.createAccountError(SarosDLMMError.TokenMintNotFound, tokenMintY.toBase58());
     }
 
     const tokenProgramX = getTokenProgramFromAccountInfo(tokenMintX, mintAccountInfos[0]);
@@ -221,7 +204,5 @@ function getTokenProgramFromAccountInfo(address: PublicKey, accountInfo: any): P
   }
 
   const owner = accountInfo.owner.toBase58();
-  return owner === spl.TOKEN_PROGRAM_ID.toBase58()
-    ? spl.TOKEN_PROGRAM_ID
-    : spl.TOKEN_2022_PROGRAM_ID;
+  return owner === spl.TOKEN_PROGRAM_ID.toBase58() ? spl.TOKEN_PROGRAM_ID : spl.TOKEN_2022_PROGRAM_ID;
 }

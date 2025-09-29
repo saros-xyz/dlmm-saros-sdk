@@ -4,11 +4,7 @@ import { BIN_ARRAY_SIZE } from '../constants';
 import { SarosDLMMError } from './errors';
 
 export class BinArrays {
-  public static getBinArrayAddress(
-    binArrayIndex: number,
-    pair: PublicKey,
-    programId: PublicKey
-  ): PublicKey {
+  public static getBinArrayAddress(binArrayIndex: number, pair: PublicKey, programId: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
       [
         Buffer.from(utils.bytes.utf8.encode('bin_array')),
@@ -42,17 +38,9 @@ export class BinArrays {
   /**
    * Get hook bin array PDA for a given hook + index.
    */
-  public static getHookBinArrayAddress(
-    hook: PublicKey,
-    programId: PublicKey,
-    index: number
-  ): PublicKey {
+  public static getHookBinArrayAddress(hook: PublicKey, programId: PublicKey, index: number): PublicKey {
     return PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('bin_array')),
-        hook.toBuffer(),
-        new BN(index).toArrayLike(Buffer, 'le', 4),
-      ],
+      [Buffer.from(utils.bytes.utf8.encode('bin_array')), hook.toBuffer(), new BN(index).toArrayLike(Buffer, 'le', 4)],
       programId
     )[0];
   }
@@ -85,7 +73,7 @@ export class BinArrays {
     };
   }
 
-   /**
+  /**
    * Get bin array reserves with adjacent fallback logic
    */
   public static async getBinArrayWithAdjacent(
@@ -111,7 +99,6 @@ export class BinArrays {
     }
   }
 
-
   /**
    * Get valid bin arrays for swap operations
    */
@@ -122,15 +109,9 @@ export class BinArrays {
     programId: PublicKey
   ): Promise<{ binArrayLower: PublicKey; binArrayUpper: PublicKey }> {
     const currentBinArrayIndex = this.calculateBinArrayIndex(activeId);
-    const surroundingIndexes = [
-      currentBinArrayIndex - 1,
-      currentBinArrayIndex,
-      currentBinArrayIndex + 1,
-    ];
+    const surroundingIndexes = [currentBinArrayIndex - 1, currentBinArrayIndex, currentBinArrayIndex + 1];
 
-    const binArrayAddresses = surroundingIndexes.map((idx) =>
-      this.getBinArrayAddress(idx, pairAddress, programId)
-    );
+    const binArrayAddresses = surroundingIndexes.map((idx) => this.getBinArrayAddress(idx, pairAddress, programId));
 
     try {
       const binArrayAccountsInfo = await connection.getMultipleAccountsInfo(binArrayAddresses);
@@ -212,11 +193,7 @@ export class BinArrays {
     lbProgram: any
   ): Promise<{ binArrays: any[]; binArrayIndexes: number[] }> {
     const currentBinArrayIndex = this.calculateBinArrayIndex(activeId);
-    const binArrayIndexes = [
-      currentBinArrayIndex - 1,
-      currentBinArrayIndex,
-      currentBinArrayIndex + 1,
-    ];
+    const binArrayIndexes = [currentBinArrayIndex - 1, currentBinArrayIndex, currentBinArrayIndex + 1];
 
     const binArrayAddresses = binArrayIndexes.map((idx) =>
       this.getBinArrayAddress(idx, pairAddress, lbProgram.programId)
@@ -233,7 +210,6 @@ export class BinArrays {
 
     return { binArrays, binArrayIndexes };
   }
-
 
   /**
    * Get bin arrays and hook bin arrays for liquidity removal

@@ -1,10 +1,5 @@
 import { DLMMPairAccount } from '../types';
-import {
-  VARIABLE_FEE_PRECISION,
-  PRECISION_BIGINT,
-  MAX_BASIS_POINTS_BIGINT,
-  MAX_BASIS_POINTS,
-} from '../constants';
+import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT, MAX_BASIS_POINTS } from '../constants';
 
 export interface FeeCalculationResult {
   baseFee: number; // in percentage (e.g., 1.0 for 1%)
@@ -55,7 +50,7 @@ export class Fees {
 
   /**
    * Calculate user-facing fee percentages for pair metadata
-   * Returns clean percentage values that match actual swap fees
+   * TODO: VERIFY calculations are correct and if dynamic values should be returned
    */
   public static calculateFeePercentages(
     binStep: number,
@@ -77,8 +72,7 @@ export class Fees {
     const dynamicFeeDecimal = baseFeeDecimal + variableFeeDecimal;
 
     // Protocol fee is always protocolShare% of dynamic fee (typically 20%)
-    const protocolFeePercentage =
-      (staticFeeParameters.protocolShare / MAX_BASIS_POINTS) * dynamicFeeDecimal;
+    const protocolFeePercentage = (staticFeeParameters.protocolShare / MAX_BASIS_POINTS) * dynamicFeeDecimal;
 
     return {
       // Convert to percentages

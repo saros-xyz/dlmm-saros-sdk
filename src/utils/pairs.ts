@@ -31,17 +31,9 @@ export class Pairs {
   /**
    * Derive bin step config PDA
    */
-  public static deriveBinStepConfig(
-    lbConfig: PublicKey,
-    binStep: number,
-    programId: PublicKey
-  ): PublicKey {
+  public static deriveBinStepConfig(lbConfig: PublicKey, binStep: number, programId: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('bin_step_config')),
-        lbConfig.toBuffer(),
-        new Uint8Array([binStep]),
-      ],
+      [Buffer.from(utils.bytes.utf8.encode('bin_step_config')), lbConfig.toBuffer(), new Uint8Array([binStep])],
       programId
     )[0];
   }
@@ -49,17 +41,9 @@ export class Pairs {
   /**
    * Derive quote asset badge PDA
    */
-  public static deriveQuoteAssetBadge(
-    lbConfig: PublicKey,
-    tokenYMint: PublicKey,
-    programId: PublicKey
-  ): PublicKey {
+  public static deriveQuoteAssetBadge(lbConfig: PublicKey, tokenYMint: PublicKey, programId: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('quote_asset_badge')),
-        lbConfig.toBuffer(),
-        tokenYMint.toBuffer(),
-      ],
+      [Buffer.from(utils.bytes.utf8.encode('quote_asset_badge')), lbConfig.toBuffer(), tokenYMint.toBuffer()],
       programId
     )[0];
   }
@@ -87,11 +71,7 @@ export class Pairs {
     const quoteAssetBadge = this.deriveQuoteAssetBadge(lbConfig, tokenYMint, programId);
 
     const binArrayIndex = BinArrays.calculateBinArrayIndex(activeBinId);
-    const { binArrayLower, binArrayUpper } = BinArrays.getBinArrayAddresses(
-      binArrayIndex,
-      pair,
-      programId
-    );
+    const { binArrayLower, binArrayUpper } = BinArrays.getBinArrayAddresses(binArrayIndex, pair, programId);
 
     return {
       pair,

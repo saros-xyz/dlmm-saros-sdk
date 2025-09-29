@@ -24,11 +24,7 @@ export abstract class SarosBaseService {
     // Inherit Connection
     this.connection = config.connection;
 
-    const provider = new AnchorProvider(
-      this.connection,
-      {} as Wallet,
-      AnchorProvider.defaultOptions()
-    );
+    const provider = new AnchorProvider(this.connection, {} as Wallet, AnchorProvider.defaultOptions());
 
     if (config.mode === MODE.DEVNET) {
       this.lbProgram = new Program(LiquidityBookIDLDevnet as Idl, provider);

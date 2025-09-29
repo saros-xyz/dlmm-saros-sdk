@@ -51,10 +51,7 @@ async function runShapeTest(
       liquidityShape: shape,
       binRange,
     });
-    await waitForConfirmation(
-      await connection.sendTransaction(addTx, [testWallet.keypair]),
-      connection
-    );
+    await waitForConfirmation(await connection.sendTransaction(addTx, [testWallet.keypair]), connection);
 
     const positions = await pair.getUserPositions({
       payer: testWallet.keypair.publicKey,
@@ -124,10 +121,7 @@ describe('Liquidity Shape Distribution', () => {
       }
 
       // Verify overall liquidity distribution is reasonable
-      const totalLiquidity = activeBins.reduce(
-        (sum, b) => sum + b.baseReserve + b.quoteReserve,
-        0n
-      );
+      const totalLiquidity = activeBins.reduce((sum, b) => sum + b.baseReserve + b.quoteReserve, 0n);
       expect(totalLiquidity).toBeGreaterThan(0n);
 
       // Check that liquidity is distributed across multiple bins (not concentrated in just one)
@@ -143,9 +137,7 @@ describe('Liquidity Shape Distribution', () => {
       // Curve distribution should follow a bell curve/gaussian pattern
       // Higher concentration near the center (active bin)
       const centerBins = bins.filter((b) => Math.abs(b.binPosition) <= 1);
-      const midRangeBins = bins.filter(
-        (b) => Math.abs(b.binPosition) > 1 && Math.abs(b.binPosition) <= 3
-      );
+      const midRangeBins = bins.filter((b) => Math.abs(b.binPosition) > 1 && Math.abs(b.binPosition) <= 3);
       const edgeBins = bins.filter((b) => Math.abs(b.binPosition) > 3);
 
       if (centerBins.length > 0) {
@@ -153,10 +145,7 @@ describe('Liquidity Shape Distribution', () => {
         const centerAvg = centerTotal / BigInt(centerBins.length);
 
         if (midRangeBins.length > 0) {
-          const midTotal = midRangeBins.reduce(
-            (sum, b) => sum + b.baseReserve + b.quoteReserve,
-            0n
-          );
+          const midTotal = midRangeBins.reduce((sum, b) => sum + b.baseReserve + b.quoteReserve, 0n);
           const midAvg = midTotal / BigInt(midRangeBins.length);
 
           // Center should have more liquidity than mid-range
@@ -182,8 +171,7 @@ describe('Liquidity Shape Distribution', () => {
         const avgLiquidity = average(liquidity);
         if (avgLiquidity !== null && liquidity.length > 1) {
           const variance =
-            liquidity.reduce((acc, val) => acc + (val - avgLiquidity) ** 2n, 0n) /
-            BigInt(liquidity.length);
+            liquidity.reduce((acc, val) => acc + (val - avgLiquidity) ** 2n, 0n) / BigInt(liquidity.length);
           const stdDev = sqrt(variance);
 
           // For a curve distribution, we expect some variance in liquidity amounts
@@ -219,12 +207,8 @@ describe('Liquidity Shape Distribution', () => {
 
       // BidAsk distribution should have linear weighting with higher concentration at edges
       const activeBin = bins.find((b) => b.binPosition === 0);
-      const negativeBins = bins
-        .filter((b) => b.binPosition < 0)
-        .sort((a, b) => a.binPosition - b.binPosition);
-      const positiveBins = bins
-        .filter((b) => b.binPosition > 0)
-        .sort((a, b) => a.binPosition - b.binPosition);
+      const negativeBins = bins.filter((b) => b.binPosition < 0).sort((a, b) => a.binPosition - b.binPosition);
+      const positiveBins = bins.filter((b) => b.binPosition > 0).sort((a, b) => a.binPosition - b.binPosition);
 
       // Active bin should contain both tokens
       if (activeBin) {
@@ -276,10 +260,7 @@ describe('Liquidity Shape Distribution', () => {
         const otherNegativeBins = negativeBins.slice(1);
 
         if (otherNegativeBins.length > 0 && leftEdge.quoteReserve > 0n) {
-          const maxOtherQuote = otherNegativeBins.reduce(
-            (max, b) => (b.quoteReserve > max ? b.quoteReserve : max),
-            0n
-          );
+          const maxOtherQuote = otherNegativeBins.reduce((max, b) => (b.quoteReserve > max ? b.quoteReserve : max), 0n);
           expect(leftEdge.quoteReserve).toBeGreaterThanOrEqual(maxOtherQuote / 2n);
         }
       }
@@ -289,10 +270,7 @@ describe('Liquidity Shape Distribution', () => {
         const otherPositiveBins = positiveBins.slice(0, -1);
 
         if (otherPositiveBins.length > 0 && rightEdge.baseReserve > 0n) {
-          const maxOtherBase = otherPositiveBins.reduce(
-            (max, b) => (b.baseReserve > max ? b.baseReserve : max),
-            0n
-          );
+          const maxOtherBase = otherPositiveBins.reduce((max, b) => (b.baseReserve > max ? b.baseReserve : max), 0n);
           expect(rightEdge.baseReserve).toBeGreaterThanOrEqual(maxOtherBase / 2n);
         }
       }

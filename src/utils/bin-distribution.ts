@@ -17,9 +17,7 @@ export interface Distribution {
   distributionY: number;
 }
 
-export function createUniformDistribution(
-  params: CreateLiquidityDistributionParams
-): Distribution[] {
+export function createUniformDistribution(params: CreateLiquidityDistributionParams): Distribution[] {
   const { shape, binRange } = params;
 
   const [minBin, maxBin] = binRange;
@@ -132,19 +130,11 @@ export function createUniformDistribution(
           : positiveDeltaIds.length === 1 && positiveDeltaIds[0] === 1
             ? 3
             : Math.pow(positiveDeltaIds[positiveDeltaIds.length - 1], 2);
-      _distributionX = [
-        ...Array(negDelta).fill(0),
-        1 / rSquareX,
-        ...positiveDeltaIds.map((i) => (i + 1) / rSquareX),
-      ];
+      _distributionX = [...Array(negDelta).fill(0), 1 / rSquareX, ...positiveDeltaIds.map((i) => (i + 1) / rSquareX)];
 
       // dist = 1/R^2 * i
       const rSquareY =
-        negativeDeltaIds.length === 0
-          ? 1
-          : negativeDeltaIds[0] === -1
-            ? 3
-            : Math.pow(negativeDeltaIds[0], 2);
+        negativeDeltaIds.length === 0 ? 1 : negativeDeltaIds[0] === -1 ? 3 : Math.pow(negativeDeltaIds[0], 2);
       _distributionY = [
         ...negativeDeltaIds.map((i) => (-1 * (i - 1)) / rSquareY),
         1 / rSquareY,
@@ -209,9 +199,7 @@ export function createUniformDistribution(
       liquidityDistributionY = liquidityDistributionY.map((i, idx) => {
         if (i === 0) return i;
         if (remainder > 0 && idx === 0) {
-          return isOverflow
-            ? i - Math.floor(quotient) - remainder
-            : i + Math.floor(quotient) + remainder;
+          return isOverflow ? i - Math.floor(quotient) - remainder : i + Math.floor(quotient) + remainder;
         }
         return isOverflow ? i - Math.floor(quotient) : i + Math.floor(quotient);
       });
@@ -242,19 +230,7 @@ const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribut
   // get sigma based on radius R
   const getSigma = (_R: number) => {
     const factor =
-      _R >= 20
-        ? 2.0
-        : _R >= 15
-          ? 1.8
-          : _R >= 10
-            ? 1.7
-            : _R >= 8
-              ? 1.6
-              : _R >= 6
-                ? 1.5
-                : _R >= 5
-                  ? 1.4
-                  : 1.0;
+      _R >= 20 ? 2.0 : _R >= 15 ? 1.8 : _R >= 10 ? 1.7 : _R >= 8 ? 1.6 : _R >= 6 ? 1.5 : _R >= 5 ? 1.4 : 1.0;
     return _R / factor;
   };
 
@@ -282,9 +258,7 @@ const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribut
 
     // dist = 2 * A * exp(-0.5 * (r /sigma) ^ 2)
     // r is distance from right-most bin
-    _distributionY = deltaIds.map(
-      (_, ind) => 2 * A * Math.exp(-0.5 * Math.pow((R - ind) / sigma, 2))
-    );
+    _distributionY = deltaIds.map((_, ind) => 2 * A * Math.exp(-0.5 * Math.pow((R - ind) / sigma, 2)));
   }
 
   // range only includes A tokens (X tokens)
@@ -338,9 +312,7 @@ const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribut
     _distributionX = [
       ...Array(negDelta).fill(0),
       AX,
-      ...positiveDeltaIds.map(
-        (_, ind) => 2 * AX * Math.exp(-0.5 * Math.pow((ind + 1) / sigmaX, 2))
-      ),
+      ...positiveDeltaIds.map((_, ind) => 2 * AX * Math.exp(-0.5 * Math.pow((ind + 1) / sigmaX, 2))),
     ];
 
     // radius is num of bins
@@ -353,9 +325,7 @@ const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribut
     // dist = 2 * A * exp(-0.5 * (r /sigma) ^ 2)
     // r is distance from 0
     _distributionY = [
-      ...negativeDeltaIds.map(
-        (_, ind) => 2 * AY * Math.exp(-0.5 * Math.pow((RY - ind) / sigmaY, 2))
-      ),
+      ...negativeDeltaIds.map((_, ind) => 2 * AY * Math.exp(-0.5 * Math.pow((RY - ind) / sigmaY, 2))),
       AY,
       ...Array(posDelta).fill(0),
     ];
@@ -414,9 +384,7 @@ const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribut
     liquidityDistributionY = liquidityDistributionY.map((i, idx) => {
       if (i === 0) return i;
       if (remainder > 0 && idx === numberBins - 1) {
-        return isOverflow
-          ? i - Math.floor(quotient) - remainder
-          : i + Math.floor(quotient) + remainder;
+        return isOverflow ? i - Math.floor(quotient) - remainder : i + Math.floor(quotient) + remainder;
       }
       return isOverflow ? i - Math.floor(quotient) : i + Math.floor(quotient);
     });

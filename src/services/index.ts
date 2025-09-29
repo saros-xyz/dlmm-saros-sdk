@@ -90,10 +90,7 @@ export class SarosDLMM extends SarosBaseService {
       if (accounts.length === 0) throw SarosDLMMError.NoPairFound;
 
       return accounts
-        .filter(
-          (acc) =>
-            acc.account.owner.toString() === programId.toString() && acc.account.data.length >= 8
-        )
+        .filter((acc) => acc.account.owner.toString() === programId.toString() && acc.account.data.length >= 8)
         .map((acc) => acc.pubkey.toString());
     } catch (error) {
       SarosDLMMError.handleError(error, SarosDLMMError.NoPairFound);
@@ -125,40 +122,33 @@ export class SarosDLMM extends SarosBaseService {
     return () => this.connection.removeOnLogsListener(subscriptionId);
   }
 
-/**
- * Search for pairs by one or two token mints
- */
-public async findPairs(
-  mintA: PublicKey,
-  mintB?: PublicKey
-): Promise<string[]> {
-  const programId = this.getDexProgramId();
+  /**
+   * Search for pairs by one or two token mints
+   */
+  public async findPairs(mintA: PublicKey, mintB?: PublicKey): Promise<string[]> {
+    const programId = this.getDexProgramId();
 
-  const [accountsX, accountsY] = await Promise.all([
-    this.connection.getProgramAccounts(new PublicKey(programId), {
-      filters: [{ memcmp: { offset: 43, bytes: mintA.toBase58() } }],
-    }),
-    this.connection.getProgramAccounts(new PublicKey(programId), {
-      filters: [{ memcmp: { offset: 75, bytes: mintA.toBase58() } }],
-    }),
-  ]);
+    const [accountsX, accountsY] = await Promise.all([
+      this.connection.getProgramAccounts(new PublicKey(programId), {
+        filters: [{ memcmp: { offset: 43, bytes: mintA.toBase58() } }],
+      }),
+      this.connection.getProgramAccounts(new PublicKey(programId), {
+        filters: [{ memcmp: { offset: 75, bytes: mintA.toBase58() } }],
+      }),
+    ]);
 
-  let matches = [...accountsX, ...accountsY];
+    let matches = [...accountsX, ...accountsY];
 
-  if (mintB) {
-    // filter results to only those where other side is mintB
-    matches = matches.filter((acc) => {
-      const data = acc.account.data;
-      const tokenX = new PublicKey(data.slice(43, 75));
-      const tokenY = new PublicKey(data.slice(75, 107));
-      return (
-        (tokenX.equals(mintA) && tokenY.equals(mintB)) ||
-        (tokenX.equals(mintB) && tokenY.equals(mintA))
-      );
-    });
+    if (mintB) {
+      // filter results to only those where other side is mintB
+      matches = matches.filter((acc) => {
+        const data = acc.account.data;
+        const tokenX = new PublicKey(data.slice(43, 75));
+        const tokenY = new PublicKey(data.slice(75, 107));
+        return (tokenX.equals(mintA) && tokenY.equals(mintB)) || (tokenX.equals(mintB) && tokenY.equals(mintA));
+      });
+    }
+
+    return matches.map((acc) => acc.pubkey.toString());
   }
-
-  return matches.map((acc) => acc.pubkey.toString());
-}
-
 }

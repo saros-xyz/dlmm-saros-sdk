@@ -5,10 +5,7 @@ import { SarosDLMMError } from '../../utils/errors';
 import { SarosDLMM } from '../../services';
 
 // Single connection + SDK instance for all tests
-const connection = new Connection(
-  process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
-  'confirmed'
-);
+const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
 const sdk = new SarosDLMM({ mode: MODE.MAINNET, connection });
 
 // Test pool constants
@@ -78,9 +75,7 @@ describe('Pool Metadata', () => {
   });
 
   it('throws SarosDLMMError for invalid pool', async () => {
-    await expect(sdk.getPair(new PublicKey(POOLS.INVALID.address))).rejects.toThrow(
-      SarosDLMMError.PairFetchFailed
-    );
+    await expect(sdk.getPair(new PublicKey(POOLS.INVALID.address))).rejects.toThrow(SarosDLMMError.PairFetchFailed);
   });
 });
 
@@ -104,10 +99,7 @@ describe('Pool Discovery', () => {
   });
 
   it('fetches multiple pairs with getPairs', async () => {
-    const pairAddresses = [
-      new PublicKey(POOLS.SOL_USDC.address),
-      new PublicKey(POOLS.USDC_USDT.address),
-    ];
+    const pairAddresses = [new PublicKey(POOLS.SOL_USDC.address), new PublicKey(POOLS.USDC_USDT.address)];
 
     const pairs = await sdk.getPairs(pairAddresses);
 
@@ -119,12 +111,8 @@ describe('Pool Discovery', () => {
       expect(pair.getPairMetadata()).toBeDefined();
     });
 
-    const solUsdcPair = pairs.find(
-      (p) => p.getPairMetadata().pair.toString() === POOLS.SOL_USDC.address
-    );
-    const usdcUsdtPair = pairs.find(
-      (p) => p.getPairMetadata().pair.toString() === POOLS.USDC_USDT.address
-    );
+    const solUsdcPair = pairs.find((p) => p.getPairMetadata().pair.toString() === POOLS.SOL_USDC.address);
+    const usdcUsdtPair = pairs.find((p) => p.getPairMetadata().pair.toString() === POOLS.USDC_USDT.address);
 
     expect(solUsdcPair).toBeDefined();
     expect(usdcUsdtPair).toBeDefined();

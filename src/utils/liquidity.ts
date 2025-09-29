@@ -42,10 +42,7 @@ export class Liquidity {
     return removedShares;
   }
 
-  public static getAvailableShares(
-    reserveXY: PositionReserve[],
-    type: RemoveLiquidityType
-  ): PositionReserve[] {
+  public static getAvailableShares(reserveXY: PositionReserve[], type: RemoveLiquidityType): PositionReserve[] {
     return reserveXY.filter((item: PositionReserve) =>
       type === RemoveLiquidityType.All
         ? item.liquidityShare > 0n

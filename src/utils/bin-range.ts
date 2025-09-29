@@ -6,10 +6,7 @@ export class BinArrayRange {
   private readonly bins: { [binId: number]: Bin };
 
   constructor(binArrayPrevious: BinArray, binArrayCurrent: BinArray, binArrayNext: BinArray) {
-    if (
-      binArrayCurrent.index !== binArrayPrevious.index + 1 ||
-      binArrayNext.index !== binArrayCurrent.index + 1
-    ) {
+    if (binArrayCurrent.index !== binArrayPrevious.index + 1 || binArrayNext.index !== binArrayCurrent.index + 1) {
       throw SarosDLMMError.BinArrayIndexMismatch;
     }
 

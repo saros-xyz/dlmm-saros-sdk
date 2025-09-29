@@ -1,12 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { PublicKey } from '@solana/web3.js';
 import { SarosDLMM } from '../../services';
-import {
-  getTestWallet,
-  getTestConnection,
-  getAllTestPools,
-  waitForConfirmation,
-} from '../setup/test-helpers';
+import { getTestWallet, getTestConnection, getAllTestPools, waitForConfirmation } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
 import { RemoveLiquidityType, MODE } from '../../types';
 
@@ -56,9 +51,7 @@ async function getAllUserPositions(pairs: PublicKey[], userPublicKey: PublicKey)
   return allPositions;
 }
 
-async function batchRemoveLiquidity(
-  positions: Array<{ pair: PublicKey; positionMint: PublicKey }>
-) {
+async function batchRemoveLiquidity(positions: Array<{ pair: PublicKey; positionMint: PublicKey }>) {
   const results = {
     successful: 0,
     failed: 0,
@@ -68,9 +61,7 @@ async function batchRemoveLiquidity(
   for (let i = 0; i < positions.length; i += BATCH_SIZE) {
     const batch = positions.slice(i, i + BATCH_SIZE);
 
-    console.log(
-      `Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(positions.length / BATCH_SIZE)}`
-    );
+    console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(positions.length / BATCH_SIZE)}`);
 
     for (const { pair, positionMint } of batch) {
       try {
@@ -84,9 +75,7 @@ async function batchRemoveLiquidity(
         });
 
         if (result.setupTransaction) {
-          const setupSig = await connection.sendTransaction(result.setupTransaction, [
-            testWallet.keypair,
-          ]);
+          const setupSig = await connection.sendTransaction(result.setupTransaction, [testWallet.keypair]);
           await waitForConfirmation(setupSig, connection);
           await sleep(RATE_LIMIT_DELAY);
         }
@@ -98,9 +87,7 @@ async function batchRemoveLiquidity(
         }
 
         if (result.cleanupTransaction) {
-          const cleanupSig = await connection.sendTransaction(result.cleanupTransaction, [
-            testWallet.keypair,
-          ]);
+          const cleanupSig = await connection.sendTransaction(result.cleanupTransaction, [testWallet.keypair]);
           await waitForConfirmation(cleanupSig, connection);
           await sleep(RATE_LIMIT_DELAY);
         }

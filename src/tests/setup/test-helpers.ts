@@ -39,7 +39,6 @@ function getTestWalletSetup(): TestWalletSetup {
   return setup;
 }
 
-
 export function getTestToken(symbol?: string): TestTokenInfo {
   if (symbol === 'wSOL' || symbol === 'SOL') {
     return {
@@ -53,9 +52,7 @@ export function getTestToken(symbol?: string): TestTokenInfo {
     throw new Error('No test tokens available.');
   }
 
-  const token = symbol
-    ? wallet.tokens.find((t) => t.symbol === symbol)
-    : wallet.tokens[0];
+  const token = symbol ? wallet.tokens.find((t) => t.symbol === symbol) : wallet.tokens[0];
 
   if (!token) {
     throw new Error(
@@ -79,11 +76,7 @@ export function getAllTestPools(): TestPoolInfo[] {
   return wallet.pools || [];
 }
 
-export function findTestPool(
-  baseSymbol: string,
-  quoteSymbol: string,
-  binStep: number
-): TestPoolInfo | null {
+export function findTestPool(baseSymbol: string, quoteSymbol: string, binStep: number): TestPoolInfo | null {
   const wallet = getTestWallet();
   const pools = wallet.pools || [];
 
@@ -165,11 +158,7 @@ export async function cleanupLiquidity(
   }
 }
 
-export async function getTokenBalance(
-  connection: Connection,
-  owner: PublicKey,
-  mint: PublicKey
-): Promise<bigint> {
+export async function getTokenBalance(connection: Connection, owner: PublicKey, mint: PublicKey): Promise<bigint> {
   if (mint.equals(WRAP_SOL_PUBKEY)) {
     // WSOL unwraps into SOL, so check lamports directly
     const acctInfo = await connection.getAccountInfo(owner);

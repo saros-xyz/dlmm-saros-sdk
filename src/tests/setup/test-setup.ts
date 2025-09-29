@@ -12,10 +12,7 @@ async function setupTestEnvironment() {
 
   console.log('🔧 Setting up test environment...');
 
-  const connection = new Connection(
-    process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com',
-    'confirmed'
-  );
+  const connection = new Connection(process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com', 'confirmed');
   const walletSetup = new TestWalletSetup({}, connection);
   // Check if tokens exist, create them if not
   await createTokensIfNeeded(walletSetup);

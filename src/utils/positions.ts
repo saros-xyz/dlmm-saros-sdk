@@ -85,9 +85,7 @@ export class Positions {
     }
 
     // Derive position PDAs using our existing method
-    const positionPdas = positionMints.map((mint) =>
-      this.derivePositionAddress(mint, lbProgram.programId)
-    );
+    const positionPdas = positionMints.map((mint) => this.derivePositionAddress(mint, lbProgram.programId));
 
     const positions = await this.getPositionAccountsBatch(positionPdas, pairAddress, lbProgram);
     return positions.filter(Boolean).sort((a, b) => a.lowerBinId - b.lowerBinId);
@@ -96,10 +94,7 @@ export class Positions {
   /**
    * Get user position mints only (lighter operation when you just need the mints)
    */
-  public static async getUserPositionMints(
-    payer: PublicKey,
-    connection: Connection
-  ): Promise<PublicKey[]> {
+  public static async getUserPositionMints(payer: PublicKey, connection: Connection): Promise<PublicKey[]> {
     const token2022AccountsResp = await connection.getParsedTokenAccountsByOwner(payer, {
       programId: spl.TOKEN_2022_PROGRAM_ID,
     });

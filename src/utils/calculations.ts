@@ -18,8 +18,7 @@ export const getAmountInByPrice = (
   } else {
     // amountIn = (amountOut * priceScaled) >> scaleOffset
     return rounding === 'up'
-      ? (amountOut * priceScaled + (BigInt(1) << BigInt(SCALE_OFFSET)) - BigInt(1)) >>
-          BigInt(SCALE_OFFSET)
+      ? (amountOut * priceScaled + (BigInt(1) << BigInt(SCALE_OFFSET)) - BigInt(1)) >> BigInt(SCALE_OFFSET)
       : (amountOut * priceScaled) >> BigInt(SCALE_OFFSET);
   }
 };
@@ -37,8 +36,7 @@ export const getAmountOutByPrice = (
     // price = (Y / X) & swapForY => amountOut = amountIn * price
     // amountOut = (amountIn * priceScaled) >> scaleOffset
     return rounding === 'up'
-      ? (amountIn * priceScaled + (BigInt(1) << BigInt(SCALE_OFFSET)) - BigInt(1)) >>
-          BigInt(SCALE_OFFSET)
+      ? (amountIn * priceScaled + (BigInt(1) << BigInt(SCALE_OFFSET)) - BigInt(1)) >> BigInt(SCALE_OFFSET)
       : (amountIn * priceScaled) >> BigInt(SCALE_OFFSET);
   } else {
     // price = (X / Y) & !swapForY => amountOut = amountIn / price
@@ -80,8 +78,7 @@ export const getPriceImpact = (amountOut: bigint, maxAmountOut: bigint): number 
   if (maxAmountOut === 0n) return 0;
 
   // Using scaled integer math for precision with basis points
-  const impactBasisPoints =
-    ((amountOut - maxAmountOut) * MAX_BASIS_POINTS_BIGINT * 100n) / maxAmountOut;
+  const impactBasisPoints = ((amountOut - maxAmountOut) * MAX_BASIS_POINTS_BIGINT * 100n) / maxAmountOut;
 
   return Number(impactBasisPoints) / Number(MAX_BASIS_POINTS_BIGINT); // Convert back to percentage
 };

@@ -6,10 +6,7 @@ import { SarosDLMM } from '../../services';
 import { MODE, PositionReserve, RemoveLiquidityType } from '../../types';
 
 // Single connection + SDK instance for all tests
-const connection = new Connection(
-  process.env.RPC_URL || 'https://api.mainnet-beta.solana.com',
-  'confirmed'
-);
+const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
 const sdk = new SarosDLMM({ mode: MODE.MAINNET, connection });
 
 const USDC_USDT = '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk';
@@ -110,10 +107,7 @@ describe('Liquidity Logic', () => {
   });
 
   it('determines when to close position', () => {
-    const availableShares = Liquidity.getAvailableShares(
-      mockPositionReserves,
-      RemoveLiquidityType.All
-    );
+    const availableShares = Liquidity.getAvailableShares(mockPositionReserves, RemoveLiquidityType.All);
 
     const shouldClose = Liquidity.shouldClosePosition(
       RemoveLiquidityType.All,
@@ -126,17 +120,9 @@ describe('Liquidity Logic', () => {
   });
 
   it('determines when not to close position', () => {
-    const availableShares = Liquidity.getAvailableShares(
-      mockPositionReserves,
-      RemoveLiquidityType.All
-    );
+    const availableShares = Liquidity.getAvailableShares(mockPositionReserves, RemoveLiquidityType.All);
 
-    const shouldClose = Liquidity.shouldClosePosition(
-      RemoveLiquidityType.All,
-      ACTIVE_ID,
-      ACTIVE_ID,
-      availableShares
-    );
+    const shouldClose = Liquidity.shouldClosePosition(RemoveLiquidityType.All, ACTIVE_ID, ACTIVE_ID, availableShares);
 
     expect(shouldClose).toBe(false);
   });

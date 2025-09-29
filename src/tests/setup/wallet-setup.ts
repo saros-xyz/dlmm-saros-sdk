@@ -145,17 +145,12 @@ export class TestWalletSetup {
     }
   }
 
-  private async setupTokenAccounts(
-    wallet: Keypair,
-    tokenConfigs: TestTokenInfo[]
-  ): Promise<TestTokenInfo[]> {
+  private async setupTokenAccounts(wallet: Keypair, tokenConfigs: TestTokenInfo[]): Promise<TestTokenInfo[]> {
     const tokensWithAccounts: TestTokenInfo[] = [];
 
     for (const tokenConfig of tokenConfigs) {
       try {
-        const mintInfo = await this.connection.getAccountInfo(
-          new PublicKey(tokenConfig.mintAddress)
-        );
+        const mintInfo = await this.connection.getAccountInfo(new PublicKey(tokenConfig.mintAddress));
         if (!mintInfo) {
           console.warn(`Token mint ${tokenConfig.mintAddress} not found on devnet`);
           continue;
