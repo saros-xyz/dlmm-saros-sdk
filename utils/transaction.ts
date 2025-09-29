@@ -17,7 +17,6 @@ export async function getSuggestedCUPrice(connection: any, bufferGas?: number): 
   return Math.max(Number(unitSPrice) ?? 0, UNIT_PRICE_DEFAULT * (bufferGas ?? 1));
 }
 
-
 export const getGasPrice = async (connection: Connection): Promise<number> => {
   const buffNum = 100;
   try {

@@ -1,10 +1,9 @@
 import { BN } from '@coral-xyz/anchor';
-import { DLMMError } from '../error';
 
 // Number-based math functions for simple calculations
 export const divRem = (numerator: number, denominator: number): [number, number] => {
   if (denominator === 0) {
-    throw new DLMMError('Division by zero in math operation', 'DIVISION_BY_ZERO');
+    throw new Error('Division by zero');
   }
 
   const quotient = Math.floor(numerator / denominator);
@@ -15,7 +14,7 @@ export const divRem = (numerator: number, denominator: number): [number, number]
 
 export const mulDiv = (x: number, y: number, denominator: number, rounding: 'up' | 'down'): number => {
   if (denominator === 0) {
-    throw new DLMMError('Division by zero in math operation', 'DIVISION_BY_ZERO');
+    throw new Error('Division by zero');
   }
 
   const prod = x * y;
@@ -28,7 +27,7 @@ export const mulDiv = (x: number, y: number, denominator: number, rounding: 'up'
     return Math.floor(prod / denominator);
   }
 
-  throw new DLMMError(`Invalid rounding mode: ${rounding}. Must be 'up' or 'down'`, 'INVALID_ROUNDING_MODE');
+  throw new Error(`Invalid rounding mode: ${rounding}`);
 };
 
 export const mulShr = (x: number, y: number, offset: number, rounding: 'up' | 'down'): number => {
@@ -44,7 +43,7 @@ export const shlDiv = (x: number, y: number, offset: number, rounding: 'up' | 'd
 // BN-based math functions for precision-critical calculations
 export const mulDivBN = (x: BN, y: BN, denominator: BN, rounding: 'up' | 'down'): BN => {
   if (denominator.isZero()) {
-    throw new DLMMError('Division by zero in math operation', 'DIVISION_BY_ZERO');
+    throw new Error('Division by zero');
   }
 
   const prod = x.mul(y);
@@ -58,7 +57,7 @@ export const mulDivBN = (x: BN, y: BN, denominator: BN, rounding: 'up' | 'down')
     return prod.div(denominator);
   }
 
-  throw new DLMMError(`Invalid rounding mode: ${rounding}. Must be 'up' or 'down'`, 'INVALID_ROUNDING_MODE');
+  throw new Error(`Invalid rounding mode: ${rounding}`);
 };
 
 export const mulShrBN = (x: BN, y: BN, offset: number, rounding: 'up' | 'down'): BN => {
@@ -74,7 +73,7 @@ export const shlDivBN = (x: BN, y: BN, offset: number, rounding: 'up' | 'down'):
 // BN version of divRem for completeness
 export const divRemBN = (numerator: BN, denominator: BN): [BN, BN] => {
   if (denominator.isZero()) {
-    throw new DLMMError('Division by zero in math operation', 'DIVISION_BY_ZERO');
+    throw new Error('Division by zero');
   }
 
   const quotient = numerator.div(denominator);

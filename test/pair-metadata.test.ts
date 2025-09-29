@@ -19,21 +19,21 @@ describe('DLMMPair Metadata', () => {
 
     // Validate structure
     expect(metadata).toBeDefined();
-    expect(metadata.pair).toBe(pairAddress.toString());
+    expect(metadata.pair.toString()).toBe(pairAddress.toString());
 
     // Validate tokenX and tokenY
     expect(metadata.tokenX).toBeDefined();
     expect(metadata.tokenX.mintAddress).toBeTruthy();
-    expect(metadata.tokenX.decimals).toBeGreaterThan(0);
+    expect(metadata.tokenX.decimal).toBeGreaterThan(0);
     expect(metadata.tokenX.reserve).toBeTruthy();
 
     expect(metadata.tokenY).toBeDefined();
     expect(metadata.tokenY.mintAddress).toBeTruthy();
-    expect(metadata.tokenY.decimals).toBeGreaterThan(0);
+    expect(metadata.tokenY.decimal).toBeGreaterThan(0);
     expect(metadata.tokenY.reserve).toBeTruthy();
 
     // Tokens should be different
-    expect(metadata.tokenX.mintAddress).not.toBe(metadata.tokenY.mintAddress);
+    expect(metadata.tokenX.mintAddress.toString()).not.toBe(metadata.tokenY.mintAddress.toString());
 
     // Validate fees (binStep = 1)
     expect(metadata.binStep).toBe(1);

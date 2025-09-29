@@ -1,25 +1,15 @@
 import { BN, utils } from '@coral-xyz/anchor';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
-import * as spl from '@solana/spl-token';
-import {  PublicKey, Transaction, TransactionMessage } from '@solana/web3.js';
+import { PublicKey, Transaction, TransactionMessage } from '@solana/web3.js';
 import { Buffer } from 'buffer';
-import {
-  BIN_ARRAY_SIZE,
-} from '../constants';
+import { BIN_ARRAY_SIZE } from '../constants';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
-import {
-  BinReserveInfo,
-  CreatePairWithConfigParams,
-  GetBinArrayParams,
-  GetBinsArrayInfoParams,
-  GetBinsReserveParams,
-  GetUserVaultInfoParams,
-} from '../types/services';
-import { mulDivBN } from '../utils/math';
 import { getIdFromPrice } from '../utils/price';
 import { DLMMPair } from './pair';
 import { DLMMBase } from './base';
-import { getProgram } from '../utils/token';
+import { deriveBinArrayPDA, deriveBinStepConfigPDA, deriveQuoteAssetBadgePDA } from '../utils/pda';
+import { DLMMError } from '../error';
+import { CreatePairParams, CreatePairResponse } from '../types/pair';
 
 export class SarosSDK extends DLMMBase {
   bufferGas?: number;
@@ -41,142 +31,9 @@ export class SarosSDK extends DLMMBase {
     return await this.lbProgram.account.pair.fetch(pair);
   }
 
-  public async getPositionAccount(position: PublicKey) {
-    //@ts-ignore
-    return await this.lbProgram.account.position.fetch(position);
-  }
-
-  async getBinArray(params: GetBinArrayParams) {
-    const { binArrayIndex, pair, payer, transaction } = params;
-
-    const binArray = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('bin_array')),
-        pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
-      ],
-      this.lbProgram.programId
-    )[0];
-
-    if (transaction && payer) {
-      const binArrayInfo = await this.connection.getAccountInfo(binArray);
-
-      if (!binArrayInfo) {
-        const initializebinArrayConfigTx = await this.lbProgram.methods
-          .initializeBinArray(binArrayIndex)
-          .accountsPartial({ pair: pair, binArray: binArray, user: payer })
-          .instruction();
-        transaction.add(initializebinArrayConfigTx);
-      }
-    }
-
-    return binArray;
-  }
-
-  public async getBinArrayInfo(params: GetBinsArrayInfoParams) {
-    const { binArrayIndex, pair, payer } = params;
-    let resultIndex = binArrayIndex;
-    let result = [];
-
-    const binArray = await this.getBinArray({
-      binArrayIndex,
-      pair,
-      payer,
-    });
-
-    //@ts-ignore
-    const { bins } = await this.lbProgram.account.binArray.fetch(binArray);
-    try {
-      const binArrayOther = await this.getBinArray({
-        binArrayIndex: binArrayIndex + 1,
-        pair,
-        payer,
-      });
-      //@ts-ignore
-      const res = await this.lbProgram.account.binArray.fetch(binArrayOther);
-
-      result = [...bins, ...res.bins];
-    } catch {
-      const binArrayOther = await this.getBinArray({
-        binArrayIndex: binArrayIndex - 1,
-        pair,
-        payer,
-      });
-      //@ts-ignore
-      const res = await this.lbProgram.account.binArray.fetch(binArrayOther);
-      result = [...res.bins, ...bins];
-      resultIndex -= 1;
-    }
-
-    return { bins: result, resultIndex };
-  }
-
-  public async getBinsReserveInformation(params: GetBinsReserveParams): Promise<BinReserveInfo[]> {
-    const { position, pair, payer } = params;
-    const positionInfo = await this.getPositionAccount(position);
-    const firstBinId = positionInfo.lowerBinId;
-    const binArrayIndex = Math.floor(firstBinId / BIN_ARRAY_SIZE);
-
-    const { bins, resultIndex } = await this.getBinArrayInfo({
-      binArrayIndex,
-      pair,
-      payer,
-    });
-
-    const firstBinIndex = resultIndex * BIN_ARRAY_SIZE;
-    const binIds = Array.from(
-      { length: positionInfo.upperBinId - firstBinId + 1 },
-      (_, i) => firstBinId - firstBinIndex + i
-    );
-
-    const reserveXY = binIds.map((binId: number, index: number) => {
-      const liquidityShare = positionInfo.liquidityShares[index]; // Keep as BN
-      const activeBin = bins[binId];
-
-      if (activeBin) {
-        // keep as BN
-        const totalReserveX = activeBin.reserveX;
-        const totalReserveY = activeBin.reserveY;
-        const totalSupply = activeBin.totalSupply;
-        // Use BN math throughout, only convert to number at the end
-        const reserveX = totalReserveX.gt(new BN(0))
-          ? mulDivBN(liquidityShare, totalReserveX, totalSupply, 'down').toNumber()
-          : 0;
-
-        const reserveY = totalReserveY.gt(new BN(0))
-          ? mulDivBN(liquidityShare, totalReserveY, totalSupply, 'down').toNumber()
-          : 0;
-
-        return {
-          reserveX: reserveX,
-          reserveY: reserveY,
-          totalSupply: totalSupply,
-          binId: firstBinId + index,
-          binPosistion: binId,
-          liquidityShare: positionInfo.liquidityShares[index],
-        };
-      }
-      return {
-        reserveX: 0,
-        reserveY: 0,
-        totalSupply: new BN(0),
-        binId: firstBinId + index,
-        binPosistion: binId,
-        liquidityShare,
-      };
-    });
-
-    return reserveXY;
-  }
-
-  public async createPairWithConfig(params: CreatePairWithConfigParams) {
-    const { tokenBase, tokenQuote, binStep, ratePrice, payer } = params;
-
-    const tokenX = new PublicKey(tokenBase.mintAddress);
-    const tokenY = new PublicKey(tokenQuote.mintAddress);
-
-    const id = getIdFromPrice(ratePrice || 1, binStep, tokenBase.decimal, tokenQuote.decimal);
-
+  public async createPairWithConfig(params: CreatePairParams): Promise<CreatePairResponse> {
+    const { tokenX, tokenY, binStep, ratePrice, payer } = params;
+    const id = getIdFromPrice(ratePrice || 1, binStep, tokenX.decimal, tokenY.decimal);
     let binArrayIndex = id / BIN_ARRAY_SIZE;
 
     if (id % BIN_ARRAY_SIZE < BIN_ARRAY_SIZE / 2) {
@@ -185,22 +42,15 @@ export class SarosSDK extends DLMMBase {
 
     const tx = new Transaction();
 
-    const binStepConfig = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('bin_step_config')), this.lbConfig!.toBuffer(), new Uint8Array([binStep])],
-      this.lbProgram.programId
-    )[0];
-
-    const quoteAssetBadge = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('quote_asset_badge')), this.lbConfig!.toBuffer(), tokenY.toBuffer()],
-      this.lbProgram.programId
-    )[0];
+    const binStepConfig = deriveBinStepConfigPDA(this.lbConfig!, binStep, this.lbProgram.programId);
+    const quoteAssetBadge = deriveQuoteAssetBadgePDA(this.lbConfig!, tokenY.mintAddress, this.lbProgram.programId);
 
     const pair = PublicKey.findProgramAddressSync(
       [
         Buffer.from(utils.bytes.utf8.encode('pair')),
         this.lbConfig!.toBuffer(),
-        tokenX.toBuffer(),
-        tokenY.toBuffer(),
+        tokenX.mintAddress.toBuffer(),
+        tokenY.mintAddress.toBuffer(),
         new Uint8Array([binStep]),
       ],
       this.lbProgram.programId
@@ -213,31 +63,16 @@ export class SarosSDK extends DLMMBase {
         binStepConfig: binStepConfig,
         quoteAssetBadge: quoteAssetBadge,
         pair: pair,
-        tokenMintX: tokenX,
-        tokenMintY: tokenY,
+        tokenMintX: tokenX.mintAddress,
+        tokenMintY: tokenY.mintAddress,
         user: payer,
       })
       .instruction();
 
     tx.add(initializePairConfigTx);
 
-    const binArrayLower = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('bin_array')),
-        pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
-      ],
-      this.lbProgram.programId
-    )[0];
-
-    const binArrayUpper = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('bin_array')),
-        pair.toBuffer(),
-        new BN(Number(binArrayIndex) + 1).toArrayLike(Buffer, 'le', 4),
-      ],
-      this.lbProgram.programId
-    )[0];
+    const binArrayLower = deriveBinArrayPDA(pair, binArrayIndex, this.lbProgram.programId);
+    const binArrayUpper = deriveBinArrayPDA(pair, binArrayIndex + 1, this.lbProgram.programId);
 
     const initializeBinArrayLowerConfigTx = await this.lbProgram.methods
       .initializeBinArray(binArrayIndex)
@@ -254,15 +89,14 @@ export class SarosSDK extends DLMMBase {
     tx.add(initializeBinArrayUpperConfigTx);
 
     return {
-      tx,
-      pair: pair.toString(),
-      binArrayLower: binArrayLower.toString(),
-      binArrayUpper: binArrayUpper.toString(),
-      hooksConfig: this.hooksConfig.toString(),
+      transaction: tx,
+      pair: pair,
+      binArrayLower,
+      binArrayUpper,
+      hooksConfig: this.hooksConfig,
       activeBin: Number(id),
     };
   }
-
 
   public async fetchPoolAddresses() {
     const programId = this.getDexProgramId();
@@ -271,7 +105,7 @@ export class SarosSDK extends DLMMBase {
     const pairAccountDiscriminator = pairAccount ? pairAccount.discriminator : undefined;
 
     if (!pairAccountDiscriminator) {
-      throw new Error('Pair account not found');
+      throw new DLMMError('Pair account not found', 'PAIR_ACCOUNT_NOT_FOUND');
     }
 
     const accounts = await connection.getProgramAccounts(new PublicKey(programId), {
@@ -282,7 +116,7 @@ export class SarosSDK extends DLMMBase {
       ],
     });
     if (accounts.length === 0) {
-      throw new Error('Pair not found');
+      throw new DLMMError('Pair not found', 'NO_PAIRS_FOUND');
     }
     const poolAdresses = accounts.reduce((addresses: string[], account) => {
       if (account.account.owner.toString() !== programId.toString()) {
@@ -296,59 +130,6 @@ export class SarosSDK extends DLMMBase {
     }, []);
 
     return poolAdresses;
-  }
-
-  public async getPairVaultInfo(params: {
-    tokenAddress: PublicKey;
-    pair: PublicKey;
-    payer?: PublicKey;
-    transaction?: Transaction;
-  }) {
-    const { tokenAddress, pair, payer, transaction } = params;
-
-    const tokenMint = new PublicKey(tokenAddress);
-    const tokenProgram = await getProgram(tokenMint, this.connection);
-
-    const associatedPairVault = spl.getAssociatedTokenAddressSync(tokenMint, pair, true, tokenProgram);
-
-    if (transaction && payer) {
-      const infoPairVault = await this.connection.getAccountInfo(associatedPairVault);
-
-      if (!infoPairVault) {
-        const pairVaultYInstructions = spl.createAssociatedTokenAccountInstruction(
-          payer,
-          associatedPairVault,
-          pair,
-          tokenMint,
-          tokenProgram
-        );
-        transaction.add(pairVaultYInstructions);
-      }
-    }
-
-    return associatedPairVault;
-  }
-
-  public async getUserVaultInfo(params: GetUserVaultInfoParams) {
-    const { tokenAddress, payer, transaction } = params;
-    const tokenProgram = await getProgram(tokenAddress, this.connection);
-    const associatedUserVault = spl.getAssociatedTokenAddressSync(tokenAddress, payer, true, tokenProgram);
-
-    if (transaction) {
-      const infoUserVault = await this.connection.getAccountInfo(associatedUserVault);
-
-      if (!infoUserVault) {
-        const userVaultYInstructions = spl.createAssociatedTokenAccountInstruction(
-          payer,
-          associatedUserVault,
-          payer,
-          tokenAddress,
-          tokenProgram
-        );
-        transaction.add(userVaultYInstructions);
-      }
-    }
-    return associatedUserVault;
   }
 
   public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
@@ -378,7 +159,7 @@ export class SarosSDK extends DLMMBase {
       maxSupportedTransactionVersion: 0,
     });
     if (!parsedTransaction) {
-      throw new Error('Transaction not found');
+      throw new DLMMError('Transaction not found', 'TRANSACTION_NOT_FOUND');
     }
 
     const compiledMessage = parsedTransaction.transaction.message;
@@ -405,7 +186,7 @@ export class SarosSDK extends DLMMBase {
     return pairAddress;
   }
 
-    /**
+  /**
    * Search for pairs by one or two token mints
    */
   public async findPairs(mintA: PublicKey, mintB?: PublicKey): Promise<string[]> {

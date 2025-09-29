@@ -1,5 +1,6 @@
-import { MAX_BASIS_POINTS } from '../constants';
-import { Distribution, LiquidityShape } from '../types/services';
+import { LiquidityShape, MAX_BASIS_POINTS } from '../constants';
+import { DLMMError } from '../error';
+import { Distribution } from '../types';
 import { divRem } from './math';
 
 interface CreateLiquidityDistributionParams {
@@ -195,7 +196,7 @@ export function createUniformDistribution(params: CreateLiquidityDistributionPar
   const [minBin, maxBin] = binRange;
 
   if (minBin > maxBin) {
-    throw new Error('Invalid binRange: minBin must be <= maxBin');
+    throw new DLMMError('Invalid binRange: minBin must be <= maxBin', 'INVALID_BIN_RANGE');
   }
 
   const relativeIds = Array.from({ length: maxBin - minBin + 1 }, (_, i) => i + minBin);
@@ -388,63 +389,5 @@ export function createUniformDistribution(params: CreateLiquidityDistributionPar
     return liquidityDistribution;
   }
 
-  throw new Error(`Unsupported liquidity shape: ${shape}`);
+  throw new DLMMError(`Unsupported liquidity shape: ${shape}`, 'INVALID SHAPE');
 }
-
-
-// UNUSED - Multiple unused functions here. Are these old and can be removed
-// or intended for new methods?
-// export const getMaxPosition = (range: [number, number], activeId: number) => {
-//   const leftRangeIndex = Math.floor(activeId / 16);
-//   const rangeFromIndex = [Math.floor((activeId + range[0]) / 16), Math.floor((activeId + range[1]) / 16)];
-
-//   const positions = Array.from({ length: rangeFromIndex[1] - rangeFromIndex[0] + 1 }, (_, index) => {
-//     return rangeFromIndex[0] + index - leftRangeIndex;
-//   });
-
-//   return positions;
-// };
-// UNUSED
-// export const getMaxBinArray = (range: [number, number], activeId: number) => {
-//   const arrayIndex = [activeId + range[0], activeId + range[1]];
-
-//   const binIndex = [Math.floor(arrayIndex[0] / BIN_ARRAY_SIZE), Math.floor(arrayIndex[1] / BIN_ARRAY_SIZE)];
-
-//   // check if binArrayLower, binArrayUpper is the same
-//   if (binIndex[1] === binIndex[0]) {
-//     binIndex[1] += 1;
-//   }
-
-//   const binArrayIndexLen = binIndex[1] - binIndex[0] - 1;
-//   const binArrayList = Array.from({ length: binArrayIndexLen + 1 }, (_, i) => {
-//     const index = binIndex[0] + i * 2;
-//     return {
-//       binArrayLowerIndex: index,
-//       binArrayUpperIndex: index + 1,
-//     };
-//   });
-
-//   return binArrayList;
-// };
-
-// export const getBinRange = (index: number, activeId: number) => {
-//   const firstBinId = Math.floor(activeId % 16);
-
-//   const firstArray = [-firstBinId, -firstBinId + 16 - 1];
-//   const range = [firstArray[0] + index * FIXED_LENGTH, firstArray[1] + index * FIXED_LENGTH];
-//   return {
-//     range,
-//     binLower: activeId + range[0],
-//     binUpper: activeId + range[1] - 1,
-//   };
-// };
-
-// UNUSED
-// export const findPosition =
-//   (index: number, activeBin = CENTER_BIN_ID) =>
-//   (position: PositionInfo) => {
-//     const { binLower, binUpper } = getBinRange(index, activeBin);
-
-//     return position.lowerBinId <= binLower && position.upperBinId >= binUpper;
-//   };
-

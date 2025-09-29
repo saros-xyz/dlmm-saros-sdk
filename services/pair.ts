@@ -1,7 +1,16 @@
 import { BN, utils } from '@coral-xyz/anchor';
-import { BinArrayAccount, PairMetadata } from '../types';
+import {
+  AddLiquidityByShapeParams,
+  BinArrayAccount,
+  CreatePositionResponse,
+  Distribution,
+  GetPositionReserveParams,
+  PositionAccount,
+  RemoveLiquidityParams,
+  RemoveLiquidityResponse,
+} from '../types';
 import * as spl from '@solana/spl-token';
-import { ComputeBudgetProgram, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
+import { PublicKey, Transaction } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import bigDecimal from 'js-big-decimal';
 import cloneDeep from 'lodash/cloneDeep';
@@ -13,24 +22,18 @@ import {
   MAX_BASIS_POINTS,
   MAX_BIN_CROSSINGS,
   PRECISION,
+  RemoveLiquidityType,
   SCALE_OFFSET,
-  UNIT_PRICE_DEFAULT,
   WRAP_SOL_ADDRESS,
 } from '../constants';
 import {
   AddLiquidityIntoPositionParams,
-  BinReserveInfo,
+  PositionBinReserve,
   CreatePositionParams,
   GetBinArrayParams,
-  GetBinsArrayInfoParams,
-  GetBinsReserveParams,
-  GetTokenOutputParams,
-  GetTokenOutputResponse,
   Pair,
-  RemoveMultipleLiquidityParams,
-  RemoveMultipleLiquidityResponse,
   SwapParams,
-} from '../types/services';
+} from '../types';
 import { mulDivBN, mulShr, shlDiv } from '../utils/math';
 import { calcAmountInByPrice, calcAmountOutByPrice, getPriceFromId } from '../utils/price';
 import { Volatility } from '../utils/volatility';
@@ -39,8 +42,17 @@ import { BinArrayRange } from '../utils/bin-range';
 import { DLMMBase, SarosConfig } from './base';
 import { getProgram } from '../utils/token';
 import { DLMMError } from '../error';
-import { getGasPrice } from '../utils/transaction';
-import { deriveBinArrayPDA } from '../utils/pda';
+import { getSuggestedCUPrice, addComputeBudget } from '../utils/transaction';
+import { deriveBinArrayPDA, derivePositionPDA, deriveHookPDA, deriveHookBinArrayPDA } from '../utils/pda';
+import { closeWSOLIfNeeded, fundAndSyncWSOL } from '../utils/token';
+import { PairMetadata } from '../types/pair';
+import {
+  GetMaxAmountOutWithFeeParams,
+  GetMaxAmountOutWithFeeResponse,
+  QuoteParams,
+  QuoteResponse,
+} from '../types/swap';
+import { createUniformDistribution } from '../utils';
 
 export class DLMMPair extends DLMMBase {
   private pairAddress: PublicKey;
@@ -73,14 +85,14 @@ export class DLMMPair extends DLMMBase {
   }
 
   /**
-   * Get cached pair account
+   * Get pair account data
    */
   public getPairAccount(): Pair {
     return this.pairAccount;
   }
 
   /**
-   * Get cached pair metadata
+   * Get pair metadata
    */
   public getPairMetadata(): PairMetadata {
     return this.metadata;
@@ -93,9 +105,6 @@ export class DLMMPair extends DLMMBase {
     return this.pairAddress;
   }
 
-  /**
-   * Build metadata from cached pair account
-   */
   private async buildPairMetadata(): Promise<PairMetadata> {
     const { tokenMintX, tokenMintY, hook } = this.pairAccount;
     const tokenProgramX = await getProgram(tokenMintX, this.connection);
@@ -133,15 +142,15 @@ export class DLMMPair extends DLMMBase {
     const { baseFee, dynamicFee, protocolFee } = getFeeMetadata(this.pairAccount);
 
     return {
-      pair: this.pairAddress.toString(),
+      pair: this.pairAddress,
       tokenX: {
-        mintAddress: tokenMintX.toString(),
-        decimals: reserveX.value.decimals,
+        mintAddress: tokenMintX,
+        decimal: reserveX.value.decimals,
         reserve: reserveX.value.amount,
       },
       tokenY: {
-        mintAddress: tokenMintY.toString(),
-        decimals: reserveY.value.decimals,
+        mintAddress: tokenMintY,
+        decimal: reserveY.value.decimals,
         reserve: reserveY.value.amount,
       },
       binStep: this.pairAccount.binStep,
@@ -149,39 +158,46 @@ export class DLMMPair extends DLMMBase {
       dynamicFee,
       protocolFee,
       extra: {
-        hook: hook?.toString() || undefined,
+        hook: hook || undefined,
       },
     };
   }
 
-  // ========== SWAP & QUOTE METHODS ==========
-
-  public async getQuote(params: GetTokenOutputParams): Promise<GetTokenOutputResponse> {
+  /**
+   * Get a quote for a swap on this pair
+   */
+  public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
     try {
-      // throw error if incorrect param amounts
-      if (params.amount <= 0n) throw new DLMMError('Quote amount must be greater than 0', 'ZERO_AMOUNT');
-      if (params.slippage < 0 || params.slippage >= 100)
-        throw new DLMMError('Invalid slippage percentage', 'INVALID_SLIPPAGE');
-    
+      const { tokenX, tokenY } = this.metadata;
+      const {
+        amount,
+        slippage,
+        options: { swapForY, isExactInput },
+      } = params;
+
+      // throw error if invalid amounts in params
+      if (amount <= 0n) throw new DLMMError('Quote amount must be greater than 0', 'ZERO_AMOUNT');
+      if (slippage < 0 || slippage >= 100) throw new DLMMError('Invalid slippage percentage', 'INVALID_SLIPPAGE');
+
       const data = await this.calculateInOutAmount(params);
       const { amountIn, amountOut } = data;
 
-      const slippageFraction = params.slippage / 100;
+      const slippageFraction = slippage / 100;
       const slippageScaled = Math.round(slippageFraction * PRECISION);
       let maxAmountIn = amountIn;
       let minAmountOut = amountOut;
-      if (params.isExactInput) {
+      if (isExactInput) {
         minAmountOut = (amountOut * BigInt(PRECISION - slippageScaled)) / BigInt(PRECISION);
       } else {
         maxAmountIn = (amountIn * BigInt(PRECISION)) / BigInt(PRECISION - slippageScaled);
       }
 
-      const { maxAmountOut } = await this.getMaxAmountOutWithFee(
-        Number(amountIn.toString()),
-        params.swapForY,
-        params.tokenBaseDecimal,
-        params.tokenQuoteDecimal
-      );
+      const { maxAmountOut } = await this.getMaxAmountOutWithFee({
+        amount: amountIn,
+        swapForY: swapForY,
+        decimalTokenX: tokenX.decimal,
+        decimalTokenY: tokenY.decimal,
+      });
 
       const priceImpact = new bigDecimal(amountOut.toString())
         .subtract(new bigDecimal(maxAmountOut.toString()))
@@ -192,8 +208,8 @@ export class DLMMPair extends DLMMBase {
       return {
         amountIn: amountIn,
         amountOut: amountOut,
-        amount: params.isExactInput ? maxAmountIn : minAmountOut,
-        otherAmountOffset: params.isExactInput ? minAmountOut : maxAmountIn,
+        amount: isExactInput ? maxAmountIn : minAmountOut,
+        minTokenOut: isExactInput ? minAmountOut : maxAmountIn,
         priceImpact: Number(priceImpact),
       };
     } catch (error) {
@@ -202,13 +218,10 @@ export class DLMMPair extends DLMMBase {
   }
 
   // kept public as before
-  public async getMaxAmountOutWithFee(
-    amount: number,
-    swapForY: boolean = false,
-    decimalBase: number = 9,
-    decimalQuote: number = 9
-  ) {
+  public async getMaxAmountOutWithFee(params: GetMaxAmountOutWithFeeParams): Promise<GetMaxAmountOutWithFeeResponse> {
     try {
+      const { amount, swapForY = false, decimalTokenX: decimalBase = 9, decimalTokenY: decimalQuote = 9 } = params;
+
       let amountIn = BigInt(amount);
       const activeId = this.pairAccount.activeId;
       const binStep = this.pairAccount.binStep;
@@ -217,19 +230,31 @@ export class DLMMPair extends DLMMBase {
       const price = getPriceFromId(binStep, activeId, decimalBase, decimalQuote);
 
       const feeAmount = getFeeAmount(amountIn, feePrice);
-      amountIn = BigInt(amountIn) - BigInt(feeAmount);
+      amountIn -= BigInt(feeAmount);
+
       const maxAmountOut = swapForY
         ? mulShr(Number(amountIn.toString()), activePrice, SCALE_OFFSET, 'down')
         : shlDiv(Number(amountIn.toString()), activePrice, SCALE_OFFSET, 'down');
 
-      return { maxAmountOut, price };
-    } catch {}
-
-    return { maxAmountOut: 0, price: 0 };
+      return { maxAmountOut: BigInt(maxAmountOut), price };
+    } catch (err) {
+      throw new DLMMError(
+        `Failed to calculate max amount out: ${(err as Error).message ?? err}`,
+        'QUOTE_CALCULATION_FAILED'
+      );
+    }
   }
 
   public async swap(params: SwapParams): Promise<Transaction> {
-    const { tokenMintX, tokenMintY, amount, otherAmountOffset, swapForY, isExactInput, hook, payer } = params;
+    const {
+      tokenIn: tokenMintX,
+      tokenOut: tokenMintY,
+      amount,
+      minTokenOut: otherAmountOffset,
+      options: { swapForY, isExactInput },
+      payer,
+      hook,
+    } = params;
 
     const currentBinArrayIndex = Math.floor(this.pairAccount.activeId / BIN_ARRAY_SIZE);
 
@@ -251,7 +276,7 @@ export class DLMMPair extends DLMMBase {
     const validIndexes = surroundingIndexes.filter((_, i) => binArrayAccountsInfo[i]);
 
     if (validIndexes.length < 2) {
-      throw new Error('No valid bin arrays found for the pair');
+      throw new DLMMError('No valid bin arrays found for the pair', 'INVALID_BIN_ARRAYS');
     }
 
     let binArrayLowerIndex: number;
@@ -288,9 +313,8 @@ export class DLMMPair extends DLMMBase {
       lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
     });
 
-    const associatedPairVaultX = spl.getAssociatedTokenAddressSync(tokenMintX, this.pairAddress, true, tokenProgramX);
-
-    const associatedPairVaultY = spl.getAssociatedTokenAddressSync(tokenMintY, this.pairAddress, true, tokenProgramY);
+    const associatedPairVaultX = this.tokenVaultX!;
+    const associatedPairVaultY = this.tokenVaultY!;
 
     const associatedUserVaultX = spl.getAssociatedTokenAddressSync(tokenMintX, payer, true, tokenProgramX);
 
@@ -330,25 +354,11 @@ export class DLMMPair extends DLMMBase {
       const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
 
       if (isNativeY && !swapForY) {
-        tx.add(
-          SystemProgram.transfer({
-            fromPubkey: payer,
-            toPubkey: associatedUserVault,
-            lamports: Number(amount),
-          })
-        );
-        tx.add(spl.createSyncNativeInstruction(associatedUserVault));
+        fundAndSyncWSOL(tx, payer, associatedUserVault, Number(amount));
       }
 
       if (!isNativeY && swapForY) {
-        tx.add(
-          SystemProgram.transfer({
-            fromPubkey: payer,
-            toPubkey: associatedUserVault,
-            lamports: Number(amount),
-          })
-        );
-        tx.add(spl.createSyncNativeInstruction(associatedUserVault));
+        fundAndSyncWSOL(tx, payer, associatedUserVault, Number(amount));
       }
     }
 
@@ -372,7 +382,7 @@ export class DLMMPair extends DLMMBase {
         tokenProgramX,
         tokenProgramY,
         user: payer,
-        hook: hook || null,
+        hook: hook || this.hooksConfig, // fallback to hooksConfig if none provided
         hooksProgram: this.hooksProgram.programId,
       })
       .remainingAccounts([
@@ -386,10 +396,11 @@ export class DLMMPair extends DLMMBase {
 
     if (tokenMintY.toString() === WRAP_SOL_ADDRESS || tokenMintX.toString() === WRAP_SOL_ADDRESS) {
       const isNativeY = tokenMintY.toString() === WRAP_SOL_ADDRESS;
-
+      const mint = isNativeY ? tokenMintY : tokenMintX;
       const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
+
       if ((isNativeY && swapForY) || (!isNativeY && !swapForY)) {
-        tx.add(spl.createCloseAccountInstruction(associatedUserVault, payer, payer));
+        closeWSOLIfNeeded(tx, mint, associatedUserVault, payer);
       }
     }
 
@@ -397,30 +408,20 @@ export class DLMMPair extends DLMMBase {
   }
 
   // ========== LIQUIDITY METHODS ==========
-  async createPosition(params: CreatePositionParams) {
+  async createPosition(params: CreatePositionParams): Promise<CreatePositionResponse> {
     const { payer, binIdLeft, binIdRight, positionMint, transaction } = params;
 
-    const position = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('position')), positionMint.toBuffer()],
-      this.lbProgram.programId
-    )[0];
+    const txn = transaction || new Transaction();
+
+    const position = derivePositionPDA(positionMint, this.lbProgram.programId);
 
     const positionVault = spl.getAssociatedTokenAddressSync(positionMint, payer, true, spl.TOKEN_2022_PROGRAM_ID);
 
     const firstBinId = this.pairAccount.activeId + binIdLeft;
     const binArrayIndex = Math.floor(firstBinId / BIN_ARRAY_SIZE);
 
-    await this.getBinArray({
-      binArrayIndex,
-      pair: this.pairAddress,
-      payer,
-    });
-
-    await this.getBinArray({
-      binArrayIndex: binArrayIndex + 1,
-      pair: this.pairAddress,
-      payer,
-    });
+    await this.getBinArray({ binArrayIndex, pair: this.pairAddress, payer });
+    await this.getBinArray({ binArrayIndex: binArrayIndex + 1, pair: this.pairAddress, payer });
 
     const initializePositionTx = await this.lbProgram.methods
       .createPosition(new BN(binIdLeft), new BN(binIdRight))
@@ -434,31 +435,68 @@ export class DLMMPair extends DLMMBase {
       })
       .instruction();
 
-    transaction.add(initializePositionTx);
+    txn.add(initializePositionTx);
 
-    return { position: position.toString() };
+    return { position: position, transaction: txn };
+  }
+
+  /**
+   * Add liquidity to this pair using a shape distribution
+   * (delegates to addLiquidityIntoPosition)
+   */
+  async addLiquidityByShape(params: AddLiquidityByShapeParams): Promise<Transaction> {
+    const { positionMint, payer, transaction: userTxn, amountTokenX, amountTokenY, liquidityShape, binRange } = params;
+
+    if (amountTokenX <= 0n && amountTokenY <= 0n) {
+      throw new DLMMError('Cannot add zero liquidity', 'CANNOT_ADD_ZERO');
+    }
+
+    const tx = userTxn || new Transaction();
+
+    // Build liquidity distribution from shape + range
+    const liquidityDistribution: Distribution[] = createUniformDistribution({
+      shape: liquidityShape,
+      binRange,
+    });
+
+    const lowerBinId = this.pairAccount.activeId + binRange[0];
+    const upperBinId = this.pairAccount.activeId + binRange[1];
+
+    // Ensure bin arrays exist; pass `transaction: tx` so init ixs land on the same tx
+    const binArrayLower = await this.getBinArray({
+      binArrayIndex: Math.floor(lowerBinId / BIN_ARRAY_SIZE),
+      pair: this.pairAddress,
+      payer,
+      transaction: tx,
+    });
+    const binArrayUpper = await this.getBinArray({
+      binArrayIndex: Math.floor(upperBinId / BIN_ARRAY_SIZE),
+      pair: this.pairAddress,
+      payer,
+      transaction: tx,
+    });
+
+    // Delegate to the single code path
+    await this.addLiquidityIntoPosition({
+      positionMint,
+      payer,
+      binArrayLower,
+      binArrayUpper,
+      transaction: tx,
+      liquidityDistribution,
+      amountX: amountTokenX, // bigint accepted by wrapper
+      amountY: amountTokenY, // bigint accepted by wrapper
+    });
+
+    return tx;
   }
 
   async addLiquidityIntoPosition(params: AddLiquidityIntoPositionParams) {
     const { positionMint, payer, binArrayLower, binArrayUpper, transaction, liquidityDistribution, amountX, amountY } =
       params;
 
-    // const tokenProgramX = await getProgram(this.pairAccount.tokenMintX, this.connection);
-    // const tokenProgramY = await getProgram(this.pairAccount.tokenMintY, this.connection);
-
-    const associatedPairVaultX = spl.getAssociatedTokenAddressSync(
-      this.pairAccount.tokenMintX,
-      this.pairAddress,
-      true,
-      this.tokenProgramX
-    );
-
-    const associatedPairVaultY = spl.getAssociatedTokenAddressSync(
-      this.pairAccount.tokenMintY,
-      this.pairAddress,
-      true,
-      this.tokenProgramY
-    );
+    const associatedPairVaultX = this.tokenVaultX!;
+    const associatedPairVaultY = this.tokenVaultY!;
 
     const associatedUserVaultX = spl.getAssociatedTokenAddressSync(
       this.pairAccount.tokenMintX,
@@ -480,50 +518,30 @@ export class DLMMPair extends DLMMBase {
     ) {
       const isNativeY = this.pairAccount.tokenMintY.toString() === WRAP_SOL_ADDRESS;
 
-      const totalAmount = isNativeY ? amountY : amountX;
+      const totalAmountBig = isNativeY ? amountY : amountX;
       const totalLiquid = liquidityDistribution.reduce((prev, curr) => {
         const currAmount = isNativeY ? curr.distributionY : curr.distributionX;
         return prev + currAmount;
       }, 0);
-
       if (totalLiquid) {
-        const amount = (totalLiquid * totalAmount) / MAX_BASIS_POINTS;
-
+        const amountForWSOL = (BigInt(totalLiquid) * totalAmountBig) / BigInt(MAX_BASIS_POINTS);
         const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
-
-        transaction.add(
-          SystemProgram.transfer({
-            fromPubkey: payer,
-            toPubkey: associatedUserVault,
-            lamports: amount,
-          })
-        );
-        transaction.add(spl.createSyncNativeInstruction(associatedUserVault));
+        fundAndSyncWSOL(transaction, payer, associatedUserVault, Number(amountForWSOL));
       }
     }
 
-    const unitSPrice = await getGasPrice(this.connection).catch(() => undefined);
-    const unitPrice = Math.max(Number(unitSPrice) ?? 0, UNIT_PRICE_DEFAULT * (this.bufferGas ?? 1));
-
-    const hook = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('hook')), this.hooksConfig.toBuffer(), this.pairAddress.toBuffer()],
-      this.hooksProgram.programId
-    )[0];
-
-    const position = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('position')), positionMint.toBuffer()],
-      this.lbProgram.programId
-    )[0];
-
+    const unitPrice = await getSuggestedCUPrice(this.connection, this.bufferGas);
+    const hook = deriveHookPDA(this.hooksConfig, this.pairAddress, this.hooksProgram.programId);
+    const position = derivePositionPDA(positionMint, this.lbProgram.programId);
     const positionVault = spl.getAssociatedTokenAddressSync(positionMint, payer, true, spl.TOKEN_2022_PROGRAM_ID);
 
     const addLiquidityInstructions = await this.lbProgram.methods
-      .increasePosition(new BN(amountX), new BN(amountY), liquidityDistribution)
+      .increasePosition(new BN(amountX.toString()), new BN(amountY.toString()), liquidityDistribution)
       .accountsPartial({
         pair: this.pairAddress,
-        position: position,
-        binArrayLower: binArrayLower,
-        binArrayUpper: binArrayUpper,
+        position,
+        binArrayLower,
+        binArrayUpper,
         tokenVaultX: associatedPairVaultX,
         tokenVaultY: associatedPairVaultY,
         userVaultX: associatedUserVaultX,
@@ -534,7 +552,7 @@ export class DLMMPair extends DLMMBase {
         tokenProgramX: this.tokenProgramX,
         tokenProgramY: this.tokenProgramY,
         positionTokenProgram: spl.TOKEN_2022_PROGRAM_ID,
-        hook: hook,
+        hook,
         hooksProgram: this.hooksProgram.programId,
         user: payer,
         positionMint,
@@ -546,36 +564,24 @@ export class DLMMPair extends DLMMBase {
       ])
       .instruction();
 
-    transaction.add(
-      ComputeBudgetProgram.setComputeUnitLimit({
-        units: CCU_LIMIT,
-      })
-    );
-    transaction.add(
-      ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: unitPrice,
-      })
-    );
-
+    addComputeBudget(transaction, CCU_LIMIT, unitPrice);
     transaction.add(addLiquidityInstructions);
   }
 
-  public async removeMultipleLiquidity(
-    params: RemoveMultipleLiquidityParams
-  ): Promise<RemoveMultipleLiquidityResponse> {
-    const { maxPositionList, payer, type } = params;
+  /**
+   * Remove liquidity from one or more positions in this pair
+   */
+  public async removeLiquidity(params: RemoveLiquidityParams): Promise<RemoveLiquidityResponse> {
+    const { positionMints, payer, type } = params;
+    const { tokenMintX, tokenMintY } = this.pairAccount;
 
-    const tokenMintX = this.pairAccount.tokenMintX;
-    const tokenMintY = this.pairAccount.tokenMintY;
-
-    const tokenProgramX = await getProgram(tokenMintX, this.connection);
-    const tokenProgramY = await getProgram(tokenMintY, this.connection);
+    const tokenProgramX = this.tokenProgramX!;
+    const tokenProgramY = this.tokenProgramY!;
 
     const txCreateAccount = new Transaction();
 
-    const associatedPairVaultX = spl.getAssociatedTokenAddressSync(tokenMintX, this.pairAddress, true, tokenProgramX);
-
-    const associatedPairVaultY = spl.getAssociatedTokenAddressSync(tokenMintY, this.pairAddress, true, tokenProgramY);
+    const associatedPairVaultX = this.tokenVaultX!;
+    const associatedPairVaultY = this.tokenVaultY!;
 
     const associatedUserVaultX = spl.getAssociatedTokenAddressSync(tokenMintX, payer, true, tokenProgramX);
 
@@ -605,10 +611,7 @@ export class DLMMPair extends DLMMBase {
       txCreateAccount.add(userVaultYInstructions);
     }
 
-    const hook = PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('hook')), this.hooksConfig!.toBuffer(), this.pairAddress.toBuffer()],
-      this.hooksProgram.programId
-    )[0];
+    const hook = deriveHookPDA(this.hooksConfig!, this.pairAddress, this.hooksProgram.programId);
 
     const associatedHookTokenY = spl.getAssociatedTokenAddressSync(tokenMintY, hook, true, tokenProgramY);
     const infoHookTokenY = await this.connection.getAccountInfo(associatedHookTokenY);
@@ -625,44 +628,42 @@ export class DLMMPair extends DLMMBase {
       txCreateAccount.add(hookTokenYInstructions);
     }
 
-    const unitSPrice = await getGasPrice(this.connection).catch(() => undefined);
+    const unitPrice = await getSuggestedCUPrice(this.connection, this.bufferGas);
 
-    const unitPrice = Math.max(Number(unitSPrice) ?? 0, UNIT_PRICE_DEFAULT * (this.bufferGas ?? 1));
+    const closedPositions: PublicKey[] = [];
+    const transactions = await Promise.all(
+      positionMints.map(async (positionMint) => {
+        const position = derivePositionPDA(positionMint, this.lbProgram.programId);
 
-    const positionClosed: Record<string, string>[] = [];
-    const txs = await Promise.all(
-      maxPositionList.map(async ({ position, start, end, positionMint }) => {
-        const binArrayIndex = Math.floor(start / BIN_ARRAY_SIZE);
+        // Fetch the on-chain position account
+        // @ts-ignore
+        const positionAccount = await this.lbProgram.account.position.fetch(position);
 
-        const { resultIndex } = await this.getBinArrayInfo({
+        const binArrayIndex = Math.floor(positionAccount.lowerBinId / BIN_ARRAY_SIZE);
+
+        // Use BinArrayRange to fetch the bin arrays around this index
+        const binArrayRange = await BinArrayRange.fromIndex(
+          this.lbProgram,
+          this.connection,
+          this.pairAddress,
+          binArrayIndex
+        );
+
+        // Pick lower/upper directly relative to the starting binArrayIndex
+        const binArrayLower = await this.getBinArray({
           binArrayIndex,
           pair: this.pairAddress,
           payer,
         });
 
-        const binArrayLower = await this.getBinArray({
-          binArrayIndex: resultIndex,
-          pair: this.pairAddress,
-          payer,
-        });
-
         const binArrayUpper = await this.getBinArray({
-          binArrayIndex: resultIndex + 1,
+          binArrayIndex: binArrayIndex + 1,
           pair: this.pairAddress,
           payer,
         });
 
         const tx = new Transaction();
-        tx.add(
-          ComputeBudgetProgram.setComputeUnitLimit({
-            units: CCU_LIMIT,
-          })
-        );
-        tx.add(
-          ComputeBudgetProgram.setComputeUnitPrice({
-            microLamports: unitPrice,
-          })
-        );
+        addComputeBudget(tx, CCU_LIMIT, unitPrice);
 
         const positionVault = spl.getAssociatedTokenAddressSync(
           new PublicKey(positionMint),
@@ -672,30 +673,14 @@ export class DLMMPair extends DLMMBase {
         );
 
         const reserveXY = cloneDeep(
-          await this.getBinsReserveInformation({
+          await this.getPositionReserves({
             position: new PublicKey(position),
-            pair: this.pairAddress,
             payer,
           })
         );
 
-        const hookBinArrayLower = PublicKey.findProgramAddressSync(
-          [
-            Buffer.from(utils.bytes.utf8.encode('bin_array')),
-            hook.toBuffer(),
-            new BN(BIN_ARRAY_INDEX).toArrayLike(Buffer, 'le', 4),
-          ],
-          this.hooksProgram.programId
-        )[0];
-
-        const hookBinArrayUpper = PublicKey.findProgramAddressSync(
-          [
-            Buffer.from(utils.bytes.utf8.encode('bin_array')),
-            hook.toBuffer(),
-            new BN(BIN_ARRAY_INDEX + 1).toArrayLike(Buffer, 'le', 4),
-          ],
-          this.hooksProgram.programId
-        )[0];
+        const hookBinArrayLower = deriveHookBinArrayPDA(hook, BIN_ARRAY_INDEX, this.hooksProgram.programId);
+        const hookBinArrayUpper = deriveHookBinArrayPDA(hook, BIN_ARRAY_INDEX + 1, this.hooksProgram.programId);
 
         const hookPosition = PublicKey.findProgramAddressSync(
           [Buffer.from(utils.bytes.utf8.encode('position')), hook.toBuffer(), new PublicKey(position).toBuffer()],
@@ -704,19 +689,17 @@ export class DLMMPair extends DLMMBase {
 
         let removedShares: BN[] = [];
 
-        if (type === 'removeBoth') {
-          removedShares = reserveXY.map((reserve: BinReserveInfo) => {
-            const binId = reserve.binId;
-            if (binId >= Number(start) && binId <= Number(end)) {
+        if (type === RemoveLiquidityType.All) {
+          removedShares = reserveXY.map((reserve: PositionBinReserve) => {
+            if (reserve.binId >= positionAccount.lowerBinId && reserve.binId <= positionAccount.upperBinId) {
               return reserve.liquidityShare;
             }
-
             return new BN(0);
           });
         }
 
-        if (type === 'removeBaseToken') {
-          removedShares = reserveXY.map((reserve: BinReserveInfo) => {
+        if (type === RemoveLiquidityType.TokenX) {
+          removedShares = reserveXY.map((reserve: PositionBinReserve) => {
             if (reserve.reserveX && reserve.reserveY === 0) {
               return reserve.liquidityShare;
             }
@@ -725,8 +708,8 @@ export class DLMMPair extends DLMMBase {
           });
         }
 
-        if (type === 'removeQuoteToken') {
-          removedShares = reserveXY.map((reserve: BinReserveInfo) => {
+        if (type === RemoveLiquidityType.TokenY) {
+          removedShares = reserveXY.map((reserve: PositionBinReserve) => {
             if (reserve.reserveY && reserve.reserveX === 0) {
               return reserve.liquidityShare;
             }
@@ -735,17 +718,20 @@ export class DLMMPair extends DLMMBase {
           });
         }
 
-        const availableShares = reserveXY.filter((item: BinReserveInfo) =>
-          type === 'removeBoth'
+        const availableShares = reserveXY.filter((item: PositionBinReserve) =>
+          type === RemoveLiquidityType.All
             ? !item.liquidityShare.isZero()
-            : type === 'removeQuoteToken'
+            : type === RemoveLiquidityType.TokenY
               ? !item.reserveX
               : !item.reserveY
         );
 
         const isClosePosition =
-          (type === 'removeBoth' && end - start + 1 >= availableShares.length) ||
-          (end - start + 1 === FIXED_LENGTH && availableShares.length === FIXED_LENGTH);
+          (type === RemoveLiquidityType.All &&
+            positionAccount.upperBinId - positionAccount.lowerBinId + 1 >= availableShares.length) ||
+          (positionAccount.upperBinId - positionAccount.lowerBinId + 1 === FIXED_LENGTH &&
+            availableShares.length === FIXED_LENGTH);
+
         if (isClosePosition) {
           const instructions = await this.lbProgram.methods
             .closePosition()
@@ -771,7 +757,7 @@ export class DLMMPair extends DLMMBase {
             })
             .instruction();
 
-          positionClosed.push({ position });
+          closedPositions.push(position);
           tx.add(instructions);
         } else {
           const instructions = await this.lbProgram.methods
@@ -817,17 +803,17 @@ export class DLMMPair extends DLMMBase {
 
     if (tokenMintY.toString() === WRAP_SOL_ADDRESS || tokenMintX.toString() === WRAP_SOL_ADDRESS) {
       const isNativeY = tokenMintY.toString() === WRAP_SOL_ADDRESS;
-
+      const mint = isNativeY ? tokenMintY : tokenMintX;
       const associatedUserVault = isNativeY ? associatedUserVaultY : associatedUserVaultX;
 
-      txCloseAccount.add(spl.createCloseAccountInstruction(associatedUserVault, payer, payer));
+      closeWSOLIfNeeded(txCloseAccount, mint, associatedUserVault, payer);
     }
 
     return {
-      txs,
-      txCreateAccount: txCreateAccount.instructions.length ? txCreateAccount : undefined,
-      txCloseAccount: txCloseAccount.instructions.length ? txCloseAccount : undefined,
-      positionClosed,
+      setupTransaction: txCreateAccount.instructions.length ? txCreateAccount : undefined,
+      transactions,
+      cleanupTransaction: txCloseAccount.instructions.length ? txCloseAccount : undefined,
+      closedPositions,
     };
   }
 
@@ -836,7 +822,7 @@ export class DLMMPair extends DLMMBase {
   /**
    * Get all positions for a user that belong to this pair
    */
-  public async getUserPositions(payer: PublicKey) {
+  public async getUserPositions(payer: PublicKey): Promise<PositionAccount[]> {
     const tokenAccounts = await this.connection.getParsedTokenAccountsByOwner(payer, {
       programId: spl.TOKEN_2022_PROGRAM_ID,
     });
@@ -872,17 +858,10 @@ export class DLMMPair extends DLMMBase {
     return positions.filter(Boolean);
   }
 
-  async getBinArray(params: GetBinArrayParams) {
+  public async getBinArray(params: GetBinArrayParams): Promise<PublicKey> {
     const { binArrayIndex, payer, transaction } = params;
 
-    const binArray = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('bin_array')),
-        this.pairAddress.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
-      ],
-      this.lbProgram.programId
-    )[0];
+    const binArray = deriveBinArrayPDA(this.pairAddress, binArrayIndex, this.lbProgram.programId);
 
     if (transaction && payer) {
       const binArrayInfo = await this.connection.getAccountInfo(binArray);
@@ -899,111 +878,64 @@ export class DLMMPair extends DLMMBase {
     return binArray;
   }
 
-  public async getBinArrayInfo(params: GetBinsArrayInfoParams) {
-    const { binArrayIndex, payer } = params;
-    let resultIndex = binArrayIndex;
-    let result = [];
-
-    const binArray = await this.getBinArray({
-      binArrayIndex,
-      pair: this.pairAddress,
-      payer,
-    });
-
-    //@ts-ignore
-    const { bins } = await this.lbProgram.account.binArray.fetch(binArray);
-    try {
-      const binArrayOther = await this.getBinArray({
-        binArrayIndex: binArrayIndex + 1,
-        pair: this.pairAddress,
-        payer,
-      });
-      //@ts-ignore
-      const res = await this.lbProgram.account.binArray.fetch(binArrayOther);
-
-      result = [...bins, ...res.bins];
-    } catch {
-      const binArrayOther = await this.getBinArray({
-        binArrayIndex: binArrayIndex - 1,
-        pair: this.pairAddress,
-        payer,
-      });
-      //@ts-ignore
-      const res = await this.lbProgram.account.binArray.fetch(binArrayOther);
-      result = [...res.bins, ...bins];
-      resultIndex -= 1;
-    }
-
-    return { bins: result, resultIndex };
-  }
-
-  public async getBinsReserveInformation(params: GetBinsReserveParams): Promise<BinReserveInfo[]> {
+  public async getPositionReserves(params: GetPositionReserveParams): Promise<PositionBinReserve[]> {
     const { position, payer } = params;
-    //@ts-ignore
+    // @ts-ignore
     const positionInfo = await this.lbProgram.account.position.fetch(position);
     const firstBinId = positionInfo.lowerBinId;
     const binArrayIndex = Math.floor(firstBinId / BIN_ARRAY_SIZE);
 
-    const { bins, resultIndex } = await this.getBinArrayInfo({
-      binArrayIndex,
-      pair: this.pairAddress,
-      payer,
-    });
-
-    const firstBinIndex = resultIndex * BIN_ARRAY_SIZE;
-    const binIds = Array.from(
-      { length: positionInfo.upperBinId - firstBinId + 1 },
-      (_, i) => firstBinId - firstBinIndex + i
+    const binArrayRange = await BinArrayRange.fromIndex(
+      this.lbProgram,
+      this.connection,
+      this.pairAddress,
+      binArrayIndex
     );
 
-    const reserveXY = binIds.map((binId: number, index: number) => {
+    const binIds = Array.from({ length: positionInfo.upperBinId - firstBinId + 1 }, (_, i) => firstBinId + i);
+
+    return binIds.map((binId: number, index: number) => {
       const liquidityShare = positionInfo.liquidityShares[index];
-      const activeBin = bins[binId];
+      let reserveX = 0;
+      let reserveY = 0;
+      let totalSupply = new BN(0);
 
-      if (activeBin) {
-        const totalReserveX = activeBin.reserveX;
-        const totalReserveY = activeBin.reserveY;
-        const totalSupply = activeBin.totalSupply;
-        const reserveX = totalReserveX.gt(new BN(0))
-          ? mulDivBN(liquidityShare, totalReserveX, totalSupply, 'down').toNumber()
-          : 0;
+      try {
+        const activeBin = binArrayRange.getBin(binId);
+        totalSupply = activeBin.totalSupply;
 
-        const reserveY = totalReserveY.gt(new BN(0))
-          ? mulDivBN(liquidityShare, totalReserveY, totalSupply, 'down').toNumber()
-          : 0;
-
-        return {
-          reserveX: reserveX,
-          reserveY: reserveY,
-          totalSupply: totalSupply,
-          binId: firstBinId + index,
-          binPosistion: binId,
-          liquidityShare: positionInfo.liquidityShares[index],
-        };
+        if (activeBin.reserveX.gt(new BN(0))) {
+          reserveX = mulDivBN(liquidityShare, activeBin.reserveX, totalSupply, 'down').toNumber();
+        }
+        if (activeBin.reserveY.gt(new BN(0))) {
+          reserveY = mulDivBN(liquidityShare, activeBin.reserveY, totalSupply, 'down').toNumber();
+        }
+      } catch {
+        // leave reserves at 0
       }
+
       return {
-        reserveX: 0,
-        reserveY: 0,
-        totalSupply: new BN(0),
-        binId: firstBinId + index,
-        binPosistion: binId,
+        reserveX,
+        reserveY,
+        totalSupply,
+        binId,
         liquidityShare,
       };
     });
-
-    return reserveXY;
   }
 
   // ========== INTERNAL CALCULATION METHODS ==========
   // Do any of these need to be exposed public?
-  private async calculateInOutAmount(params: GetTokenOutputParams) {
-    const { amount, swapForY, isExactInput } = params;
+  private async calculateInOutAmount(params: QuoteParams) {
     try {
+      const {
+        amount,
+        options: { swapForY, isExactInput },
+      } = params;
       const currentBinArrayIndex = Math.floor(this.pairAccount.activeId / BIN_ARRAY_SIZE);
       const binArrayIndexes = [currentBinArrayIndex - 1, currentBinArrayIndex, currentBinArrayIndex + 1];
       const binArrayAddresses = binArrayIndexes.map((idx) =>
-       deriveBinArrayPDA(this.pairAddress, idx, this.lbProgram.programId)
-
+        deriveBinArrayPDA(this.pairAddress, idx, this.lbProgram.programId)
       );
 
       const binArrays: BinArrayAccount[] = await Promise.all(
@@ -1015,7 +947,7 @@ export class DLMMPair extends DLMMBase {
         )
       );
 
-      const binRange = new BinArrayRange(binArrays[0], binArrays[1], binArrays[2]);
+      const binRange = new BinArrayRange([binArrays[0], binArrays[1], binArrays[2]]);
       const totalSupply = binRange.getAllBins().reduce((acc, cur) => acc.add(cur.totalSupply), new BN(0));
       if (totalSupply.isZero()) {
         return {
@@ -1091,7 +1023,7 @@ export class DLMMPair extends DLMMBase {
       }
 
       if (totalBinUsed >= MAX_BIN_CROSSINGS) {
-        throw new Error('Quote Failed: Swap crosses too many bins');
+        throw new DLMMError('Quote Failed: Swap crosses too many bins', 'MAX_BIN_CROSSINGS_EXCEEDED');
       }
 
       return amountIn;
@@ -1144,7 +1076,7 @@ export class DLMMPair extends DLMMBase {
         activeId = this.moveActiveId(activeId, swapForY);
       }
       if (totalBinUsed >= MAX_BIN_CROSSINGS) {
-        throw new Error('Quote Failed: Swap crosses too many bins');
+        throw new DLMMError('Quote Failed: Swap crosses too many bins', 'MAX_BIN_CROSSINGS_EXCEEDED');
       }
 
       return amountOut;

@@ -30,10 +30,7 @@ export const getIdFromPrice = (
     throw new DLMMError(`Price must be greater than 0, got: ${price}`, 'INVALID_PRICE');
   }
   if (binStep <= 0 || binStep > BASIS_POINT_MAX) {
-    throw new DLMMError(
-      `Invalid bin step: ${binStep}. Must be > 0 and <= ${BASIS_POINT_MAX}`,
-      'INVALID_BIN_STEP'
-    );
+    throw new DLMMError(`Invalid bin step: ${binStep}. Must be > 0 and <= ${BASIS_POINT_MAX}`, 'INVALID_BIN_STEP');
   }
 
   const decimalPow = Math.pow(10, quoteTokenDecimal - baseTokenDecimal);

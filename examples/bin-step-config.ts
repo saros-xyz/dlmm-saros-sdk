@@ -1,4 +1,3 @@
-
 export const BIN_STEP_CONFIGS = [
   {
     binStep: 1,

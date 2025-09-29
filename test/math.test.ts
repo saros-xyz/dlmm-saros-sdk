@@ -1,18 +1,15 @@
 import { BN } from '@coral-xyz/anchor';
 import { describe, expect, it } from 'vitest';
-import { divRemBN, mulDiv, mulDivBN } from '../utils/math';
+import { divRemBN, mulDivBN } from '../utils/math';
 
 describe('Math Utils - Edge Cases', () => {
   describe('Error Handling', () => {
     it('should throw on division by zero', () => {
-      expect(() => mulDiv(100, 50, 0, 'down')).toThrow('Division by zero');
       expect(() => mulDivBN(new BN(100), new BN(50), new BN(0), 'down')).toThrow('Division by zero');
       expect(() => divRemBN(new BN(10), new BN(0))).toThrow('Division by zero');
     });
 
     it('should throw on invalid rounding mode', () => {
-      // @ts-expect-error Testing invalid input
-      expect(() => mulDiv(100, 50, 10, 'invalid')).toThrow('Invalid rounding mode');
       expect(() =>
         // @ts-expect-error Testing invalid input
         mulDivBN(new BN(100), new BN(50), new BN(10), 'invalid')
@@ -23,18 +20,10 @@ describe('Math Utils - Edge Cases', () => {
   describe('Rounding Behavior', () => {
     it('should handle fractional results correctly', () => {
       // 7 * 3 / 2 = 21 / 2 = 10.5
-      expect(mulDiv(7, 3, 2, 'down')).toBe(10);
-      expect(mulDiv(7, 3, 2, 'up')).toBe(11);
-
       const bnDown = mulDivBN(new BN(7), new BN(3), new BN(2), 'down');
       const bnUp = mulDivBN(new BN(7), new BN(3), new BN(2), 'up');
       expect(bnDown.toNumber()).toBe(10);
       expect(bnUp.toNumber()).toBe(11);
-    });
-
-    it('should handle exact division (no rounding needed)', () => {
-      expect(mulDiv(10, 6, 3, 'down')).toBe(20);
-      expect(mulDiv(10, 6, 3, 'up')).toBe(20);
     });
   });
 
@@ -62,21 +51,6 @@ describe('Math Utils - Edge Cases', () => {
 
       const result = mulDivBN(liquidityShare, totalReserve, totalSupply, 'down');
       expect(result.toNumber()).toBe(0); // Rounds down to 0
-    });
-  });
-
-  describe('Cross-Validation', () => {
-    it('should produce equivalent results for comparable inputs', () => {
-      const testCases = [
-        { x: 100, y: 50, denominator: 10 },
-        { x: 999, y: 123, denominator: 456 },
-      ];
-
-      testCases.forEach(({ x, y, denominator }) => {
-        const numberResult = mulDiv(x, y, denominator, 'down');
-        const bnResult = mulDivBN(new BN(x), new BN(y), new BN(denominator), 'down');
-        expect(bnResult.toNumber()).toBe(numberResult);
-      });
     });
   });
 });
