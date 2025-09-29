@@ -15,14 +15,19 @@ export interface PairTokenAccountsResult {
 }
 
 /**
- * Get both pair token account info
- * Uses getMultipleParsedAccounts to get everything we need efficiently
+ * Get both pair token account info.  
+ * if createVaultsIfNeeded is true: creates missing vault accounts (i.e in createPair)
  */
 export async function getPairTokenAccounts(
   tokenMintX: PublicKey,
   tokenMintY: PublicKey,
   pairAddress: PublicKey,
-  connection: Connection
+  connection: Connection,
+  options?: {
+    payer?: PublicKey;
+    transaction?: Transaction;
+    createVaultsIfNeeded?: boolean;
+  }
 ): Promise<PairTokenAccountsResult> {
   try {
     // Step 1: Get token programs for both tokens
@@ -49,26 +54,41 @@ export async function getPairTokenAccounts(
 
     const vaultY = spl.getAssociatedTokenAddressSync(tokenMintY, pairAddress, true, tokenProgramY);
 
-    // Step 3: Get mint decimals + vault balances
+    // Step 3: Check if we need to create vault accounts
+    if (options?.createVaultsIfNeeded && options.payer && options.transaction) {
+      const vaultAccountInfos = await connection.getMultipleAccountsInfo([vaultX, vaultY]);
+
+      // Add create ATA instruction for vaultX if it doesn't exist
+      if (!vaultAccountInfos[0]) {
+        const createVaultXIx = spl.createAssociatedTokenAccountInstruction(
+          options.payer,
+          vaultX,
+          pairAddress,
+          tokenMintX,
+          tokenProgramX
+        );
+        options.transaction.add(createVaultXIx);
+      }
+
+      // Add create ATA instruction for vaultY if it doesn't exist
+      if (!vaultAccountInfos[1]) {
+        const createVaultYIx = spl.createAssociatedTokenAccountInstruction(
+          options.payer,
+          vaultY,
+          pairAddress,
+          tokenMintY,
+          tokenProgramY
+        );
+        options.transaction.add(createVaultYIx);
+      }
+    }
+
+    // Step 4: Get mint decimals + vault balances
     const allAccounts = [tokenMintX, tokenMintY, vaultX, vaultY];
     const parsedAccountsResponse = await connection.getMultipleParsedAccounts(allAccounts);
     const parsedAccounts = parsedAccountsResponse.value;
 
     const [mintXInfo, mintYInfo, vaultXInfo, vaultYInfo] = parsedAccounts;
-
-    // Validate vault accounts exist
-    if (!vaultXInfo) {
-      throw SarosDLMMError.createAccountError(
-        SarosDLMMError.TokenAccountNotFound,
-        vaultX.toBase58()
-      );
-    }
-    if (!vaultYInfo) {
-      throw SarosDLMMError.createAccountError(
-        SarosDLMMError.TokenAccountNotFound,
-        vaultY.toBase58()
-      );
-    }
 
     // Extract decimals from mint info
     const baseDecimals =
@@ -81,7 +101,8 @@ export async function getPairTokenAccounts(
         ? (mintYInfo.data.parsed.info.decimals ?? 0)
         : 0;
 
-    // Extract vault balances from parsed token account info
+    // Handle vault accounts that might not exist yet (for new pools)
+    // Extract vault balances from parsed token account info, defaulting to 0 if vault doesn't exist
     const reserveX =
       vaultXInfo?.data && 'parsed' in vaultXInfo.data
         ? {
@@ -90,7 +111,7 @@ export async function getPairTokenAccounts(
               decimals: vaultXInfo.data.parsed.info.tokenAmount.decimals,
             },
           }
-        : { value: { amount: '0', decimals: 0 } };
+        : { value: { amount: '0', decimals: baseDecimals } };
 
     const reserveY =
       vaultYInfo?.data && 'parsed' in vaultYInfo.data
@@ -100,7 +121,7 @@ export async function getPairTokenAccounts(
               decimals: vaultYInfo.data.parsed.info.tokenAmount.decimals,
             },
           }
-        : { value: { amount: '0', decimals: 0 } };
+        : { value: { amount: '0', decimals: quoteDecimals } };
 
     return {
       vaultX,

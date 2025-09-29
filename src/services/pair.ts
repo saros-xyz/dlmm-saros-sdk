@@ -27,7 +27,7 @@ import {
   RemoveLiquidityParams,
 } from '../types';
 import { getPriceFromId } from '../utils/price';
-import { getPairTokenAccounts, getUserVaults } from '../utils/token-accounts';
+import { getPairTokenAccounts, getUserVaults } from '../utils/vault-accounts';
 import { SarosDLMMError } from '../utils/errors';
 import {
   getAmountInByPrice,
