@@ -1,5 +1,4 @@
-import { Connection } from '@solana/web3.js';
-import { FIXED_LENGTH, MAX_BASIS_POINTS, UNIT_PRICE_DEFAULT } from '../constants';
+import { MAX_BASIS_POINTS } from '../constants';
 import { Distribution, LiquidityShape } from '../types/services';
 import { divRem } from './math';
 
@@ -428,17 +427,17 @@ export function createUniformDistribution(params: CreateLiquidityDistributionPar
 //   return binArrayList;
 // };
 
-export const getBinRange = (index: number, activeId: number) => {
-  const firstBinId = Math.floor(activeId % 16);
+// export const getBinRange = (index: number, activeId: number) => {
+//   const firstBinId = Math.floor(activeId % 16);
 
-  const firstArray = [-firstBinId, -firstBinId + 16 - 1];
-  const range = [firstArray[0] + index * FIXED_LENGTH, firstArray[1] + index * FIXED_LENGTH];
-  return {
-    range,
-    binLower: activeId + range[0],
-    binUpper: activeId + range[1] - 1,
-  };
-};
+//   const firstArray = [-firstBinId, -firstBinId + 16 - 1];
+//   const range = [firstArray[0] + index * FIXED_LENGTH, firstArray[1] + index * FIXED_LENGTH];
+//   return {
+//     range,
+//     binLower: activeId + range[0],
+//     binUpper: activeId + range[1] - 1,
+//   };
+// };
 
 // UNUSED
 // export const findPosition =
@@ -449,20 +448,3 @@ export const getBinRange = (index: number, activeId: number) => {
 //     return position.lowerBinId <= binLower && position.upperBinId >= binUpper;
 //   };
 
-export const getGasPrice = async (connection: Connection): Promise<number> => {
-  const buffNum = 100;
-  try {
-    return await new Promise(async (resolve) => {
-      const timeout = setTimeout(() => {
-        resolve(UNIT_PRICE_DEFAULT * buffNum);
-      }, 2000);
-      const getPriority = await connection.getRecentPrioritizationFees();
-      const currentFee = getPriority.filter((fee) => fee?.prioritizationFee > 0).map((fee) => fee?.prioritizationFee);
-      clearTimeout(timeout);
-      const unitPrice = currentFee.length > 0 ? Math.max(...currentFee, UNIT_PRICE_DEFAULT) : UNIT_PRICE_DEFAULT;
-      resolve(unitPrice * buffNum);
-    });
-  } catch {
-    return UNIT_PRICE_DEFAULT * buffNum;
-  }
-};

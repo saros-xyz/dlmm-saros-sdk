@@ -52,3 +52,39 @@ export const getFeeForAmount = (amount: bigint, fee: bigint): bigint => {
 export const getProtocolFee = (fee: bigint, protocolShare: bigint): bigint => {
   return (fee * protocolShare) / BigInt(BASIS_POINT_MAX);
 };
+
+
+/**
+ * Calculate fee for a given pair account. Returns fees as percentages for pair metadata.
+ */
+/**
+ * Calculate fee for a given pair account. Returns fees as percentages for pair metadata.
+ */
+export function getFeeMetadata(pairAccount: Pair) {
+  const { binStep, staticFeeParameters, dynamicFeeParameters } = pairAccount;
+  const { baseFactor, protocolShare } = staticFeeParameters;
+  const { volatilityAccumulator } = dynamicFeeParameters;
+
+  // Base fee raw
+  const baseFeeRaw = getBaseFee(binStep, baseFactor);
+
+  // Variable fee raw
+  const variableFeeRaw = getVariableFee(pairAccount, volatilityAccumulator);
+
+  // Dynamic fee raw = max(baseFee, variableFee)
+  const dynamicFeeRaw = baseFeeRaw > variableFeeRaw ? baseFeeRaw : variableFeeRaw;
+
+  // Protocol fee raw
+  const protocolFeeRaw = getProtocolFee(dynamicFeeRaw, BigInt(protocolShare));
+
+  // Convert to percentages (raw)
+  const baseFee = (Number(baseFeeRaw) / Number(PRECISION)) * 100;
+  const dynamicFee = (Number(dynamicFeeRaw) / Number(PRECISION)) * 100;
+  const protocolFee = (Number(protocolFeeRaw) / Number(PRECISION)) * 100;
+
+  return {
+    baseFee,
+    dynamicFee,
+    protocolFee,
+  };
+}

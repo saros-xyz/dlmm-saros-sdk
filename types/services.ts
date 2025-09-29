@@ -115,8 +115,8 @@ export interface CreatePairWithConfigParams {
 
 export interface CreatePositionParams {
   payer: PublicKey;
-  relativeBinIdLeft: number;
-  relativeBinIdRight: number;
+  binIdLeft: number;
+  binIdRight: number;
   pair: PublicKey;
   binArrayIndex: number;
   positionMint: PublicKey;
