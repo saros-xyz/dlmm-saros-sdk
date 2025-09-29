@@ -85,6 +85,33 @@ export class BinArrays {
     };
   }
 
+   /**
+   * Get bin array reserves with adjacent fallback logic
+   */
+  public static async getBinArrayWithAdjacent(
+    binArrayIndex: number,
+    pairAddress: PublicKey,
+    lbProgram: any
+  ): Promise<{ bins: any[]; index: number }> {
+    const current = this.getBinArrayAddress(binArrayIndex, pairAddress, lbProgram.programId);
+    const { bins: currentBins } = await lbProgram.account.binArray.fetch(current);
+
+    try {
+      const next = this.getBinArrayAddress(binArrayIndex + 1, pairAddress, lbProgram.programId);
+      const { bins: nextBins } = await lbProgram.account.binArray.fetch(next);
+      return { bins: [...currentBins, ...nextBins], index: binArrayIndex };
+    } catch {
+      try {
+        const prev = this.getBinArrayAddress(binArrayIndex - 1, pairAddress, lbProgram.programId);
+        const { bins: prevBins } = await lbProgram.account.binArray.fetch(prev);
+        return { bins: [...prevBins, ...currentBins], index: binArrayIndex - 1 };
+      } catch {
+        return { bins: currentBins, index: binArrayIndex };
+      }
+    }
+  }
+
+
   /**
    * Get valid bin arrays for swap operations
    */
@@ -207,34 +234,11 @@ export class BinArrays {
     return { binArrays, binArrayIndexes };
   }
 
-  /**
-   * Get bin array reserves with adjacent fallback logic
-   */
-  public static async getBinArrayWithAdjacent(
-    binArrayIndex: number,
-    pairAddress: PublicKey,
-    lbProgram: any
-  ): Promise<{ bins: any[]; index: number }> {
-    const current = this.getBinArrayAddress(binArrayIndex, pairAddress, lbProgram.programId);
-    const { bins: currentBins } = await lbProgram.account.binArray.fetch(current);
-
-    try {
-      const next = this.getBinArrayAddress(binArrayIndex + 1, pairAddress, lbProgram.programId);
-      const { bins: nextBins } = await lbProgram.account.binArray.fetch(next);
-      return { bins: [...currentBins, ...nextBins], index: binArrayIndex };
-    } catch {
-      try {
-        const prev = this.getBinArrayAddress(binArrayIndex - 1, pairAddress, lbProgram.programId);
-        const { bins: prevBins } = await lbProgram.account.binArray.fetch(prev);
-        return { bins: [...prevBins, ...currentBins], index: binArrayIndex - 1 };
-      } catch {
-        return { bins: currentBins, index: binArrayIndex };
-      }
-    }
-  }
 
   /**
    * Get bin arrays and hook bin arrays for liquidity removal
+   *
+   * Requires bin_array_lower and bin_array_upper to be distinct accounts.
    */
   public static getBinArraysForRemoval(
     index: number,
