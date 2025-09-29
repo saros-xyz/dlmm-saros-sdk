@@ -1,5 +1,5 @@
-node_modules
-yarn.lock
-build
-dist
-.env
+node_modules/
+dist/
+test-data/
+.DS_Store
+.env*

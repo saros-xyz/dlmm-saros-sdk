@@ -1,12 +1,11 @@
 {
   "compilerOptions": {
-    "types": ["jsdom"],
     "target": "es2020",
     "module": "ES2015",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
   }
 }

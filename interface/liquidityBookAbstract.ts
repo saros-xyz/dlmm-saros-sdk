@@ -1,11 +1,11 @@
-import { AnchorProvider, Idl, Program, Wallet } from "@coral-xyz/anchor";
-import { Connection } from "@solana/web3.js";
-import { RPC_CONFIG } from "../constants/config";
-import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
-import MdmaIDL from "../constants/idl/mdma_hook.json";
-import LiquidityBookIDLDevnet from "../constants/idl_devnet/liquidity_book.json";
-import MdmaIDLDevnet from "../constants/idl_devnet/mdma_hook.json";
-import { ILiquidityBookConfig, MODE } from "../types";
+import { AnchorProvider, Idl, Program, Wallet } from '@coral-xyz/anchor';
+import { Connection } from '@solana/web3.js';
+import { RPC_CONFIG } from '../constants/config';
+import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
+import MdmaIDL from '../constants/idl/mdma_hook.json';
+import LiquidityBookIDLDevnet from '../constants/idl_devnet/liquidity_book.json';
+import MdmaIDLDevnet from '../constants/idl_devnet/mdma_hook.json';
+import { ILiquidityBookConfig, MODE } from '../types';
 
 export abstract class LiquidityBookAbstract {
   connection: Connection;
@@ -17,14 +17,10 @@ export abstract class LiquidityBookAbstract {
     // Initialize RPC Connection
     this.connection = new Connection(
       config.options?.rpcUrl || RPC_CONFIG[config.mode].rpc,
-      config.options?.commitmentOrConfig || "confirmed",
+      config.options?.commitmentOrConfig || 'confirmed'
     );
 
-    const provider = new AnchorProvider(
-      this.connection,
-      {} as Wallet,
-      AnchorProvider.defaultOptions(),
-    );
+    const provider = new AnchorProvider(this.connection, {} as Wallet, AnchorProvider.defaultOptions());
     this.mode = config.mode;
 
     if (config.mode === MODE.DEVNET) {

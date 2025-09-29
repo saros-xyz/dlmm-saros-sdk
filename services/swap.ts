@@ -1,38 +1,25 @@
-import { BN, Idl, Program, utils } from "@coral-xyz/anchor";
-import { BinAccount, BinArrayAccount } from "../types";
+import { BN, Idl, Program, utils } from '@coral-xyz/anchor';
+import { BinAccount, BinArrayAccount } from '../types';
 
-import { Connection, PublicKey } from "@solana/web3.js";
-import {
-  BASIS_POINT_MAX,
-  BIN_ARRAY_SIZE,
-  PRECISION,
-  SCALE_OFFSET,
-  VARIABLE_FEE_PRECISION,
-} from "../constants/config";
-import { GetBinArrayParams, GetTokenOutputParams, Pair } from "../types/services";
-import { getPriceFromId } from "../utils/price";
+import { Connection, PublicKey } from '@solana/web3.js';
+import { BASIS_POINT_MAX, BIN_ARRAY_SIZE, PRECISION, SCALE_OFFSET, VARIABLE_FEE_PRECISION } from '../constants/config';
+import { GetBinArrayParams, GetTokenOutputParams, Pair } from '../types/services';
+import { getPriceFromId } from '../utils/price';
 
 class LBError extends Error {
-  static BinNotFound = new LBError("Bin not found");
-  static BinArrayIndexMismatch = new LBError("Bin array index mismatch");
+  static BinNotFound = new LBError('Bin not found');
+  static BinArrayIndexMismatch = new LBError('Bin array index mismatch');
 
   constructor(message: string) {
     super(message);
-    this.name = "LBError";
+    this.name = 'LBError';
   }
 }
 
 class BinArrayRange {
   private readonly bins: { [binId: number]: BinAccount };
-  constructor(
-    binArrayPrevious: BinArrayAccount,
-    binArrayCurrent: BinArrayAccount,
-    binArrayNext: BinArrayAccount,
-  ) {
-    if (
-      binArrayCurrent.index !== binArrayPrevious.index + 1 ||
-      binArrayNext.index !== binArrayCurrent.index + 1
-    ) {
+  constructor(binArrayPrevious: BinArrayAccount, binArrayCurrent: BinArrayAccount, binArrayNext: BinArrayAccount) {
+    if (binArrayCurrent.index !== binArrayPrevious.index + 1 || binArrayNext.index !== binArrayCurrent.index + 1) {
       throw LBError.BinArrayIndexMismatch;
     }
 
@@ -86,11 +73,11 @@ export class LBSwapService {
 
     const binArray = PublicKey.findProgramAddressSync(
       [
-        Buffer.from(utils.bytes.utf8.encode("bin_array")),
+        Buffer.from(utils.bytes.utf8.encode('bin_array')),
         pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, "le", 4),
+        new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
       ],
-      this.lbProgram.programId,
+      this.lbProgram.programId
     )[0];
 
     return binArray;
@@ -101,36 +88,30 @@ export class LBSwapService {
     try {
       //@ts-ignore
       const pairInfo: Pair = await this.lbProgram.account.pair.fetch(pair);
-      if (!pairInfo) throw new Error("Pair not found");
+      if (!pairInfo) throw new Error('Pair not found');
 
       const currentBinArrayIndex = Math.floor(pairInfo.activeId / BIN_ARRAY_SIZE);
-      const binArrayIndexes = [
-        currentBinArrayIndex - 1,
-        currentBinArrayIndex,
-        currentBinArrayIndex + 1,
-      ];
-      const binArrayAddresses = binArrayIndexes.map(idx =>
+      const binArrayIndexes = [currentBinArrayIndex - 1, currentBinArrayIndex, currentBinArrayIndex + 1];
+      const binArrayAddresses = binArrayIndexes.map((idx) =>
         this.getBinArray({
           binArrayIndex: idx,
           pair,
-        }),
+        })
       );
 
       // Fetch bin arrays in batch, fallback to empty if not found
       const binArrays: BinArrayAccount[] = await Promise.all(
         binArrayAddresses.map((address, i) =>
           //@ts-ignore
-          this.lbProgram.account.binArray.fetch(address).catch((error: any) => {
+          this.lbProgram.account.binArray.fetch(address).catch((_error: any) => {
             return { index: binArrayIndexes[i], bins: [] } as BinArrayAccount;
-          }),
-        ),
+          })
+        )
       );
 
       // Validate bin arrays and build range
       const binRange = new BinArrayRange(binArrays[0], binArrays[1], binArrays[2]);
-      const totalSupply = binRange
-        .getAllBins()
-        .reduce((acc, cur) => acc.add(cur.totalSupply), new BN(0));
+      const totalSupply = binRange.getAllBins().reduce((acc, cur) => acc.add(cur.totalSupply), new BN(0));
       if (totalSupply.isZero()) {
         return {
           amountIn: BigInt(0),
@@ -141,24 +122,14 @@ export class LBSwapService {
       const amountAfterTransferFee = amount;
 
       if (isExactInput) {
-        const amountOut = await this.calculateAmountOut(
-          amountAfterTransferFee,
-          binRange,
-          pairInfo,
-          swapForY,
-        );
+        const amountOut = await this.calculateAmountOut(amountAfterTransferFee, binRange, pairInfo, swapForY);
 
         return {
           amountIn: amount,
           amountOut,
         };
       } else {
-        const amountIn = await this.calculateAmountIn(
-          amountAfterTransferFee,
-          binRange,
-          pairInfo,
-          swapForY,
-        );
+        const amountIn = await this.calculateAmountIn(amountAfterTransferFee, binRange, pairInfo, swapForY);
 
         return {
           amountIn,
@@ -173,17 +144,12 @@ export class LBSwapService {
   /**
    * @description Calculate the input amount for the swap. isExactInput = false
    */
-  public async calculateAmountIn(
-    amount: bigint,
-    bins: BinArrayRange,
-    pairInfo: Pair,
-    swapForY: boolean,
-  ) {
+  public async calculateAmountIn(amount: bigint, bins: BinArrayRange, pairInfo: Pair, swapForY: boolean) {
     try {
       let amountIn = BigInt(0);
       // UNUSED TODO: INVESTIGATE
       // is assigned a value but never used
-      let totalProtocolFee = BigInt(0);
+      // let totalProtocolFee = BigInt(0);
       let amountOutLeft = amount;
       let activeId = pairInfo.activeId;
       let totalBinUsed = 0;
@@ -204,7 +170,7 @@ export class LBSwapService {
         const {
           amountInWithFees,
           amountOut: amountOutOfBin,
-          protocolFeeAmount,
+          // protocolFeeAmount,
         } = this.swapExactOutput({
           binStep: pairInfo.binStep,
           activeId,
@@ -218,14 +184,14 @@ export class LBSwapService {
 
         amountIn += amountInWithFees;
         amountOutLeft -= amountOutOfBin;
-        totalProtocolFee += protocolFeeAmount;
+        // totalProtocolFee += protocolFeeAmount;
 
         if (!amountOutLeft) break;
         activeId = this.moveActiveId(activeId, swapForY);
       }
 
       if (totalBinUsed >= 30) {
-        throw new Error("Quote Failed: Swap crosses too many bins");
+        throw new Error('Quote Failed: Swap crosses too many bins');
       }
 
       return amountIn;
@@ -237,17 +203,12 @@ export class LBSwapService {
   /**
    * @description Calculate the output amount for the swap. isExactInput = true
    */
-  public async calculateAmountOut(
-    amount: bigint,
-    bins: BinArrayRange,
-    pairInfo: Pair,
-    swapForY: boolean,
-  ) {
+  public async calculateAmountOut(amount: bigint, bins: BinArrayRange, pairInfo: Pair, swapForY: boolean) {
     try {
       let amountOut = BigInt(0);
       // UNUSED TODO: INVESTIGATE
       // is assigned a value but never used
-      let totalProtocolFee = BigInt(0);
+      // let totalProtocolFee = BigInt(0);
       let amountInLeft = amount;
       let activeId = pairInfo.activeId;
       let totalBinUsed = 0;
@@ -268,7 +229,7 @@ export class LBSwapService {
         const {
           amountInWithFees,
           amountOut: amountOutOfBin,
-          protocolFeeAmount,
+          // protocolFeeAmount,
         } = this.swapExactInput({
           binStep: pairInfo.binStep,
           activeId,
@@ -282,13 +243,13 @@ export class LBSwapService {
 
         amountOut += amountOutOfBin;
         amountInLeft -= amountInWithFees;
-        totalProtocolFee += protocolFeeAmount;
+        // totalProtocolFee += protocolFeeAmount;
 
         if (!amountInLeft) break;
         activeId = this.moveActiveId(activeId, swapForY);
       }
       if (totalBinUsed >= 30) {
-        throw new Error("Quote Failed: Swap crosses too many bins");
+        throw new Error('Quote Failed: Swap crosses too many bins');
       }
 
       return amountOut;
@@ -307,16 +268,7 @@ export class LBSwapService {
     reserveX: BN;
     reserveY: BN;
   }) {
-    const {
-      binStep,
-      activeId,
-      amountOutLeft,
-      protocolShare,
-      swapForY,
-      reserveX,
-      reserveY,
-      fee,
-    } = params;
+    const { binStep, activeId, amountOutLeft, protocolShare, swapForY, reserveX, reserveY, fee } = params;
     const protocolShareBigInt = BigInt(protocolShare);
     const binReserveOut = swapForY ? reserveY : reserveX;
 
@@ -337,13 +289,7 @@ export class LBSwapService {
     // Encode price as bigint with SCALE_OFFSET
     const priceScaled = BigInt(Math.round(Number(price) * Math.pow(2, SCALE_OFFSET)));
 
-    const amountInWithoutFee = this.calcAmountInByPrice(
-      amountOut,
-      priceScaled,
-      SCALE_OFFSET,
-      swapForY,
-      "up",
-    );
+    const amountInWithoutFee = this.calcAmountInByPrice(amountOut, priceScaled, SCALE_OFFSET, swapForY, 'up');
 
     const feeAmount = this.getFeeForAmount(amountInWithoutFee, fee);
     const amountIn = amountInWithoutFee + feeAmount;
@@ -367,16 +313,7 @@ export class LBSwapService {
     reserveX: BN;
     reserveY: BN;
   }) {
-    const {
-      binStep,
-      activeId,
-      amountInLeft,
-      protocolShare,
-      swapForY,
-      reserveX,
-      reserveY,
-      fee,
-    } = params;
+    const { binStep, activeId, amountInLeft, protocolShare, swapForY, reserveX, reserveY, fee } = params;
     const protocolShareBigInt = BigInt(protocolShare);
     const binReserveOut = swapForY ? reserveY : reserveX;
 
@@ -397,13 +334,7 @@ export class LBSwapService {
     const priceScaled = BigInt(Math.round(Number(price) * Math.pow(2, SCALE_OFFSET)));
 
     // Calculate maxAmountIn (input needed to take all output in bin, before fee)
-    let maxAmountIn = this.calcAmountInByPrice(
-      binReserveOutBigInt,
-      priceScaled,
-      SCALE_OFFSET,
-      swapForY,
-      "up",
-    );
+    let maxAmountIn = this.calcAmountInByPrice(binReserveOutBigInt, priceScaled, SCALE_OFFSET, swapForY, 'up');
 
     // Add fee to get total input needed (ceil)
     const maxFeeAmount = this.getFeeForAmount(maxAmountIn, fee);
@@ -420,7 +351,7 @@ export class LBSwapService {
     } else {
       feeAmount = this.getFeeAmount(amountInLeft, fee);
       amountIn = amountInLeft - feeAmount;
-      amountOut = this.calcAmountOutByPrice(amountIn, priceScaled, SCALE_OFFSET, swapForY, "down");
+      amountOut = this.calcAmountOutByPrice(amountIn, priceScaled, SCALE_OFFSET, swapForY, 'down');
       if (amountOut > binReserveOutBigInt) {
         amountOut = binReserveOutBigInt;
       }
@@ -466,9 +397,7 @@ export class LBSwapService {
 
   public updateVolatilityReference(pairInfo: Pair) {
     this.volatilityReference =
-      (pairInfo.dynamicFeeParameters.volatilityAccumulator *
-        pairInfo.staticFeeParameters.reductionFactor) /
-      10_000;
+      (pairInfo.dynamicFeeParameters.volatilityAccumulator * pairInfo.staticFeeParameters.reductionFactor) / 10_000;
   }
 
   public updateVolatilityAccumulator(pairInfo: Pair, activeId: number) {
@@ -520,10 +449,7 @@ export class LBSwapService {
   }
 
   public getTotalFee(pairInfo: Pair) {
-    return (
-      this.getBaseFee(pairInfo.binStep, pairInfo.staticFeeParameters.baseFactor) +
-      this.getVariableFee(pairInfo)
-    );
+    return this.getBaseFee(pairInfo.binStep, pairInfo.staticFeeParameters.baseFactor) + this.getVariableFee(pairInfo);
   }
 
   public moveActiveId(pairId: number, swapForY: boolean) {
@@ -549,18 +475,17 @@ export class LBSwapService {
     priceScaled: bigint,
     scaleOffset: number,
     swapForY: boolean,
-    rounding: "up" | "down",
+    rounding: 'up' | 'down'
   ): bigint {
     if (swapForY) {
       // amountIn = (amountOut << scaleOffset) / priceScaled
-      return rounding === "up"
+      return rounding === 'up'
         ? ((amountOut << BigInt(scaleOffset)) + priceScaled - BigInt(1)) / priceScaled
         : (amountOut << BigInt(scaleOffset)) / priceScaled;
     } else {
       // amountIn = (amountOut * priceScaled) >> scaleOffset
-      return rounding === "up"
-        ? (amountOut * priceScaled + (BigInt(1) << BigInt(scaleOffset)) - BigInt(1)) >>
-            BigInt(scaleOffset)
+      return rounding === 'up'
+        ? (amountOut * priceScaled + (BigInt(1) << BigInt(scaleOffset)) - BigInt(1)) >> BigInt(scaleOffset)
         : (amountOut * priceScaled) >> BigInt(scaleOffset);
     }
   }
@@ -580,19 +505,18 @@ export class LBSwapService {
     priceScaled: bigint,
     scaleOffset: number,
     swapForY: boolean,
-    rounding: "up" | "down",
+    rounding: 'up' | 'down'
   ): bigint {
     if (swapForY) {
       // price = (Y / X) & swapForY => amountOut = amountIn * price
       // amountOut = (amountIn * priceScaled) >> scaleOffset
-      return rounding === "up"
-        ? (amountIn * priceScaled + (BigInt(1) << BigInt(scaleOffset)) - BigInt(1)) >>
-            BigInt(scaleOffset)
+      return rounding === 'up'
+        ? (amountIn * priceScaled + (BigInt(1) << BigInt(scaleOffset)) - BigInt(1)) >> BigInt(scaleOffset)
         : (amountIn * priceScaled) >> BigInt(scaleOffset);
     } else {
       // price = (X / Y) & !swapForY => amountOut = amountIn / price
       // amountOut = (amountIn << scaleOffset) / priceScaled
-      return rounding === "up"
+      return rounding === 'up'
         ? ((amountIn << BigInt(scaleOffset)) + priceScaled - BigInt(1)) / priceScaled
         : (amountIn << BigInt(scaleOffset)) / priceScaled;
     }

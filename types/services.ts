@@ -1,16 +1,16 @@
-import { BN } from "@coral-xyz/anchor";
-import { PublicKey, Transaction } from "@solana/web3.js";
+import { BN } from '@coral-xyz/anchor';
+import { PublicKey, Transaction } from '@solana/web3.js';
 
 export enum LiquidityShape {
-  Spot = "Spot",
-  Curve = "Curve",
-  BidAsk = "BidAsk",
+  Spot = 'Spot',
+  Curve = 'Curve',
+  BidAsk = 'BidAsk',
 }
 
 export enum RemoveLiquidityType {
-  Both = "removeBoth",
-  BaseToken = "removeBaseToken",
-  QuoteToken = "removeQuoteToken",
+  Both = 'removeBoth',
+  BaseToken = 'removeBaseToken',
+  QuoteToken = 'removeQuoteToken',
 }
 
 export interface PositionAccount {
@@ -178,7 +178,7 @@ export interface RemoveMultipleLiquidityParams {
     positionMint: string;
   }[];
   payer: PublicKey;
-  type: "removeBoth" | "removeBaseToken" | "removeQuoteToken";
+  type: 'removeBoth' | 'removeBaseToken' | 'removeQuoteToken';
   pair: PublicKey;
   tokenMintX: PublicKey;
   tokenMintY: PublicKey;

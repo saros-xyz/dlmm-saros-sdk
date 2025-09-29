@@ -1,14 +1,14 @@
-import { MODE } from "../types";
+import { MODE } from '../types';
 
 export const RPC_CONFIG = {
   [MODE.TESTNET]: {
-    rpc: "https://api.testnet.solana.com",
+    rpc: 'https://api.testnet.solana.com',
   },
   [MODE.DEVNET]: {
-    rpc: "https://api.devnet.solana.com",
+    rpc: 'https://api.devnet.solana.com',
   },
   [MODE.MAINNET]: {
-    rpc: "https://api.mainnet-beta.solana.com",
+    rpc: 'https://api.mainnet-beta.solana.com',
   },
 };
 
@@ -35,7 +35,7 @@ export const PRECISION = 1_000_000_000;
 
 export const UNIT_PRICE_DEFAULT = 1_000_000;
 export const CCU_LIMIT = 400_000;
-export const WRAP_SOL_ADDRESS = "So11111111111111111111111111111111111111112";
+export const WRAP_SOL_ADDRESS = 'So11111111111111111111111111111111111111112';
 export const FIXED_LENGTH = 16;
 
 export const BIN_STEP_CONFIGS = [

@@ -1,4 +1,7 @@
 node_modules/
 dist/
-build/
+test-data/
+.DS_Store
 *.json
+*.md
+.env*

@@ -1,10 +1,10 @@
-import { BN } from "@coral-xyz/anchor";
-import { Commitment, ConnectionConfig } from "@solana/web3.js";
+import { BN } from '@coral-xyz/anchor';
+import { Commitment, ConnectionConfig } from '@solana/web3.js';
 
 export enum MODE {
-  TESTNET = "testnet",
-  DEVNET = "devnet",
-  MAINNET = "mainnet",
+  TESTNET = 'testnet',
+  DEVNET = 'devnet',
+  MAINNET = 'mainnet',
 }
 
 export interface ILiquidityBookConfig {
