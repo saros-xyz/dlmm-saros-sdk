@@ -1,6 +1,6 @@
 import { AnchorProvider, Idl, Program, Wallet } from '@coral-xyz/anchor';
 import { Connection } from '@solana/web3.js';
-import { RPC_CONFIG } from '../constants/config';
+import { RPC_CONFIG } from '../constants';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
 import MdmaIDL from '../constants/idl/mdma_hook.json';
 import LiquidityBookIDLDevnet from '../constants/idl_devnet/liquidity_book.json';

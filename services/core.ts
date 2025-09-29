@@ -15,7 +15,7 @@ import {
   SCALE_OFFSET,
   UNIT_PRICE_DEFAULT,
   WRAP_SOL_ADDRESS,
-} from '../constants/config';
+} from '../constants';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
 import { LiquidityBookAbstract } from '../interface/liquidityBookAbstract';
 import { MODE, PoolMetadata } from '../types';

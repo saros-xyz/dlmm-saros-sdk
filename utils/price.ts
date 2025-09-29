@@ -1,20 +1,5 @@
-import { BASIS_POINT_MAX, ONE, SCALE_OFFSET } from '../constants/config';
-
-const getBase = (binStep: number) => {
-  const quotient = binStep << SCALE_OFFSET;
-  if (quotient < 0) return null;
-
-  const basisPointMaxBigInt = BASIS_POINT_MAX;
-
-  //@ts-ignore
-  if (basisPointMaxBigInt === 0) return null;
-  const fraction = quotient / basisPointMaxBigInt;
-
-  const oneBigInt = ONE;
-  const result = oneBigInt + fraction;
-
-  return result;
-};
+import { BASIS_POINT_MAX, ACTIVE_ID } from '../constants';
+import { DLMMError } from '../error';
 
 export const getPriceFromId = (
   bin_step: number,
@@ -22,8 +7,8 @@ export const getPriceFromId = (
   baseTokenDecimal: number,
   quoteTokenDecimal: number
 ) => {
-  const base = getBase(bin_step) as number;
-  const exponent = bin_id - 8_388_608;
+  const base = 1 + bin_step / BASIS_POINT_MAX;
+  const exponent = bin_id - ACTIVE_ID;
   const decimalPow = Math.pow(10, baseTokenDecimal - quoteTokenDecimal);
 
   return Math.pow(base, exponent) * decimalPow;
@@ -35,14 +20,14 @@ export const getIdFromPrice = (
   baseTokenDecimal: number,
   quoteTokenDecimal: number
 ): number => {
-  if (price <= 0) throw new Error('Giá phải lớn hơn 0');
-  if (binStep <= 0 || binStep > BASIS_POINT_MAX) throw new Error('Bin step invalid');
+  if (price <= 0) throw new DLMMError(`Price must be greater than 0, got: ${price}`, 'INVALID_PRICE');
+  if (binStep <= 0 || binStep > BASIS_POINT_MAX) throw new DLMMError(`Invalid bin step: ${binStep}. Must be > 0 and <= ${BASIS_POINT_MAX}`, 'INVALID_BIN_STEP');
 
   const decimalPow = Math.pow(10, quoteTokenDecimal - baseTokenDecimal);
 
   const base = 1 + binStep / BASIS_POINT_MAX;
   const exponent = Math.log(price * decimalPow) / Math.log(base);
-  const binId = Math.round(exponent + 8_388_608);
+  const binId = Math.round(exponent + ACTIVE_ID);
 
   return binId;
 };

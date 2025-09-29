@@ -2,7 +2,7 @@ import { BN, Idl, Program, utils } from '@coral-xyz/anchor';
 import { BinAccount, BinArrayAccount } from '../types';
 
 import { Connection, PublicKey } from '@solana/web3.js';
-import { BASIS_POINT_MAX, BIN_ARRAY_SIZE, PRECISION, SCALE_OFFSET, VARIABLE_FEE_PRECISION } from '../constants/config';
+import { BASIS_POINT_MAX, BIN_ARRAY_SIZE, PRECISION, SCALE_OFFSET, VARIABLE_FEE_PRECISION } from '../constants';
 import { GetBinArrayParams, GetTokenOutputParams, Pair } from '../types/services';
 import { getPriceFromId } from '../utils/price';
 

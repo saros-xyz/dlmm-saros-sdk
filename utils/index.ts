@@ -1,5 +1,5 @@
 import { Connection } from '@solana/web3.js';
-import { ACTIVE_ID, BIN_ARRAY_SIZE, FIXED_LENGTH, MAX_BASIS_POINTS, UNIT_PRICE_DEFAULT } from '../constants/config';
+import { ACTIVE_ID, FIXED_LENGTH, MAX_BASIS_POINTS, UNIT_PRICE_DEFAULT } from '../constants';
 import { Distribution, LiquidityShape, PositionInfo } from '../types/services';
 import { divRem } from './math';
 
@@ -392,38 +392,40 @@ export function createUniformDistribution(params: CreateLiquidityDistributionPar
   throw new Error(`Unsupported liquidity shape: ${shape}`);
 }
 
-export const getMaxPosition = (range: [number, number], activeId: number) => {
-  const leftRangeIndex = Math.floor(activeId / 16);
-  const rangeFromIndex = [Math.floor((activeId + range[0]) / 16), Math.floor((activeId + range[1]) / 16)];
 
-  const positions = Array.from({ length: rangeFromIndex[1] - rangeFromIndex[0] + 1 }, (_, index) => {
-    return rangeFromIndex[0] + index - leftRangeIndex;
-  });
+// UNUSED - What is intended purpose?
+// export const getMaxPosition = (range: [number, number], activeId: number) => {
+//   const leftRangeIndex = Math.floor(activeId / 16);
+//   const rangeFromIndex = [Math.floor((activeId + range[0]) / 16), Math.floor((activeId + range[1]) / 16)];
 
-  return positions;
-};
+//   const positions = Array.from({ length: rangeFromIndex[1] - rangeFromIndex[0] + 1 }, (_, index) => {
+//     return rangeFromIndex[0] + index - leftRangeIndex;
+//   });
 
-export const getMaxBinArray = (range: [number, number], activeId: number) => {
-  const arrayIndex = [activeId + range[0], activeId + range[1]];
+//   return positions;
+// };
 
-  const binIndex = [Math.floor(arrayIndex[0] / BIN_ARRAY_SIZE), Math.floor(arrayIndex[1] / BIN_ARRAY_SIZE)];
+// export const getMaxBinArray = (range: [number, number], activeId: number) => {
+//   const arrayIndex = [activeId + range[0], activeId + range[1]];
 
-  // check if binArrayLower, binArrayUpper is the same
-  if (binIndex[1] === binIndex[0]) {
-    binIndex[1] += 1;
-  }
+//   const binIndex = [Math.floor(arrayIndex[0] / BIN_ARRAY_SIZE), Math.floor(arrayIndex[1] / BIN_ARRAY_SIZE)];
 
-  const binArrayIndexLen = binIndex[1] - binIndex[0] - 1;
-  const binArrayList = Array.from({ length: binArrayIndexLen + 1 }, (_, i) => {
-    const index = binIndex[0] + i * 2;
-    return {
-      binArrayLowerIndex: index,
-      binArrayUpperIndex: index + 1,
-    };
-  });
+//   // check if binArrayLower, binArrayUpper is the same
+//   if (binIndex[1] === binIndex[0]) {
+//     binIndex[1] += 1;
+//   }
 
-  return binArrayList;
-};
+//   const binArrayIndexLen = binIndex[1] - binIndex[0] - 1;
+//   const binArrayList = Array.from({ length: binArrayIndexLen + 1 }, (_, i) => {
+//     const index = binIndex[0] + i * 2;
+//     return {
+//       binArrayLowerIndex: index,
+//       binArrayUpperIndex: index + 1,
+//     };
+//   });
+
+//   return binArrayList;
+// };
 
 export const getBinRange = (index: number, activeId: number) => {
   const firstBinId = Math.floor(activeId % 16);
