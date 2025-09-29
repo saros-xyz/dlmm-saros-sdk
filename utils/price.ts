@@ -7,12 +7,12 @@ import { DLMMError } from '../error';
 export const getPriceFromId = (
   binStep: number,
   binId: number,
-  baseTokenDecimal: number,
-  quoteTokenDecimal: number
+  decimalTokenX: number,
+  decimalTokenY: number
 ): number => {
   const base = 1 + binStep / BASIS_POINT_MAX;
   const exponent = binId - CENTER_BIN_ID;
-  const decimalPow = Math.pow(10, baseTokenDecimal - quoteTokenDecimal);
+  const decimalPow = Math.pow(10, decimalTokenX - decimalTokenY);
 
   return Math.pow(base, exponent) * decimalPow;
 };
@@ -23,8 +23,8 @@ export const getPriceFromId = (
 export const getIdFromPrice = (
   price: number,
   binStep: number,
-  baseTokenDecimal: number,
-  quoteTokenDecimal: number
+  decimalTokenX: number,
+  decimalTokenY: number
 ): number => {
   if (price <= 0) {
     throw new DLMMError(`Price must be greater than 0, got: ${price}`, 'INVALID_PRICE');
@@ -33,7 +33,7 @@ export const getIdFromPrice = (
     throw new DLMMError(`Invalid bin step: ${binStep}. Must be > 0 and <= ${BASIS_POINT_MAX}`, 'INVALID_BIN_STEP');
   }
 
-  const decimalPow = Math.pow(10, quoteTokenDecimal - baseTokenDecimal);
+  const decimalPow = Math.pow(10, decimalTokenY - decimalTokenX);
   const base = 1 + binStep / BASIS_POINT_MAX;
   const exponent = Math.log(price * decimalPow) / Math.log(base);
   const binId = Math.round(exponent + CENTER_BIN_ID);

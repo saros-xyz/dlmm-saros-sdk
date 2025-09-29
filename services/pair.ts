@@ -220,14 +220,14 @@ export class DLMMPair extends DLMMBase {
   // kept public as before
   public async getMaxAmountOutWithFee(params: GetMaxAmountOutWithFeeParams): Promise<GetMaxAmountOutWithFeeResponse> {
     try {
-      const { amount, swapForY = false, decimalTokenX: decimalBase = 9, decimalTokenY: decimalQuote = 9 } = params;
+      const { amount, swapForY = false, decimalTokenX = 9, decimalTokenY = 9 } = params;
 
       let amountIn = BigInt(amount);
       const activeId = this.pairAccount.activeId;
       const binStep = this.pairAccount.binStep;
       const feePrice = getTotalFee(this.pairAccount, 0);
-      const activePrice = getPriceFromId(binStep, activeId, 9, 9);
-      const price = getPriceFromId(binStep, activeId, decimalBase, decimalQuote);
+      const activePrice = getPriceFromId(binStep, activeId, decimalTokenX, decimalTokenY);
+      const price = getPriceFromId(binStep, activeId, decimalTokenX, decimalTokenY);
 
       const feeAmount = getFeeAmount(amountIn, feePrice);
       amountIn -= BigInt(feeAmount);
@@ -1111,7 +1111,7 @@ export class DLMMPair extends DLMMBase {
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
     const amountOut = amountOutLeft > binReserveOutBigInt ? binReserveOutBigInt : amountOutLeft;
 
-    const price = getPriceFromId(binStep, activeId, 9, 9);
+    const price = getPriceFromId(binStep, activeId, this.metadata.tokenX.decimal, this.metadata.tokenY.decimal);
     const priceScaled = BigInt(Math.round(Number(price) * Math.pow(2, SCALE_OFFSET)));
 
     const amountInWithoutFee = calcAmountInByPrice(amountOut, priceScaled, SCALE_OFFSET, swapForY, 'up');
@@ -1153,7 +1153,7 @@ export class DLMMPair extends DLMMBase {
 
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
 
-    const price = getPriceFromId(binStep, activeId, 9, 9);
+    const price = getPriceFromId(binStep, activeId, this.metadata.tokenX.decimal, this.metadata.tokenY.decimal);
     const priceScaled = BigInt(Math.round(Number(price) * Math.pow(2, SCALE_OFFSET)));
 
     let maxAmountIn = calcAmountInByPrice(binReserveOutBigInt, priceScaled, SCALE_OFFSET, swapForY, 'up');

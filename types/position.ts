@@ -2,7 +2,6 @@ import { PublicKey, Transaction } from '@solana/web3.js';
 import { RemoveLiquidityType, LiquidityShape } from '../constants';
 import { BN } from '@coral-xyz/anchor';
 
-
 /**
  * Parameters for creating a new liquidity position
  */
@@ -24,8 +23,8 @@ export interface CreatePositionParams {
  */
 export interface CreatePositionResponse {
   /** The wallet that will own the position and pay transaction fees */
-  position: PublicKey,
-  transaction: Transaction,
+  position: PublicKey;
+  transaction: Transaction;
 }
 
 /**
@@ -105,14 +104,13 @@ export interface Distribution {
   distributionY: number;
 }
 
-
 export interface AddLiquidityIntoPositionParams {
   positionMint: PublicKey;
   payer: PublicKey;
   transaction: Transaction;
   liquidityDistribution: Distribution[];
-  amountX: bigint;   // precise integer
-  amountY: bigint;   // precise integer
+  amountX: bigint; // precise integer
+  amountY: bigint; // precise integer
   binArrayLower: PublicKey;
   binArrayUpper: PublicKey;
 }
