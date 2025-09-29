@@ -90,7 +90,6 @@ export class SarosDLMMError extends Error {
    * Handle errors by re-throwing SarosDLMMError or wrapping unknown errors
    */
   static handleError(error: unknown, fallbackError: SarosDLMMError): never {
-    console.log(error);
     if (error instanceof SarosDLMMError) {
       throw error;
     }
