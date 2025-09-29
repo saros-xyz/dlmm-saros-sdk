@@ -2,10 +2,10 @@ import { DLMMPairAccount } from '../types';
 import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT, MAX_BASIS_POINTS } from '../constants';
 
 export interface FeeCalculationResult {
-  baseFee: number; // in percentage (e.g., 1.0 for 1%)
-  variableFee: number; // in percentage
-  dynamicFee: number; // in percentage (baseFee + variableFee)
-  protocolFee: number; // in percentage
+  baseFee: number;
+  variableFee: number;
+  dynamicFee: number;
+  protocolFee: number;
 }
 
 export class Fees {

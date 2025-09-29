@@ -46,20 +46,6 @@ export class BinArrays {
   }
 
   /**
-   * Get adjacent hook bin array addresses (lower and upper) in one call
-   */
-  public static getHookBinArrayAddresses(
-    hook: PublicKey,
-    programId: PublicKey,
-    binArrayIndex: number
-  ): { hookBinArrayLower: PublicKey; hookBinArrayUpper: PublicKey } {
-    return {
-      hookBinArrayLower: this.getHookBinArrayAddress(hook, programId, binArrayIndex),
-      hookBinArrayUpper: this.getHookBinArrayAddress(hook, programId, binArrayIndex + 1),
-    };
-  }
-
-  /**
    * Get adjacent bin array addresses (lower and upper) in one call
    */
   public static getBinArrayAddresses(
@@ -213,10 +199,9 @@ export class BinArrays {
 
   /**
    * Get bin arrays and hook bin arrays for liquidity removal
-   *
    * Requires bin_array_lower and bin_array_upper to be distinct accounts.
    */
-  public static getBinArraysForRemoval(
+  public static getRemovalBinArrays(
     index: number,
     pairAddress: PublicKey,
     hook: PublicKey,
@@ -237,9 +222,9 @@ export class BinArrays {
   }
 
   /**
-   * Initialize multiple bin arrays in batch
+   * Initialize multiple bin arrays
    */
-  public static async batchInitializeBinArrays(
+  public static async initializeMultipleBinArrays(
     binArrayIndexes: number[],
     pairAddress: PublicKey,
     payer: PublicKey,

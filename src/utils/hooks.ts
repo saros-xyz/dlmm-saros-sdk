@@ -3,7 +3,7 @@ import * as spl from '@solana/spl-token';
 import { utils } from '@coral-xyz/anchor';
 
 /**
- * Hook account utilities
+ * Reward Hook account utilities
  */
 export class Hooks {
   /**
@@ -12,16 +12,6 @@ export class Hooks {
   public static deriveHookAddress(hooksConfig: PublicKey, pairAddress: PublicKey, programId: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
       [Buffer.from(utils.bytes.utf8.encode('hook')), hooksConfig.toBuffer(), pairAddress.toBuffer()],
-      programId
-    )[0];
-  }
-
-  /**
-   * Derive hook position PDA
-   */
-  public static deriveHookPosition(hook: PublicKey, position: PublicKey, programId: PublicKey): PublicKey {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('position')), hook.toBuffer(), position.toBuffer()],
       programId
     )[0];
   }
@@ -47,12 +37,5 @@ export class Hooks {
     }
 
     return associatedHookToken;
-  }
-
-  /**
-   * Get hook position for removal operations
-   */
-  public static getHookPosition(hook: PublicKey, position: PublicKey, hooksProgram: any): PublicKey {
-    return this.deriveHookPosition(hook, position, hooksProgram.programId);
   }
 }

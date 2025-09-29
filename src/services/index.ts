@@ -57,7 +57,11 @@ export class SarosDLMM extends SarosBaseService {
 
       // Calculate bin array addresses
       const binArrayIndex = BinArrays.calculateBinArrayIndex(id);
-      const { binArrayLower, binArrayUpper } = BinArrays.getBinArrayAddresses(binArrayIndex, pair, this.lbProgram.programId);
+      const { binArrayLower, binArrayUpper } = BinArrays.getBinArrayAddresses(
+        binArrayIndex,
+        pair,
+        this.lbProgram.programId
+      );
 
       // Initialize pair instruction
       const initializePairIx = await this.lbProgram.methods
@@ -76,7 +80,7 @@ export class SarosDLMM extends SarosBaseService {
       tx.add(initializePairIx);
 
       // Initialize bin arrays
-      await BinArrays.batchInitializeBinArrays(
+      await BinArrays.initializeMultipleBinArrays(
         [binArrayIndex, binArrayIndex + 1],
         pair,
         payer,
