@@ -1,8 +1,9 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
 import bs58 from 'bs58';
+import { utils } from '@coral-xyz/anchor';
 import { SarosBaseService, SarosConfig } from './base/index';
 import { SarosDLMMPair } from './pair';
-import { Pairs } from '../utils/pairs';
+import { BinArrays } from '../utils/bin-arrays';
 import { CreatePairParams, CreatePairResponse } from '../types';
 import { getIdFromPrice } from '../utils/price';
 import { extractPairFromTx } from '../utils/transaction';
@@ -30,12 +31,54 @@ export class SarosDLMM extends SarosBaseService {
 
       const tx = new Transaction();
 
-      const { pair, binArrayLower, binArrayUpper } = await Pairs.createPairWithBinArrays(
-        this.lbConfig,
-        tokenXMint,
-        tokenYMint,
-        binStep,
-        id,
+      // Derive pair PDA address
+      const pair = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(utils.bytes.utf8.encode('pair')),
+          this.lbConfig.toBuffer(),
+          tokenXMint.toBuffer(),
+          tokenYMint.toBuffer(),
+          new Uint8Array([binStep]),
+        ],
+        this.lbProgram.programId
+      )[0];
+
+      // Derive bin step config PDA
+      const binStepConfig = PublicKey.findProgramAddressSync(
+        [Buffer.from(utils.bytes.utf8.encode('bin_step_config')), this.lbConfig.toBuffer(), new Uint8Array([binStep])],
+        this.lbProgram.programId
+      )[0];
+
+      // Derive quote asset badge PDA
+      const quoteAssetBadge = PublicKey.findProgramAddressSync(
+        [Buffer.from(utils.bytes.utf8.encode('quote_asset_badge')), this.lbConfig.toBuffer(), tokenYMint.toBuffer()],
+        this.lbProgram.programId
+      )[0];
+
+      // Calculate bin array addresses
+      const binArrayIndex = BinArrays.calculateBinArrayIndex(id);
+      const { binArrayLower, binArrayUpper } = BinArrays.getBinArrayAddresses(binArrayIndex, pair, this.lbProgram.programId);
+
+      // Initialize pair instruction
+      const initializePairIx = await this.lbProgram.methods
+        .initializePair(id)
+        .accountsPartial({
+          liquidityBookConfig: this.lbConfig,
+          binStepConfig: binStepConfig,
+          quoteAssetBadge: quoteAssetBadge,
+          pair: pair,
+          tokenMintX: tokenXMint,
+          tokenMintY: tokenYMint,
+          user: payer,
+        })
+        .instruction();
+
+      tx.add(initializePairIx);
+
+      // Initialize bin arrays
+      await BinArrays.batchInitializeBinArrays(
+        [binArrayIndex, binArrayIndex + 1],
+        pair,
         payer,
         tx,
         this.connection,
