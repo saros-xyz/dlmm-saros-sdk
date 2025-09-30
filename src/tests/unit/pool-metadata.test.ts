@@ -88,9 +88,18 @@ describe('Pool Discovery', () => {
     expect(addresses[0]).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/); // Base58 format
   });
 
+  it('searches pairs by USDC and SOL token mint', async () => {
+    const addresses = await sdk.findPairs(new PublicKey(TOKEN_MINTS.USDC), new PublicKey(TOKEN_MINTS.SOL));
+    console.log(addresses);
+    expect(Array.isArray(addresses)).toBe(true);
+    expect(addresses.length).toBeGreaterThan(2); // we have at least three (oct. 2025)
+    addresses.forEach((address) => {
+      expect(address).toMatch(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
+    });
+  });
+
   it('searches pairs by USDC token mint', async () => {
     const addresses = await sdk.findPairs(new PublicKey(TOKEN_MINTS.USDC));
-
     expect(Array.isArray(addresses)).toBe(true);
     expect(addresses.length).toBeGreaterThan(0);
     addresses.forEach((address) => {

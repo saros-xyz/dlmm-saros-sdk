@@ -169,7 +169,7 @@ export class SarosDLMMPair extends SarosBaseService {
         amountIn: amountIn,
         amountOut: amountOut,
         amount: isExactInput ? maxAmountIn : minAmountOut,
-        minTokenOut: isExactInput ? minAmountOut : maxAmountIn,
+        minTokenOut: isExactInput ? minAmountOut : amountOut,
         priceImpact: priceImpact,
       };
     } catch (error) {
