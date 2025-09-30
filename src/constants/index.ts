@@ -28,3 +28,5 @@ export const PRECISION_BIGINT = BigInt(1_000_000_000);
 export const MAX_BASIS_POINTS_BIGINT = BigInt(MAX_BASIS_POINTS);
 
 export const WRAP_SOL_PUBKEY = new PublicKey('So11111111111111111111111111111111111111112');
+
+export * from './config';

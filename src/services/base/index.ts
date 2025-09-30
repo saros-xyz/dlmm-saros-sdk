@@ -4,7 +4,7 @@ import LiquidityBookIDL from '../../constants/idl/liquidity_book.json';
 import MdmaIDL from '../../constants/idl/mdma_hook.json';
 import LiquidityBookIDLDevnet from '../../constants/idl_devnet/liquidity_book.json';
 import MdmaIDLDevnet from '../../constants/idl_devnet/mdma_hook.json';
-import { MODE } from '../../types/config';
+import { MODE } from '../../constants/config';
 import { DLMM_PROGRAM_IDS } from '../../constants';
 
 export interface SarosConfig {

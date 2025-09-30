@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Connection, PublicKey } from '@solana/web3.js';
-import { MODE } from '../../types';
 import { SarosDLMMError } from '../../utils/errors';
 import { SarosDLMM } from '../../services';
+import { MODE } from '../../constants';
 
 // Single connection + SDK instance for all tests
 const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');

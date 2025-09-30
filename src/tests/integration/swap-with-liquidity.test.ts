@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { SarosDLMM } from '../../services';
 import { PublicKey } from '@solana/web3.js';
-import { LiquidityShape, MODE } from '../../types';
+import { LiquidityShape, MODE } from '../../constants';
 import {
   IntegrationTestSetup,
   setupIntegrationTest,

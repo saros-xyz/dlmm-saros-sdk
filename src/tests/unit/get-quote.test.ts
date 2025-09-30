@@ -1,7 +1,7 @@
 import { PublicKey, Connection } from '@solana/web3.js';
 import { describe, it, expect } from 'vitest';
 import { SarosDLMM } from '../../services';
-import { MODE } from '../../types';
+import { MODE } from '../../constants';
 
 describe('getQuote with bigint support', () => {
   it('should handle large token amounts without precision loss', async () => {

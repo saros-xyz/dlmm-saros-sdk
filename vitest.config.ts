@@ -12,12 +12,12 @@ export default defineConfig(({ mode }) => ({
       'test-data',
       // Exclude cleanup test from normal test run
       // add comment to line below and run pnpm test:cleanup to reclaim devnet sol after testing
-      'src/tests/integration/batch-close-positions.test.ts',
+      // 'src/tests/integration/batch-close-positions.test.ts',
     ],
     testTimeout: 60000,
     hookTimeout: 60000,
     setupFiles: ['src/tests/setup/test-setup.ts'],
-    env: loadEnv(mode, process.cwd(), ['DEVNET_RPC_URL', 'RPC_URL']),
+    env: loadEnv(mode, process.cwd(), ['DEVNET_RPC_URL', 'DEVNET_RPC_URL2', 'RPC_URL']),
     pool: 'threads',
     poolOptions: {
       threads: {

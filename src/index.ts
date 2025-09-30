@@ -9,7 +9,7 @@ export { SarosDLMMPair } from './services/pair';
 export { DLMM_PROGRAM_IDS } from './constants';
 
 // Public enums (values)
-export { MODE, LiquidityShape, RemoveLiquidityType } from './types';
+export { MODE, LiquidityShape, RemoveLiquidityType } from './constants';
 
 export { getPriceFromId, getIdFromPrice } from './utils/price';
 

@@ -11,7 +11,7 @@ import {
   getTestConnection,
 } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
-import { MODE } from '../../types';
+import { MODE } from '../../constants';
 
 let testWallet: any;
 let connection: any;

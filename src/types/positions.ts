@@ -1,5 +1,5 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
-import { LiquidityShape, RemoveLiquidityType } from './config';
+import { LiquidityShape, RemoveLiquidityType } from '../constants/config';
 
 /**
  * Parameters for retrieving all user positions in a specific pair

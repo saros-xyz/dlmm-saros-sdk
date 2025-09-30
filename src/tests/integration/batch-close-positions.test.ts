@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import { SarosDLMM } from '../../services';
 import { getTestWallet, getTestConnection, getAllTestPools, waitForConfirmation } from '../setup/test-helpers';
 import { ensureTestEnvironment } from '../setup/test-setup';
-import { RemoveLiquidityType, MODE } from '../../types';
+import { RemoveLiquidityType, MODE } from '../../constants';
 
 let testWallet: any;
 let connection: any;
