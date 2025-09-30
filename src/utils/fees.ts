@@ -1,5 +1,5 @@
 import { DLMMPairAccount } from '../types';
-import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT, MAX_BASIS_POINTS } from '../constants';
+import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT } from '../constants';
 
 export interface FeeCalculationResult {
   baseFee: number;
@@ -8,8 +8,8 @@ export interface FeeCalculationResult {
   protocolFee: number;
 }
 
-export class Fees {
-  public static getVariableFee(pairInfo: DLMMPairAccount, volatilityAccumulator: number): bigint {
+
+  export function getVariableFee(pairInfo: DLMMPairAccount, volatilityAccumulator: number): bigint {
     const variableFeeControl = BigInt(pairInfo.staticFeeParameters.variableFeeControl);
     if (variableFeeControl > BigInt(0)) {
       const prod = BigInt(Math.floor(volatilityAccumulator * pairInfo.binStep));
@@ -21,65 +21,59 @@ export class Fees {
     return variableFeeControl;
   }
 
-  public static getBaseFee(binStep: number, baseFactor: number): bigint {
+  export function getBaseFee(binStep: number, baseFactor: number): bigint {
     return BigInt(binStep) * BigInt(baseFactor) * BigInt(10);
   }
 
-  public static getFeeForAmount(amount: bigint, fee: bigint): bigint {
+  export function getFeeForAmount(amount: bigint, fee: bigint): bigint {
     const denominator = PRECISION_BIGINT - fee;
     const feeForAmount = (amount * fee + denominator - BigInt(1)) / denominator;
     return feeForAmount;
   }
 
-  public static getFeeAmount(amount: bigint, fee: bigint): bigint {
+  export function getFeeAmount(amount: bigint, fee: bigint): bigint {
     const feeAmount = (amount * fee + PRECISION_BIGINT - BigInt(1)) / PRECISION_BIGINT;
     return feeAmount;
   }
 
-  public static getProtocolFee(fee: bigint, protocolShare: bigint): bigint {
+  export function getProtocolFee(fee: bigint, protocolShare: bigint): bigint {
     const protocolFee = (fee * protocolShare) / MAX_BASIS_POINTS_BIGINT;
     return protocolFee;
   }
 
-  public static getTotalFee(pairInfo: DLMMPairAccount, volatilityAccumulator: number): bigint {
+  export function getTotalFee(pairInfo: DLMMPairAccount, volatilityAccumulator: number): bigint {
     return (
-      this.getBaseFee(pairInfo.binStep, pairInfo.staticFeeParameters.baseFactor) +
-      this.getVariableFee(pairInfo, volatilityAccumulator)
+      getBaseFee(pairInfo.binStep, pairInfo.staticFeeParameters.baseFactor) +
+      getVariableFee(pairInfo, volatilityAccumulator)
     );
   }
 
-  /**
-   * Calculate user-facing fee percentages for pair metadata
-   * TODO: VERIFY calculations are correct and if dynamic values should be returned
-   */
-  public static calculateFeePercentages(
-    binStep: number,
-    staticFeeParameters: DLMMPairAccount['staticFeeParameters'],
-    dynamicFeeParameters: DLMMPairAccount['dynamicFeeParameters']
-  ): FeeCalculationResult {
-    // Calculate base fee: binStep * baseFactor * 10 / PRECISION
-    const baseFeeRaw = this.getBaseFee(binStep, staticFeeParameters.baseFactor);
-    const baseFeeDecimal = Number(baseFeeRaw) / Number(PRECISION_BIGINT);
+  export function getFeeMetadata(pairAccount: DLMMPairAccount) {
+  const { binStep, staticFeeParameters, dynamicFeeParameters } = pairAccount;
+  const { baseFactor, protocolShare } = staticFeeParameters;
+  const { volatilityAccumulator } = dynamicFeeParameters;
 
-    // Calculate variable fee from volatility
-    const variableFeeRaw = this.getVariableFee(
-      { binStep, staticFeeParameters } as DLMMPairAccount,
-      dynamicFeeParameters.volatilityAccumulator
-    );
-    const variableFeeDecimal = Number(variableFeeRaw) / Number(PRECISION_BIGINT);
+  // Base fee raw
+  const baseFeeRaw = getBaseFee(binStep, baseFactor);
 
-    // Dynamic fee is sum of base + variable fees
-    const dynamicFeeDecimal = baseFeeDecimal + variableFeeDecimal;
+  // Variable fee raw
+  const variableFeeRaw = getVariableFee(pairAccount, volatilityAccumulator);
 
-    // Protocol fee is always protocolShare% of dynamic fee (typically 20%)
-    const protocolFeePercentage = (staticFeeParameters.protocolShare / MAX_BASIS_POINTS) * dynamicFeeDecimal;
+  // Dynamic fee raw = max(baseFee, variableFee)
+  const dynamicFeeRaw = baseFeeRaw > variableFeeRaw ? baseFeeRaw : variableFeeRaw;
 
-    return {
-      // Convert to percentages
-      baseFee: baseFeeDecimal * 100,
-      variableFee: variableFeeDecimal * 100,
-      dynamicFee: dynamicFeeDecimal * 100,
-      protocolFee: protocolFeePercentage * 100,
-    };
-  }
+  // Protocol fee raw
+  const protocolFeeRaw = getProtocolFee(dynamicFeeRaw, BigInt(protocolShare));
+
+  // Convert to percentages (raw)
+  const baseFee = (Number(baseFeeRaw) / Number(PRECISION_BIGINT)) * 100;
+  const dynamicFee = (Number(dynamicFeeRaw) / Number(PRECISION_BIGINT)) * 100;
+  const protocolFee = (Number(protocolFeeRaw) / Number(PRECISION_BIGINT)) * 100;
+
+  return {
+    baseFee,
+    dynamicFee,
+    protocolFee,
+  };
 }
+

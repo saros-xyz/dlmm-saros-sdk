@@ -3,7 +3,7 @@ import { PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { SarosBaseService, SarosConfig } from './base/index';
 import { BinArrays } from '../utils/bin-arrays';
-import { Fees } from '../utils/fees';
+import { getFeeAmount, getFeeForAmount, getFeeMetadata, getProtocolFee, getTotalFee } from '../utils/fees';
 import { Volatility } from '../utils/volatility';
 import { BinArrayRange } from '../utils/bin-range';
 import { BIN_ARRAY_SIZE, MAX_BIN_CROSSINGS, SCALE_OFFSET, WRAP_SOL_PUBKEY } from '../constants';
@@ -37,10 +37,11 @@ import {
 } from '../utils/calculations';
 import { addSolTransferInstructions, addOptimalComputeBudget } from '../utils/transaction';
 import { createUniformDistribution, Distribution, calculateDistributionAmounts } from '../utils/bin-distribution';
-import { Hooks } from '../utils/hooks';
-import { Positions } from '../utils/positions';
+import { ensureHookTokenAccount } from '../utils/hooks';
+import { derivePositionAccount, getMultiplePositionAccounts } from '../utils/positions';
 import { handleSolWrapping } from '../utils/transaction';
 import { calculateRemovedShares } from '../utils/remove-liquidity';
+import { deriveHookPDA, derivePositionPDA, dervicePositionHookPDA } from '../utils/pda';
 
 export class SarosDLMMPair extends SarosBaseService {
   private pairAddress: PublicKey;
@@ -107,8 +108,7 @@ export class SarosDLMMPair extends SarosBaseService {
     this.tokenProgramX = tokenAccountsData.tokenProgramX;
     this.tokenProgramY = tokenAccountsData.tokenProgramY;
 
-    const { binStep, staticFeeParameters, dynamicFeeParameters } = this.pairAccount;
-    const feeInfo = Fees.calculateFeePercentages(binStep, staticFeeParameters, dynamicFeeParameters);
+    const feeInfo = getFeeMetadata(this.pairAccount);
 
     return {
       pair: this.pairAddress,
@@ -122,7 +122,7 @@ export class SarosDLMMPair extends SarosBaseService {
         decimals: tokenAccountsData.quoteDecimals,
         reserve: tokenAccountsData.reserveY.value.amount,
       },
-      binStep,
+      binStep: this.pairAccount.binStep,
       baseFee: feeInfo.baseFee,
       dynamicFee: feeInfo.dynamicFee,
       protocolFee: feeInfo.protocolFee,
@@ -169,7 +169,7 @@ export class SarosDLMMPair extends SarosBaseService {
         amountIn: amountIn,
         amountOut: amountOut,
         amount: isExactInput ? maxAmountIn : minAmountOut,
-        minTokenOut: isExactInput ? minAmountOut : amountOut,
+        minTokenOut: isExactInput ? minAmountOut : maxAmountIn,
         priceImpact: priceImpact,
       };
     } catch (error) {
@@ -271,11 +271,11 @@ export class SarosDLMMPair extends SarosBaseService {
 
       const { activeId, binStep } = this.pairAccount;
 
-      const feePrice = Fees.getTotalFee(this.pairAccount, this.volatilityManager.getVolatilityAccumulator());
+      const feePrice = getTotalFee(this.pairAccount, this.volatilityManager.getVolatilityAccumulator());
       const activePrice = getPriceFromId(binStep, activeId, 9, 9);
       const price = getPriceFromId(binStep, activeId, decimalBase, decimalQuote);
 
-      const feeAmount = Fees.getFeeAmount(amount, feePrice);
+      const feeAmount = getFeeAmount(amount, feePrice);
       const amountAfterFee = amount - feeAmount;
       const maxAmountOut = swapForY
         ? (amountAfterFee * BigInt(activePrice)) >> BigInt(SCALE_OFFSET)
@@ -356,7 +356,7 @@ export class SarosDLMMPair extends SarosBaseService {
         }
 
         const volatility = this.volatilityManager.getVolatilityAccumulator();
-        const fee = Fees.getTotalFee(pairInfo, volatility);
+        const fee = getTotalFee(pairInfo, volatility);
 
         const { amountInWithFees, amountOut: amountOutOfBin } = this.swapExactOutput({
           binStep: pairInfo.binStep,
@@ -409,7 +409,7 @@ export class SarosDLMMPair extends SarosBaseService {
           break;
         }
 
-        const fee = Fees.getTotalFee(pairInfo, this.volatilityManager.getVolatilityAccumulator());
+        const fee = getTotalFee(pairInfo, this.volatilityManager.getVolatilityAccumulator());
 
         const { amountInWithFees, amountOut: amountOutOfBin } = this.swapExactInput({
           binStep: pairInfo.binStep,
@@ -464,9 +464,9 @@ export class SarosDLMMPair extends SarosBaseService {
 
     const amountInWithoutFee = getAmountInByPrice(amountOut, priceScaled, swapForY, 'up');
 
-    const feeAmount = Fees.getFeeForAmount(amountInWithoutFee, fee);
+    const feeAmount = getFeeForAmount(amountInWithoutFee, fee);
     const amountIn = amountInWithoutFee + feeAmount;
-    const protocolFeeAmount = Fees.getProtocolFee(feeAmount, protocolShareBigInt);
+    const protocolFeeAmount = getProtocolFee(feeAmount, protocolShareBigInt);
 
     return {
       amountInWithFees: amountIn,
@@ -501,7 +501,7 @@ export class SarosDLMMPair extends SarosBaseService {
 
     let maxAmountIn = getAmountInByPrice(binReserveOutBigInt, priceScaled, swapForY, 'up');
 
-    const maxFeeAmount = Fees.getFeeForAmount(maxAmountIn, fee);
+    const maxFeeAmount = getFeeForAmount(maxAmountIn, fee);
     maxAmountIn += maxFeeAmount;
 
     let amountOut = BigInt(0);
@@ -513,7 +513,7 @@ export class SarosDLMMPair extends SarosBaseService {
       amountIn = maxAmountIn - feeAmount;
       amountOut = binReserveOutBigInt;
     } else {
-      feeAmount = Fees.getFeeAmount(amountInLeft, fee);
+      feeAmount = getFeeAmount(amountInLeft, fee);
       amountIn = amountInLeft - feeAmount;
       amountOut = getAmountOutByPrice(amountIn, priceScaled, swapForY, 'down');
       if (amountOut > binReserveOutBigInt) {
@@ -522,7 +522,7 @@ export class SarosDLMMPair extends SarosBaseService {
     }
 
     const protocolFeeAmount =
-      protocolShare > BigInt(0) ? Fees.getProtocolFee(feeAmount, protocolShareBigInt) : BigInt(0);
+      protocolShare > BigInt(0) ? getProtocolFee(feeAmount, protocolShareBigInt) : BigInt(0);
 
     return {
       amountInWithFees: amountIn + feeAmount,
@@ -639,8 +639,8 @@ export class SarosDLMMPair extends SarosBaseService {
       this.lbProgram
     );
 
-    const position = Positions.derivePositionAddress(positionMint, this.lbProgram.programId);
-    const positionTokenAccount = Positions.derivePositionAccount(positionMint, payer);
+    const position = derivePositionPDA(positionMint, this.lbProgram.programId);
+    const positionTokenAccount = derivePositionAccount(positionMint, payer);
 
     const ix = await this.lbProgram.methods
       .createPosition(new BN(binIdLeft), new BN(binIdRight))
@@ -713,9 +713,9 @@ export class SarosDLMMPair extends SarosBaseService {
       }
     }
 
-    const hook = Hooks.deriveHookAddress(this.hooksConfig, this.pairAddress, this.hooksProgram.programId);
-    const position = Positions.derivePositionAddress(positionMint, this.lbProgram.programId);
-    const positionTokenAccount = Positions.derivePositionAccount(positionMint, payer);
+    const hook = deriveHookPDA(this.hooksConfig, this.pairAddress, this.hooksProgram.programId);
+    const position = derivePositionPDA(positionMint, this.lbProgram.programId);
+    const positionTokenAccount = derivePositionAccount(positionMint, payer);
 
     const ix = await this.lbProgram.methods
       .increasePosition(new BN(amountTokenX.toString()), new BN(amountTokenY.toString()), liquidityDistribution)
@@ -766,13 +766,13 @@ export class SarosDLMMPair extends SarosBaseService {
       this.connection,
       setupTransaction
     );
-    const hook = Hooks.deriveHookAddress(this.hooksConfig, this.pairAddress, this.hooksProgram.programId);
-    await Hooks.ensureHookTokenAccount(hook, tokenMintY, this.tokenProgramY!, payer, this.connection, setupTransaction);
+    const hook = deriveHookPDA(this.hooksConfig, this.pairAddress, this.hooksProgram.programId);
+    await ensureHookTokenAccount(hook, tokenMintY, this.tokenProgramY!, payer, this.connection, setupTransaction);
 
     const closedPositions: PublicKey[] = [];
     const transactions = await Promise.all(
       positionMints.map(async (positionMint) => {
-        const position = Positions.derivePositionAddress(positionMint, this.lbProgram.programId);
+        const position = derivePositionPDA(positionMint, this.lbProgram.programId);
         const positionAccount = await this.getPositionAccount(position);
         const binArrayIndex = BinArrays.calculateBinArrayIndex(positionAccount.lowerBinId);
         const { index } = await this.getBinArrayReserves({ binArrayIndex, payer });
@@ -788,9 +788,9 @@ export class SarosDLMMPair extends SarosBaseService {
         const tx = new Transaction();
         await addOptimalComputeBudget(tx, this.connection, this.bufferGas);
 
-        const positionTokenAccount = Positions.derivePositionAccount(positionMint, payer);
+        const positionTokenAccount = derivePositionAccount(positionMint, payer);
         const reserveXY = await this.getPositionReserves({ position, payer });
-        const hookPosition = Positions.dervicePositionHookAddress(hook, position, this.hooksProgram.programId);
+        const hookPosition = dervicePositionHookPDA(hook, position, this.hooksProgram.programId);
 
         const {removedShares, shouldClosePosition } = calculateRemovedShares(
           reserveXY,
@@ -911,9 +911,9 @@ export class SarosDLMMPair extends SarosBaseService {
     }
 
     // Derive position PDAs
-    const positionPdas = positionMints.map((mint) => Positions.derivePositionAddress(mint, this.lbProgram.programId));
+    const positionPdas = positionMints.map((mint) => derivePositionPDA(mint, this.lbProgram.programId));
 
-    const positions = await Positions.getMultiplePositionAccounts(positionPdas, this.pairAddress, this.lbProgram);
+    const positions = await getMultiplePositionAccounts(positionPdas, this.pairAddress, this.lbProgram);
     return positions.filter(Boolean).sort((a, b) => a.lowerBinId - b.lowerBinId);
   }
 }
