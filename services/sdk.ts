@@ -1,6 +1,6 @@
 import { BN, utils } from '@coral-xyz/anchor';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
-import { PublicKey, Transaction, TransactionMessage } from '@solana/web3.js';
+import { PublicKey, Transaction } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import { BIN_ARRAY_SIZE } from '../constants';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
@@ -10,6 +10,7 @@ import { DLMMBase } from './base';
 import { deriveBinArrayPDA, deriveBinStepConfigPDA, deriveQuoteAssetBadgePDA } from '../utils/pda';
 import { DLMMError } from '../error';
 import { CreatePairParams, CreatePairResponse } from '../types/pair';
+import { extractPairFromTx } from '../utils/logs';
 
 export class SarosSDK extends DLMMBase {
   bufferGas?: number;
@@ -31,7 +32,7 @@ export class SarosSDK extends DLMMBase {
     return await this.lbProgram.account.pair.fetch(pair);
   }
 
-  public async createPairWithConfig(params: CreatePairParams): Promise<CreatePairResponse> {
+  public async createPair(params: CreatePairParams): Promise<CreatePairResponse> {
     const { tokenX, tokenY, binStep, ratePrice, payer } = params;
     const id = getIdFromPrice(ratePrice || 1, binStep, tokenX.decimal, tokenY.decimal);
     let binArrayIndex = id / BIN_ARRAY_SIZE;
@@ -98,7 +99,7 @@ export class SarosSDK extends DLMMBase {
     };
   }
 
-  public async fetchPoolAddresses() {
+  public async getAllPairAddresses() {
     const programId = this.getDexProgramId();
     const connection = this.connection;
     const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
@@ -132,19 +133,18 @@ export class SarosSDK extends DLMMBase {
     return poolAdresses;
   }
 
-  public async listenNewPoolAddress(postTxFunction: (address: string) => Promise<void>) {
+  public async listenForNewPairs(postTxFunction: (address: string) => Promise<void>) {
     const LB_PROGRAM_ID = this.getDexProgramId();
-    this.connection.onLogs(
+    const subscriptionId = this.connection.onLogs(
       LB_PROGRAM_ID,
       (logInfo) => {
         if (!logInfo.err) {
-          const logs = logInfo.logs || [];
-          for (const log of logs) {
+          for (const log of logInfo.logs || []) {
             if (log.includes('Instruction: InitializePair')) {
-              const signature = logInfo.signature;
-
-              this.getPairAddressFromLogs(signature).then((address) => {
-                postTxFunction(address);
+              extractPairFromTx(this.connection, logInfo.signature).then((pairAddress) => {
+                if (pairAddress) {
+                  postTxFunction(pairAddress.toString());
+                }
               });
             }
           }
@@ -152,38 +152,7 @@ export class SarosSDK extends DLMMBase {
       },
       'finalized'
     );
-  }
-
-  private async getPairAddressFromLogs(signature: string) {
-    const parsedTransaction = await this.connection.getTransaction(signature, {
-      maxSupportedTransactionVersion: 0,
-    });
-    if (!parsedTransaction) {
-      throw new DLMMError('Transaction not found', 'TRANSACTION_NOT_FOUND');
-    }
-
-    const compiledMessage = parsedTransaction.transaction.message;
-    const message = TransactionMessage.decompile(compiledMessage);
-    const instructions = message.instructions;
-    const initializePairStruct = LiquidityBookIDL.instructions.find((item) => item.name === 'initialize_pair')!;
-
-    const initializePairDescrimator = Buffer.from(initializePairStruct!.discriminator);
-
-    let pairAddress = '';
-
-    for (const instruction of instructions) {
-      const descimatorInstruction = instruction.data.subarray(0, 8);
-      if (!descimatorInstruction.equals(initializePairDescrimator)) continue;
-      //@ts-ignore
-      const accounts = initializePairStruct.accounts.map((item, index) => {
-        return {
-          name: item.name,
-          address: instruction.keys[index].pubkey.toString(),
-        };
-      });
-      pairAddress = accounts.find((item: { name: string; address: string }) => item.name === 'pair')?.address || '';
-    }
-    return pairAddress;
+    return () => this.connection.removeOnLogsListener(subscriptionId);
   }
 
   /**

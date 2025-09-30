@@ -109,8 +109,8 @@ export interface AddLiquidityIntoPositionParams {
   payer: PublicKey;
   transaction: Transaction;
   liquidityDistribution: Distribution[];
-  amountX: bigint; // precise integer
-  amountY: bigint; // precise integer
+  amountX: bigint;
+  amountY: bigint;
   binArrayLower: PublicKey;
   binArrayUpper: PublicKey;
 }

@@ -14,7 +14,7 @@
     }
   },
   "scripts": {
-        "start": "tsup --watch",
+    "start": "tsup --watch",
     "build": "tsup",
     "prepare": "pnpm run build",
     "lint": "eslint . --ext .ts --fix",
