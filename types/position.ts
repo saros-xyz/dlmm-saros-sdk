@@ -83,6 +83,17 @@ export interface GetPositionReserveParams {
   payer: PublicKey;
 }
 
+export interface AddLiquidityToPositionParams {
+  positionMint: PublicKey;
+  payer: PublicKey;
+  transaction: Transaction;
+  liquidityDistribution: Distribution[];
+  amountX: bigint;
+  amountY: bigint;
+  binArrayLower: PublicKey;
+  binArrayUpper: PublicKey;
+}
+
 export interface PositionBinReserve {
   reserveX: number;
   reserveY: number;
@@ -102,15 +113,4 @@ export interface Distribution {
   relativeBinId: number;
   distributionX: number;
   distributionY: number;
-}
-
-export interface AddLiquidityIntoPositionParams {
-  positionMint: PublicKey;
-  payer: PublicKey;
-  transaction: Transaction;
-  liquidityDistribution: Distribution[];
-  amountX: bigint;
-  amountY: bigint;
-  binArrayLower: PublicKey;
-  binArrayUpper: PublicKey;
 }

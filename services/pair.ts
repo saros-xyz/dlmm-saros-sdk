@@ -27,7 +27,7 @@ import {
   WRAP_SOL_ADDRESS,
 } from '../constants';
 import {
-  AddLiquidityIntoPositionParams,
+  AddLiquidityToPositionParams,
   PositionBinReserve,
   CreatePositionParams,
   GetBinArrayParams,
@@ -35,7 +35,7 @@ import {
   SwapParams,
 } from '../types';
 import { mulDivBN, mulShr, shlDiv } from '../utils/math';
-import { calcAmountInByPrice, calcAmountOutByPrice, getPriceFromId } from '../utils/price';
+import { calcAmountInByPrice, calcAmountOutByPrice, getPriceFromId, moveActiveId } from '../utils/price';
 import { Volatility } from '../utils/volatility';
 import { getFeeAmount, getFeeForAmount, getFeeMetadata, getProtocolFee, getTotalFee } from '../utils/fees';
 import { BinArrayRange } from '../utils/bin-range';
@@ -163,6 +163,7 @@ export class DLMMPair extends DLMMBase {
     };
   }
 
+  // ========== SWAP METHODS ==========
   /**
    * Get a quote for a swap on this pair
    */
@@ -408,7 +409,7 @@ export class DLMMPair extends DLMMBase {
   }
 
   // ========== LIQUIDITY METHODS ==========
-  async createPosition(params: CreatePositionParams): Promise<CreatePositionResponse> {
+ public async createPosition(params: CreatePositionParams): Promise<CreatePositionResponse> {
     const { payer, binIdLeft, binIdRight, positionMint, transaction } = params;
 
     const txn = transaction || new Transaction();
@@ -444,7 +445,7 @@ export class DLMMPair extends DLMMBase {
    * Add liquidity to this pair using a shape distribution
    * (delegates to addLiquidityIntoPosition)
    */
-  async addLiquidityByShape(params: AddLiquidityByShapeParams): Promise<Transaction> {
+ public async addLiquidityByShape(params: AddLiquidityByShapeParams): Promise<Transaction> {
     const { positionMint, payer, transaction: userTxn, amountTokenX, amountTokenY, liquidityShape, binRange } = params;
 
     if (amountTokenX <= 0n && amountTokenY <= 0n) {
@@ -477,7 +478,7 @@ export class DLMMPair extends DLMMBase {
     });
 
     // Delegate to the single code path
-    await this.addLiquidityIntoPosition({
+    await this.addLiquidityToPosition({
       positionMint,
       payer,
       binArrayLower,
@@ -491,7 +492,7 @@ export class DLMMPair extends DLMMBase {
     return tx;
   }
 
-  async addLiquidityIntoPosition(params: AddLiquidityIntoPositionParams) {
+ public  async addLiquidityToPosition(params: AddLiquidityToPositionParams) {
     const { positionMint, payer, binArrayLower, binArrayUpper, transaction, liquidityDistribution, amountX, amountY } =
       params;
 
@@ -818,7 +819,6 @@ export class DLMMPair extends DLMMBase {
   }
 
   // ========== UTILITY METHODS ==========
-
   /**
    * Get all positions for a user that belong to this pair
    */
@@ -1019,7 +1019,7 @@ export class DLMMPair extends DLMMBase {
         amountOutLeft -= amountOutOfBin;
 
         if (!amountOutLeft) break;
-        activeId = this.moveActiveId(activeId, swapForY);
+        activeId = moveActiveId(activeId, swapForY);
       }
 
       if (totalBinUsed >= MAX_BIN_CROSSINGS) {
@@ -1073,7 +1073,7 @@ export class DLMMPair extends DLMMBase {
         amountInLeft -= amountInWithFees;
 
         if (!amountInLeft) break;
-        activeId = this.moveActiveId(activeId, swapForY);
+        activeId = moveActiveId(activeId, swapForY);
       }
       if (totalBinUsed >= MAX_BIN_CROSSINGS) {
         throw new DLMMError('Quote Failed: Swap crosses too many bins', 'MAX_BIN_CROSSINGS_EXCEEDED');
@@ -1186,13 +1186,5 @@ export class DLMMPair extends DLMMBase {
       feeAmount,
       protocolFeeAmount,
     };
-  }
-
-  public moveActiveId(pairId: number, swapForY: boolean) {
-    if (swapForY) {
-      return pairId - 1;
-    } else {
-      return pairId + 1;
-    }
   }
 }

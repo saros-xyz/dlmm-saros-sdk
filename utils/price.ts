@@ -98,3 +98,12 @@ export const calcAmountOutByPrice = (
       : (amountIn << BigInt(scaleOffset)) / priceScaled;
   }
 };
+
+
+ export const moveActiveId = (pairId: number, swapForY: boolean) => {
+    if (swapForY) {
+      return pairId - 1;
+    } else {
+      return pairId + 1;
+    }
+  }
