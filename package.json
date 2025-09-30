@@ -14,8 +14,8 @@
     }
   },
   "scripts": {
-    "start": "vite build --watch",
-    "build": "vite build",
+    "start": "tsup --watch",
+    "build": "tsup",
     "prepare": "pnpm run build",
     "lint": "eslint . --ext .ts --fix",
     "lint:check": "eslint . --ext .ts",
@@ -24,7 +24,6 @@
     "fix": "prettier --write . && eslint . --ext .ts --fix",
     "test": "vitest",
     "test:cleanup": "vitest run src/tests/integration/batch-close-positions.test.ts --reporter=verbose"
-
   },
   "author": "Saros Finance",
   "license": "ISC",
@@ -51,9 +50,9 @@
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
-    "vite-plugin-dts": "^4.5.4",
     "vitest": "^3.2.4"
   }
 }
