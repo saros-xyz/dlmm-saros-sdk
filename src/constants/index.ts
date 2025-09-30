@@ -1,5 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
-import { MODE } from '../types';
+import { MODE } from './config';
 
 export const DLMM_PROGRAM_IDS: Record<MODE, { lb: PublicKey; hooks: PublicKey }> = {
   [MODE.MAINNET]: {

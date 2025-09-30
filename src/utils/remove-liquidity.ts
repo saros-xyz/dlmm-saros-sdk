@@ -1,6 +1,6 @@
 import { BN } from '@coral-xyz/anchor';
-import { PositionReserve, RemoveLiquidityType } from '../types';
-import { FIXED_LENGTH } from '../constants';
+import { PositionReserve } from '../types';
+import { FIXED_LENGTH, RemoveLiquidityType } from '../constants';
 
 export const calculateRemovedShares = (
   reserveXY: PositionReserve[],

@@ -1,7 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo } from '@solana/spl-token';
-import { TestWalletSetup, TestTokenInfo } from './wallet-setup';
+import { TestWalletSetup, TestTokenInfo, TestPoolInfo } from './wallet-setup';
+import { PublicKey } from '@solana/web3.js';
+import { SarosDLMM } from '../../services';
+import { MODE } from '../../constants';
 
 export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promise<void> {
   const testDir = path.join(process.cwd(), 'test-data');
@@ -11,7 +14,7 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
     return;
   }
 
-  console.log('Creating test tokens...');
+  console.log('Creating SAROSDEV token...');
 
   const tempWalletInfo = await walletSetup.setup();
   const connection = walletSetup.getConnection();
@@ -35,43 +38,60 @@ export async function createTokensIfNeeded(walletSetup: TestWalletSetup): Promis
       supply: 1000000,
     });
 
-    // Create TESTUSDC token
-    const usdcMint = await createMint(connection, wallet, wallet.publicKey, wallet.publicKey, 6);
+    console.log(`✅ SAROSDEV token created: ${sarosMint.toString()}`);
 
-    const usdcTokenAccount = await getOrCreateAssociatedTokenAccount(connection, wallet, usdcMint, wallet.publicKey);
+    // Create SAROSDEV/wSOL pool
+    console.log('Creating SAROSDEV/wSOL pool...');
+    const sdk = new SarosDLMM({ mode: MODE.DEVNET, connection });
 
-    await mintTo(connection, wallet, usdcMint, usdcTokenAccount.address, wallet.publicKey, 100000 * Math.pow(10, 6));
+    const WRAP_SOL_PUBKEY = new PublicKey('So11111111111111111111111111111111111111112');
 
-    tokens.push({
-      name: 'Test USDC',
-      symbol: 'TESTUSDC',
-      mintAddress: usdcMint,
-      decimals: 6,
-      supply: 100000,
-    });
+    const poolParams = {
+      tokenX: { mintAddress: sarosMint, decimals: 9 },
+      tokenY: { mintAddress: WRAP_SOL_PUBKEY, decimals: 9 },
+      binStep: 25,
+      ratePrice: 0.00001,
+      payer: wallet.publicKey,
+    };
 
-    // Create TESTWBTC token
-    const wbtcMint = await createMint(connection, wallet, wallet.publicKey, wallet.publicKey, 8);
+    const result = await sdk.createPair(poolParams);
 
-    const wbtcTokenAccount = await getOrCreateAssociatedTokenAccount(connection, wallet, wbtcMint, wallet.publicKey);
+    let sig = '';
+    try {
+      sig = await connection.sendTransaction(result.transaction, [wallet]);
+      await connection.confirmTransaction(sig, 'confirmed');
+      console.log(`✅ Pool created: ${result.pair.toString()}`);
+    } catch (err: any) {
+      if (!String(err).includes('already in use')) {
+        throw err;
+      }
+      console.log(`Pool already exists: ${result.pair.toString()}`);
+    }
 
-    await mintTo(connection, wallet, wbtcMint, wbtcTokenAccount.address, wallet.publicKey, 10 * Math.pow(10, 8));
+    // Verify pool
+    const pair = await sdk.getPair(result.pair);
 
-    tokens.push({
-      name: 'Test Wrapped Bitcoin',
-      symbol: 'TESTWBTC',
-      mintAddress: wbtcMint,
-      decimals: 8,
-      supply: 10,
-    });
+    const pool: TestPoolInfo = {
+      pair: result.pair.toString(),
+      tokenX: sarosMint.toString(),
+      tokenY: WRAP_SOL_PUBKEY.toString(),
+      binStep: 25,
+      ratePrice: 0.00001,
+      activeBin: result.activeBin,
+      binArrayLower: result.binArrayLower.toString(),
+      binArrayUpper: result.binArrayUpper.toString(),
+      signature: sig,
+    };
 
+    // Save tokens and pool
     const walletInfo = await walletSetup.setup();
     walletInfo.tokens = tokens;
+    walletInfo.pools = [pool];
     walletSetup.saveTestData(walletInfo);
 
-    console.log('Test tokens ready: SAROSDEV, TESTUSDC, TESTWBTC');
+    console.log(`✅ Test environment ready: 1 token, 1 pool`);
   } catch (error) {
-    console.error('Failed to create test tokens:', error);
+    console.error('Failed to create test environment:', error);
     throw error;
   }
 }

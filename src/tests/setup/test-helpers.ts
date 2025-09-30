@@ -3,7 +3,7 @@ import * as spl from '@solana/spl-token';
 import { TestWalletInfo, TestTokenInfo, TestWalletSetup, TestPoolInfo } from './wallet-setup';
 import { WRAP_SOL_PUBKEY } from '../../constants';
 import { SarosDLMM } from '../../services';
-import { MODE, RemoveLiquidityType } from '../../types';
+import { MODE, RemoveLiquidityType } from '../../constants';
 import { SarosDLMMPair } from '../../services/pair';
 
 // Native SOL token info
@@ -29,14 +29,6 @@ export function getTestConnection(): Connection {
     throw new Error('Test connection not initialized. Make sure global setup ran.');
   }
   return connection;
-}
-
-function getTestWalletSetup(): TestWalletSetup {
-  const setup = (global as any).testWalletSetup;
-  if (!setup) {
-    throw new Error('Test wallet setup not initialized. Make sure global setup ran.');
-  }
-  return setup;
 }
 
 export function getTestToken(symbol?: string): TestTokenInfo {
@@ -71,38 +63,15 @@ export function getAllTestTokens(): TestTokenInfo[] {
   return wallet.tokens || [];
 }
 
-export function getAllTestPools(): TestPoolInfo[] {
-  const wallet = getTestWallet();
-  return wallet.pools || [];
-}
-
-export function findTestPool(baseSymbol: string, quoteSymbol: string, binStep: number): TestPoolInfo | null {
+export function getTestPool(): TestPoolInfo {
   const wallet = getTestWallet();
   const pools = wallet.pools || [];
 
-  const tokenX = getTestToken(baseSymbol);
-  const tokenY = getTestToken(quoteSymbol);
-
-  return (
-    pools.find(
-      (pool) =>
-        pool.tokenX === tokenX.mintAddress.toString() &&
-        pool.tokenY === tokenY.mintAddress.toString() &&
-        pool.binStep === binStep
-    ) || null
-  );
-}
-
-export function saveTestPool(poolInfo: TestPoolInfo): void {
-  const wallet = getTestWallet();
-  const setup = getTestWalletSetup();
-
-  if (!wallet.pools) {
-    wallet.pools = [];
+  if (pools.length === 0) {
+    throw new Error('No test pool available. Make sure global setup ran.');
   }
 
-  wallet.pools.push(poolInfo);
-  setup.saveTestData(wallet);
+  return pools[0];
 }
 
 export async function waitForConfirmation(signature: string, connection: Connection) {
@@ -183,17 +152,7 @@ export interface IntegrationTestSetup {
 export function setupIntegrationTest(): IntegrationTestSetup {
   const testWallet = getTestWallet();
   const connection = getTestConnection();
-
-  const tokens = getAllTestTokens();
-  const saros = tokens.find((t) => t.symbol === 'SAROSDEV');
-  if (!saros) throw new Error('SAROSDEV token missing');
-
-  const pools = getAllTestPools();
-  const testPool = pools.find(
-    (p) => p.tokenX === saros.mintAddress.toString() || p.tokenY === saros.mintAddress.toString()
-  );
-  if (!testPool) throw new Error('No pool with SAROSDEV token');
-
+  const testPool = getTestPool();
   const lbServices = createTestSarosDLMM();
 
   return { lbServices, testWallet, connection, testPool };

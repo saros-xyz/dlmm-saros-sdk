@@ -1,5 +1,4 @@
-import { MAX_BASIS_POINTS, MAX_BASIS_POINTS_BIGINT } from '../constants';
-import { LiquidityShape } from '../types';
+import { MAX_BASIS_POINTS, MAX_BASIS_POINTS_BIGINT, LiquidityShape } from '../constants';
 import { divRem } from './math';
 import { BN } from '@coral-xyz/anchor';
 
