@@ -23,7 +23,7 @@ beforeAll(async () => {
   const pairAddress = new PublicKey(pool.pair);
 
   pair = await sdk.getPair(pairAddress);
-  positionKeypair = new Keypair();
+  positionKeypair = Keypair.generate();
 
   tokenX = new PublicKey(pool.tokenX);
   tokenY = new PublicKey(pool.tokenY);

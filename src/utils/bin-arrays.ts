@@ -121,9 +121,9 @@ import { deriveBinArrayHookPDA, deriveBinArrayPDA } from './pda';
     pairAddress: PublicKey,
     connection: Connection,
     programId: PublicKey,
-    transaction?: Transaction,
     payer?: PublicKey,
-    lbProgram?: any
+    lbProgram?: any,
+    transaction?: Transaction
   ): Promise<{ binArrayLower: PublicKey; binArrayUpper: PublicKey }> {
     const lowerIndex = calculateBinArrayIndex(lowerBinId);
     const upperIndex = calculateBinArrayIndex(upperBinId);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, expect, it } from 'vitest';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { BIN_ARRAY_SIZE, LiquidityShape, MODE } from '../../constants';
@@ -17,7 +18,7 @@ async function runShapeTest(
 
   const sdk = new SarosDLMM({ mode: MODE.DEVNET, connection });
   const pair = await sdk.getPair(pairAddress);
-  const positionKeypair = new Keypair();
+  const positionKeypair = Keypair.generate();
 
   try {
     const createTx = await pair.createPosition({
@@ -30,6 +31,9 @@ async function runShapeTest(
       connection
     );
 
+    // Refetch pair state to ensure bin arrays are visible
+    await pair.refetchState();
+
     const addTx = await pair.addLiquidityByShape({
       positionMint: positionKeypair.publicKey,
       payer: wallet.keypair.publicKey,
@@ -38,6 +42,7 @@ async function runShapeTest(
       liquidityShape: shape,
       binRange,
     });
+
     await waitForConfirmation(await connection.sendTransaction(addTx, [wallet.keypair]), connection);
 
     const positions = await pair.getUserPositions({
@@ -69,16 +74,15 @@ describe('Liquidity Shape Distribution', () => {
 
         // Bin array-level verification
         const activeId = pair.getPairAccount().activeId;
-        const activeArrayIndex = Math.floor(activeId / BIN_ARRAY_SIZE);
-        const binArray = await pair.getBinArrayReserves(activeArrayIndex);
+        const activeBins = await pair.getActiveReserves(4); // Get 4 bins on each side
 
-        expect(binArray.bins.length).toBeGreaterThan(0);
+        expect(activeBins.length).toBeGreaterThan(0);
 
-        const activeBin = binArray.bins.find((b: any) => b.id === activeId);
+        const activeBin = activeBins.find((b: any) => b.binId === activeId);
         expect(activeBin).toBeDefined();
 
         // Check liquidity exists around active bin
-        const neighbors = binArray.bins.filter((b: any) => Math.abs(b.id - activeId) <= 2);
+        const neighbors = activeBins.filter((b: any) => Math.abs(b.binId - activeId) <= 2);
         expect(neighbors.some((b: any) => b.reserveX > 0n || b.reserveY > 0n)).toBe(true);
 
         // Uniform-ish check

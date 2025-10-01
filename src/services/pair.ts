@@ -675,7 +675,6 @@ export class SarosDLMMPair extends SarosBaseService {
       this.pairAddress,
       this.connection,
       this.lbProgram.programId,
-      transaction,
       payer,
       this.lbProgram
     );
@@ -737,9 +736,9 @@ export class SarosDLMMPair extends SarosBaseService {
       this.pairAddress,
       this.connection,
       this.lbProgram.programId,
-      tx,
       payer,
-      this.lbProgram
+      this.lbProgram,
+      tx,
     );
 
     if (this.pairAccount.tokenMintY.equals(WRAP_SOL_PUBKEY) || this.pairAccount.tokenMintX.equals(WRAP_SOL_PUBKEY)) {
