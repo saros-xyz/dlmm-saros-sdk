@@ -11,7 +11,6 @@ const USDC_USDT = new PublicKey('9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk');
 const USDS_USDC = new PublicKey('DHXKB9fSff4LjubMFieKxaBrvNY6AzXVwaRLk5N2vs87'); // Stablecoin pair
 const UNIBTC_XBTC = new PublicKey('7hc6hXjDPcFnhGBPBGTKUtViFsQuyWw8ph4ePHF1aTYG'); // BTC LST pair
 
-
 describe('Quote Validation (Mainnet)', () => {
   describe('getQuote - exact input swaps', () => {
     it('returns valid quote for small X→Y swap', async () => {
@@ -126,8 +125,8 @@ describe('Quote Validation (Mainnet)', () => {
       expect(quote5pct.minTokenOut).toBeLessThan(quote1pct.minTokenOut);
 
       // Verify slippage calculation
-      const slippage1 = Number((quote1pct.amountOut - quote1pct.minTokenOut) * 10000n / quote1pct.amountOut);
-      const slippage5 = Number((quote5pct.amountOut - quote5pct.minTokenOut) * 10000n / quote5pct.amountOut);
+      const slippage1 = Number(((quote1pct.amountOut - quote1pct.minTokenOut) * 10000n) / quote1pct.amountOut);
+      const slippage5 = Number(((quote5pct.amountOut - quote5pct.minTokenOut) * 10000n) / quote5pct.amountOut);
 
       expect(slippage1).toBeCloseTo(100, 1); // ~1% (100 basis points)
       expect(slippage5).toBeCloseTo(500, 1); // ~5% (500 basis points)
@@ -155,7 +154,7 @@ describe('Quote Validation (Mainnet)', () => {
 
       // Should get back close to original (minus fees and slippage)
       const returnAmount = quoteYtoX.amountOut;
-      const lossPercentage = Number((startAmount - returnAmount) * 10000n / startAmount);
+      const lossPercentage = Number(((startAmount - returnAmount) * 10000n) / startAmount);
 
       // Loss should be small (fees + 2x price impact)
       expect(lossPercentage).toBeLessThan(200); // Less than 2%

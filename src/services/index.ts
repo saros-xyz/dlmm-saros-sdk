@@ -9,6 +9,7 @@ import { getIdFromPrice } from '../utils/price';
 import { extractPairFromTx } from '../utils/transaction';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
 import { SarosDLMMError } from '../utils/errors';
+import { deriveBinStepConfigPDA, deriveQuoteAssetBadgePDA } from '../utils/pda';
 
 export class SarosDLMM extends SarosBaseService {
   constructor(config: SarosConfig) {
@@ -44,16 +45,10 @@ export class SarosDLMM extends SarosBaseService {
       )[0];
 
       // Derive bin step config PDA
-      const binStepConfig = PublicKey.findProgramAddressSync(
-        [Buffer.from(utils.bytes.utf8.encode('bin_step_config')), this.lbConfig.toBuffer(), new Uint8Array([binStep])],
-        this.lbProgram.programId
-      )[0];
+      const binStepConfig = deriveBinStepConfigPDA(this.lbConfig, binStep, this.lbProgram.programId);
 
       // Derive quote asset badge PDA
-      const quoteAssetBadge = PublicKey.findProgramAddressSync(
-        [Buffer.from(utils.bytes.utf8.encode('quote_asset_badge')), this.lbConfig.toBuffer(), tokenYMint.toBuffer()],
-        this.lbProgram.programId
-      )[0];
+      const quoteAssetBadge = deriveQuoteAssetBadgePDA(this.lbConfig, tokenYMint, this.lbProgram.programId);
 
       // Calculate bin array addresses
       const binArrayIndex = BinArrays.calculateBinArrayIndex(id);

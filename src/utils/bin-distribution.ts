@@ -1,5 +1,5 @@
 import { MAX_BASIS_POINTS, MAX_BASIS_POINTS_BIGINT, LiquidityShape } from '../constants';
-import { divRem } from './math';
+import { SarosDLMMError } from './errors';
 import { BN } from '@coral-xyz/anchor';
 
 interface CreateLiquidityDistributionParams {
@@ -215,7 +215,7 @@ export function createUniformDistribution(params: CreateLiquidityDistributionPar
     return liquidityDistribution;
   }
 
-  throw new Error(`Unsupported liquidity shape: ${shape}`);
+  throw new SarosDLMMError(`Unsupported liquidity shape: ${shape}`, 'INVALID_SHAPE');
 }
 
 const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribution[] => {
@@ -425,3 +425,15 @@ export function calculateDistributionAmounts(
 
   return { totalLiquidityPoints, scaledAmount };
 }
+
+const divRem = (numerator: number, denominator: number) => {
+  if (denominator === 0) {
+    throw new Error('Division by zero');
+  }
+
+  // Calculate quotient and remainder
+  const quotient = numerator / denominator;
+  const remainder = numerator % denominator;
+
+  return [quotient, remainder];
+};

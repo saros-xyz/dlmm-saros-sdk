@@ -11,11 +11,14 @@ export { DLMM_PROGRAM_IDS } from './constants';
 // Public enums (values)
 export { MODE, LiquidityShape, RemoveLiquidityType } from './constants';
 
+// helpers
 export { getPriceFromId, getIdFromPrice } from './utils/price';
+export { getFeeMetadata } from './utils/fees';
 
-export type { Distribution } from './utils/bin-distribution';
+// reenable if we want to support legacy 'addLiquidityToPosition'
+// export type { Distribution, createUniformDistribution } from './utils/bin-distribution';
 
-// Public types (type-only)
+// Public types
 export type {
   SwapParams,
   SwapOptions,
@@ -35,7 +38,7 @@ export type {
   GetMaxAmountOutWithFeeResponse,
   GetPositionReservesParams,
   PositionReserve,
-  GetBinArrayReserversParams,
+  GetBinArrayReservesParams,
   BinArray,
   Bin,
 } from './types';

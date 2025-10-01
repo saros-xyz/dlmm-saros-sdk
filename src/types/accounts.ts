@@ -57,7 +57,7 @@ export interface Bin {
   reserveX: BN;
   /** Token Y (base token) reserves in this bin */
   reserveY: BN;
-  /** Total liquidity supply in this bin across all positions */
+  /** Total liquidity supply in this bin */
   totalSupply: BN;
 }
 

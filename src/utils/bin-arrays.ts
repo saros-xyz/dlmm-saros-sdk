@@ -1,20 +1,10 @@
-import { BN, utils } from '@coral-xyz/anchor';
+import { BN } from '@coral-xyz/anchor';
 import { PublicKey, Transaction, Connection } from '@solana/web3.js';
 import { BIN_ARRAY_SIZE } from '../constants';
 import { SarosDLMMError } from './errors';
+import { deriveBinArrayHookPDA, deriveBinArrayPDA } from './pda';
 
 export class BinArrays {
-  public static getBinArrayAddress(binArrayIndex: number, pair: PublicKey, programId: PublicKey): PublicKey {
-    return PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(utils.bytes.utf8.encode('bin_array')),
-        pair.toBuffer(),
-        new BN(binArrayIndex).toArrayLike(Buffer, 'le', 4),
-      ],
-      programId
-    )[0];
-  }
-
   public static calculateBinArrayIndex(binId: number): number {
     return Math.floor(binId / BIN_ARRAY_SIZE);
   }
@@ -36,16 +26,6 @@ export class BinArrays {
   }
 
   /**
-   * Get hook bin array PDA for a given hook + index.
-   */
-  public static getHookBinArrayAddress(hook: PublicKey, programId: PublicKey, index: number): PublicKey {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('bin_array')), hook.toBuffer(), new BN(index).toArrayLike(Buffer, 'le', 4)],
-      programId
-    )[0];
-  }
-
-  /**
    * Get adjacent bin array addresses (lower and upper) in one call
    */
   public static getBinArrayAddresses(
@@ -54,8 +34,8 @@ export class BinArrays {
     programId: PublicKey
   ): { binArrayLower: PublicKey; binArrayUpper: PublicKey } {
     return {
-      binArrayLower: this.getBinArrayAddress(binArrayIndex, pairAddress, programId),
-      binArrayUpper: this.getBinArrayAddress(binArrayIndex + 1, pairAddress, programId),
+      binArrayLower: deriveBinArrayPDA(binArrayIndex, pairAddress, programId),
+      binArrayUpper: deriveBinArrayPDA(binArrayIndex + 1, pairAddress, programId),
     };
   }
 
@@ -67,16 +47,16 @@ export class BinArrays {
     pairAddress: PublicKey,
     lbProgram: any
   ): Promise<{ bins: any[]; index: number }> {
-    const current = this.getBinArrayAddress(binArrayIndex, pairAddress, lbProgram.programId);
+    const current = deriveBinArrayPDA(binArrayIndex, pairAddress, lbProgram.programId);
     const { bins: currentBins } = await lbProgram.account.binArray.fetch(current);
 
     try {
-      const next = this.getBinArrayAddress(binArrayIndex + 1, pairAddress, lbProgram.programId);
+      const next = deriveBinArrayPDA(binArrayIndex + 1, pairAddress, lbProgram.programId);
       const { bins: nextBins } = await lbProgram.account.binArray.fetch(next);
       return { bins: [...currentBins, ...nextBins], index: binArrayIndex };
     } catch {
       try {
-        const prev = this.getBinArrayAddress(binArrayIndex - 1, pairAddress, lbProgram.programId);
+        const prev = deriveBinArrayPDA(binArrayIndex - 1, pairAddress, lbProgram.programId);
         const { bins: prevBins } = await lbProgram.account.binArray.fetch(prev);
         return { bins: [...prevBins, ...currentBins], index: binArrayIndex - 1 };
       } catch {
@@ -97,7 +77,7 @@ export class BinArrays {
     const currentBinArrayIndex = this.calculateBinArrayIndex(activeId);
     const surroundingIndexes = [currentBinArrayIndex - 1, currentBinArrayIndex, currentBinArrayIndex + 1];
 
-    const binArrayAddresses = surroundingIndexes.map((idx) => this.getBinArrayAddress(idx, pairAddress, programId));
+    const binArrayAddresses = surroundingIndexes.map((idx) => deriveBinArrayPDA(idx, pairAddress, programId));
 
     try {
       const binArrayAccountsInfo = await connection.getMultipleAccountsInfo(binArrayAddresses);
@@ -124,8 +104,8 @@ export class BinArrays {
       }
 
       return {
-        binArrayLower: this.getBinArrayAddress(binArrayLowerIndex, pairAddress, programId),
-        binArrayUpper: this.getBinArrayAddress(binArrayUpperIndex, pairAddress, programId),
+        binArrayLower: deriveBinArrayPDA(binArrayLowerIndex, pairAddress, programId),
+        binArrayUpper: deriveBinArrayPDA(binArrayUpperIndex, pairAddress, programId),
       };
     } catch (error) {
       SarosDLMMError.handleError(error, SarosDLMMError.BinArrayInfoFailed);
@@ -148,12 +128,12 @@ export class BinArrays {
     const lowerIndex = this.calculateBinArrayIndex(lowerBinId);
     const upperIndex = this.calculateBinArrayIndex(upperBinId);
 
-    const binArrayLower = this.getBinArrayAddress(lowerIndex, pairAddress, programId);
-    const binArrayUpper = this.getBinArrayAddress(upperIndex, pairAddress, programId);
+    const binArrayLower = deriveBinArrayPDA(lowerIndex, pairAddress, programId);
+    const binArrayUpper = deriveBinArrayPDA(upperIndex, pairAddress, programId);
 
     if (transaction && payer && lbProgram) {
       const indexes = lowerIndex === upperIndex ? [lowerIndex] : [lowerIndex, upperIndex];
-      const addresses = indexes.map((idx) => this.getBinArrayAddress(idx, pairAddress, programId));
+      const addresses = indexes.map((idx) => deriveBinArrayPDA(idx, pairAddress, programId));
 
       const accountInfos = await connection.getMultipleAccountsInfo(addresses);
       for (let i = 0; i < indexes.length; i++) {
@@ -181,9 +161,7 @@ export class BinArrays {
     const currentBinArrayIndex = this.calculateBinArrayIndex(activeId);
     const binArrayIndexes = [currentBinArrayIndex - 1, currentBinArrayIndex, currentBinArrayIndex + 1];
 
-    const binArrayAddresses = binArrayIndexes.map((idx) =>
-      this.getBinArrayAddress(idx, pairAddress, lbProgram.programId)
-    );
+    const binArrayAddresses = binArrayIndexes.map((idx) => deriveBinArrayPDA(idx, pairAddress, lbProgram.programId));
 
     const binArrays = await Promise.all(
       binArrayAddresses.map((address, i) =>
@@ -214,10 +192,10 @@ export class BinArrays {
     hookBinArrayUpper: PublicKey;
   } {
     return {
-      binArrayLower: this.getBinArrayAddress(index, pairAddress, lbProgramId),
-      binArrayUpper: this.getBinArrayAddress(index + 1, pairAddress, lbProgramId),
-      hookBinArrayLower: this.getHookBinArrayAddress(hook, hooksProgramId, index),
-      hookBinArrayUpper: this.getHookBinArrayAddress(hook, hooksProgramId, index + 1),
+      binArrayLower: deriveBinArrayPDA(index, pairAddress, lbProgramId),
+      binArrayUpper: deriveBinArrayPDA(index + 1, pairAddress, lbProgramId),
+      hookBinArrayLower: deriveBinArrayHookPDA(hook, index, hooksProgramId),
+      hookBinArrayUpper: deriveBinArrayHookPDA(hook, index + 1, hooksProgramId),
     };
   }
 
@@ -234,9 +212,7 @@ export class BinArrays {
   ): Promise<void> {
     if (binArrayIndexes.length === 0) return;
 
-    const binArrayAddresses = binArrayIndexes.map((idx) =>
-      this.getBinArrayAddress(idx, pairAddress, lbProgram.programId)
-    );
+    const binArrayAddresses = binArrayIndexes.map((idx) => deriveBinArrayPDA(idx, pairAddress, lbProgram.programId));
 
     try {
       const accountInfos = await connection.getMultipleAccountsInfo(binArrayAddresses);

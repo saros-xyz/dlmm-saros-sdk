@@ -80,7 +80,7 @@ export interface GetPositionReservesParams {
 /**
  * Parameters for retrieving bin array information from a pair
  */
-export interface GetBinArrayReserversParams {
+export interface GetBinArrayReservesParams {
   /** The bin array index to fetch */
   binArrayIndex: number;
   /** The wallet requesting the information (used for transaction context if needed) */

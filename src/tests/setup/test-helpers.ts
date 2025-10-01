@@ -106,24 +106,23 @@ export async function cleanupLiquidity(
   testWallet: TestWalletInfo,
   connection: Connection
 ): Promise<void> {
-  try {
-    const result = await pairInstance.removeLiquidity({
-      positionMints: [positionKeypair.publicKey],
-      payer: testWallet.keypair.publicKey,
-      type: RemoveLiquidityType.All,
-    });
+  const result = await pairInstance.removeLiquidity({
+    positionMints: [positionKeypair.publicKey],
+    payer: testWallet.keypair.publicKey,
+    type: RemoveLiquidityType.All,
+  });
 
-    if (result.setupTransaction) {
-      await connection.sendTransaction(result.setupTransaction, [testWallet.keypair]);
-    }
-    for (const tx of result.transactions) {
-      await connection.sendTransaction(tx, [testWallet.keypair]);
-    }
-    if (result.cleanupTransaction) {
-      await connection.sendTransaction(result.cleanupTransaction, [testWallet.keypair]);
-    }
-  } catch {
-    // ignore cleanup failures
+  if (result.setupTransaction) {
+    const setupSig = await connection.sendTransaction(result.setupTransaction, [testWallet.keypair]);
+    await connection.confirmTransaction(setupSig, 'confirmed');
+  }
+  for (const tx of result.transactions) {
+    const sig = await connection.sendTransaction(tx, [testWallet.keypair]);
+    await connection.confirmTransaction(sig, 'confirmed');
+  }
+  if (result.cleanupTransaction) {
+    const cleanupSig = await connection.sendTransaction(result.cleanupTransaction, [testWallet.keypair]);
+    await connection.confirmTransaction(cleanupSig, 'confirmed');
   }
 }
 

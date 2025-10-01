@@ -8,12 +8,12 @@ export function derivePositionPDA(positionMint: PublicKey, programId: PublicKey)
   )[0];
 }
 
-export function dervicePositionHookPDA(hook: PublicKey, position: PublicKey, programId: PublicKey): PublicKey {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from(utils.bytes.utf8.encode('position')), hook.toBuffer(), position.toBuffer()],
-      programId
-    )[0];
-  }
+export function derivePositionHookPDA(hook: PublicKey, position: PublicKey, programId: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(utils.bytes.utf8.encode('position')), hook.toBuffer(), position.toBuffer()],
+    programId
+  )[0];
+}
 
 export function deriveHookPDA(hooksConfig: PublicKey, pairAddress: PublicKey, programId: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
@@ -22,14 +22,14 @@ export function deriveHookPDA(hooksConfig: PublicKey, pairAddress: PublicKey, pr
   )[0];
 }
 
-export function deriveHookBinArrayPDA(hook: PublicKey, index: number, programId: PublicKey): PublicKey {
+export function deriveBinArrayHookPDA(hook: PublicKey, index: number, programId: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [Buffer.from(utils.bytes.utf8.encode('bin_array')), hook.toBuffer(), new BN(index).toArrayLike(Buffer, 'le', 4)],
     programId
   )[0];
 }
 
-export function deriveBinArrayPDA(pair: PublicKey, index: number, programId: PublicKey): PublicKey {
+export function deriveBinArrayPDA(index: number, pair: PublicKey, programId: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [Buffer.from(utils.bytes.utf8.encode('bin_array')), pair.toBuffer(), new BN(index).toArrayLike(Buffer, 'le', 4)],
     programId

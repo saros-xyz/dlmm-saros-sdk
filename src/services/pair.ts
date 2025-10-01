@@ -19,7 +19,7 @@ import {
   QuoteParams,
   SwapParams,
   GetMaxAmountOutWithFeeParams,
-  GetBinArrayReserversParams,
+  GetBinArrayReservesParams,
   GetPositionReservesParams,
   CreatePositionParams,
   AddLiquidityByShapeParams,
@@ -41,7 +41,7 @@ import { ensureHookTokenAccount } from '../utils/hooks';
 import { derivePositionAccount, getMultiplePositionAccounts } from '../utils/positions';
 import { handleSolWrapping } from '../utils/transaction';
 import { calculateRemovedShares } from '../utils/remove-liquidity';
-import { deriveHookPDA, derivePositionPDA, dervicePositionHookPDA } from '../utils/pda';
+import { deriveHookPDA, derivePositionHookPDA, derivePositionPDA } from '../utils/pda';
 
 export class SarosDLMMPair extends SarosBaseService {
   private pairAddress: PublicKey;
@@ -99,16 +99,14 @@ export class SarosDLMMPair extends SarosBaseService {
 
   private async buildPairMetadata(): Promise<PairMetadata> {
     const { tokenMintX, tokenMintY, hook } = this.pairAccount;
-
     const tokenAccountsData = await getPairTokenAccounts(tokenMintX, tokenMintY, this.pairAddress, this.connection);
+    const feeInfo = getFeeMetadata(this.pairAccount);
 
     // Store results
     this.tokenVaultX = tokenAccountsData.vaultX;
     this.tokenVaultY = tokenAccountsData.vaultY;
     this.tokenProgramX = tokenAccountsData.tokenProgramX;
     this.tokenProgramY = tokenAccountsData.tokenProgramY;
-
-    const feeInfo = getFeeMetadata(this.pairAccount);
 
     return {
       pair: this.pairAddress,
@@ -236,8 +234,8 @@ export class SarosDLMMPair extends SarosBaseService {
         tokenVaultY,
         userVaultX,
         userVaultY,
-        tokenMintX: tokenMintX,
-        tokenMintY: tokenMintY,
+        tokenMintX: this.pairAccount.tokenMintX,
+        tokenMintY: this.pairAccount.tokenMintY,
         tokenProgramX: this.tokenProgramX,
         tokenProgramY: this.tokenProgramY,
         user: payer,
@@ -521,8 +519,7 @@ export class SarosDLMMPair extends SarosBaseService {
       }
     }
 
-    const protocolFeeAmount =
-      protocolShare > BigInt(0) ? getProtocolFee(feeAmount, protocolShareBigInt) : BigInt(0);
+    const protocolFeeAmount = protocolShare > BigInt(0) ? getProtocolFee(feeAmount, protocolShareBigInt) : BigInt(0);
 
     return {
       amountInWithFees: amountIn + feeAmount,
@@ -551,9 +548,8 @@ export class SarosDLMMPair extends SarosBaseService {
   /**
    * Get bin array information for this pair
    */
-  public async getBinArrayReserves(params: GetBinArrayReserversParams): Promise<BinArray> {
+  public async getBinArrayReserves(params: GetBinArrayReservesParams): Promise<BinArray> {
     const { binArrayIndex } = params;
-
     try {
       return await BinArrays.getBinArrayWithAdjacent(binArrayIndex, this.pairAddress, this.lbProgram);
     } catch (_error) {
@@ -790,15 +786,14 @@ export class SarosDLMMPair extends SarosBaseService {
 
         const positionTokenAccount = derivePositionAccount(positionMint, payer);
         const reserveXY = await this.getPositionReserves({ position, payer });
-        const hookPosition = dervicePositionHookPDA(hook, position, this.hooksProgram.programId);
+        const hookPosition = derivePositionHookPDA(hook, position, this.hooksProgram.programId);
 
-        const {removedShares, shouldClosePosition } = calculateRemovedShares(
+        const { removedShares, shouldClosePosition } = calculateRemovedShares(
           reserveXY,
           type,
           positionAccount.lowerBinId,
           positionAccount.upperBinId
         );
-    
 
         if (shouldClosePosition) {
           const ix = await this.lbProgram.methods
