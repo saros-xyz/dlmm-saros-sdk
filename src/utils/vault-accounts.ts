@@ -37,7 +37,7 @@ export async function getPairTokenAccounts(
       throw SarosDLMMError.TokenMintNotFound(tokenMintX.toBase58());
     }
     if (!mintAccountInfos[1]) {
-      throw SarosDLMMError.TokenMintNotFound( tokenMintY.toBase58());
+      throw SarosDLMMError.TokenMintNotFound(tokenMintY.toBase58());
     }
 
     const tokenProgramX = getTokenProgramFromAccountInfo(tokenMintX, mintAccountInfos[0]);
@@ -145,7 +145,7 @@ export async function getUserVaults(
       throw SarosDLMMError.TokenMintNotFound(tokenMintX.toBase58());
     }
     if (!mintAccountInfos[1]) {
-      throw SarosDLMMError.TokenMintNotFound( tokenMintY.toBase58());
+      throw SarosDLMMError.TokenMintNotFound(tokenMintY.toBase58());
     }
 
     const tokenProgramX = getTokenProgramFromAccountInfo(tokenMintX, mintAccountInfos[0]);

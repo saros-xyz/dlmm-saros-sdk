@@ -2,12 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { SarosDLMM } from '../../services';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { LiquidityShape, MODE } from '../../constants';
-import {
-  waitForConfirmation,
-  cleanupLiquidity,
-  getTokenBalance,
-  getWsolAccountRent,
-} from '../setup/test-util';
+import { waitForConfirmation, cleanupLiquidity, getTokenBalance, getWsolAccountRent } from '../setup/test-util';
 import { SarosDLMMPair } from '../../services/pair';
 
 let sdk: SarosDLMM;
@@ -17,7 +12,7 @@ let tokenX: PublicKey;
 let tokenY: PublicKey;
 
 beforeAll(async () => {
-      const { wallet, pool, connection } = global.testEnv;
+  const { wallet, pool, connection } = global.testEnv;
 
   sdk = new SarosDLMM({ mode: MODE.DEVNET, connection: connection });
 
@@ -35,14 +30,11 @@ beforeAll(async () => {
     payer: wallet.keypair.publicKey,
     positionMint: positionKeypair.publicKey,
   });
-  await waitForConfirmation(
-    await connection.sendTransaction(createTx, [wallet.keypair, positionKeypair]),
-    connection
-  );
+  await waitForConfirmation(await connection.sendTransaction(createTx, [wallet.keypair, positionKeypair]), connection);
 
   // Add substantial liquidity balanced with ratePrice 0.000002
-  const baseAmount  = 100_000_000_000_000n; // 100,000 SAROSDEV (9 decimals)
-  const quoteAmount = 200_000_000n;         // 0.2 SOL (9 decimals) - balanced with ratePrice 0.000002
+  const baseAmount = 100_000_000_000_000n; // 100,000 SAROSDEV (9 decimals)
+  const quoteAmount = 200_000_000n; // 0.2 SOL (9 decimals) - balanced with ratePrice 0.000002
   const addTx = await pair.addLiquidityByShape({
     positionMint: positionKeypair.publicKey,
     payer: wallet.keypair.publicKey,
@@ -57,7 +49,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-    const { wallet, connection } = global.testEnv;
+  const { wallet, connection } = global.testEnv;
   await cleanupLiquidity(pair, positionKeypair, wallet, connection);
   console.log('✅ Test position cleaned up');
 });
@@ -130,7 +122,7 @@ describe('Swap Integration Tests', () => {
       const wsolAccountRent = await getWsolAccountRent(connection);
 
       const amountIn = 1_000_000n; // 0.001 SOL
-       await pair.refetchState();
+      await pair.refetchState();
       const quote = await pair.getQuote({
         amount: amountIn,
         options: { swapForY: false, isExactInput: true },
@@ -188,7 +180,7 @@ describe('Swap Integration Tests', () => {
       const wsolAccountRent = await getWsolAccountRent(connection);
 
       const desiredOutput = 1_000n; // Want exactly 1,000 lamports of SOL
-       await pair.refetchState();
+      await pair.refetchState();
       const quote = await pair.getQuote({
         amount: desiredOutput,
         options: { swapForY: true, isExactInput: false },
@@ -228,13 +220,13 @@ describe('Swap Integration Tests', () => {
     });
 
     it('performs Y→X swap with exact output', async () => {
-    const { wallet, connection } = global.testEnv;
+      const { wallet, connection } = global.testEnv;
 
       const balBeforeBase = await getTokenBalance(connection, wallet.keypair.publicKey, tokenX);
       const balBeforeQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const desiredOutput = 100_000_000n; // Want exactly 0.1 base tokens
-       await pair.refetchState();
+      await pair.refetchState();
       const quote = await pair.getQuote({
         amount: desiredOutput,
         options: { swapForY: false, isExactInput: false },

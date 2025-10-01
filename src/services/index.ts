@@ -52,11 +52,7 @@ export class SarosDLMM extends SarosBaseService {
 
       // Calculate bin array addresses
       const binArrayIndex = calculateBinArrayIndex(id);
-      const { binArrayLower, binArrayUpper } = getBinArrayAddresses(
-        binArrayIndex,
-        pair,
-        this.lbProgram.programId
-      );
+      const { binArrayLower, binArrayUpper } = getBinArrayAddresses(binArrayIndex, pair, this.lbProgram.programId);
 
       // Initialize pair instruction
       const initializePairIx = await this.lbProgram.methods
@@ -119,22 +115,21 @@ export class SarosDLMM extends SarosBaseService {
   /**
    * Get list of all Saros DLMM pair addresses
    */
- public async getAllPairAddresses(): Promise<string[]> {
-  const programId = this.getDexProgramId();
-  const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
-  if (!pairAccount) throw SarosDLMMError.NoPairFound();
+  public async getAllPairAddresses(): Promise<string[]> {
+    const programId = this.getDexProgramId();
+    const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
+    if (!pairAccount) throw SarosDLMMError.NoPairFound();
 
-  const accounts = await this.connection.getProgramAccounts(new PublicKey(programId), {
-    filters: [{ memcmp: { offset: 0, bytes: bs58.encode(pairAccount.discriminator) } }],
-  });
+    const accounts = await this.connection.getProgramAccounts(new PublicKey(programId), {
+      filters: [{ memcmp: { offset: 0, bytes: bs58.encode(pairAccount.discriminator) } }],
+    });
 
-  if (accounts.length === 0) throw SarosDLMMError.NoPairFound();
+    if (accounts.length === 0) throw SarosDLMMError.NoPairFound();
 
-  return accounts
-    .filter((acc) => acc.account.owner.toString() === programId.toString() && acc.account.data.length >= 8)
-    .map((acc) => acc.pubkey.toString());
-}
-
+    return accounts
+      .filter((acc) => acc.account.owner.toString() === programId.toString() && acc.account.data.length >= 8)
+      .map((acc) => acc.pubkey.toString());
+  }
 
   /**
    * Listen for new pair addresses being created and call postTxFunction with the new address

@@ -12,8 +12,8 @@ async function runShapeTest(
   quoteAmount: bigint,
   validate: (bins: any[], pair: SarosDLMMPair) => Promise<void> | void
 ) {
-  const { wallet, pool, connection, } = global.testEnv;
-    const sdk = new SarosDLMM({ mode: MODE.DEVNET, connection });
+  const { wallet, pool, connection } = global.testEnv;
+  const sdk = new SarosDLMM({ mode: MODE.DEVNET, connection });
 
   const pairAddress = new PublicKey(pool.pair);
 
@@ -67,7 +67,7 @@ describe('Liquidity Shape Distribution', () => {
       LiquidityShape.Spot,
       [-4, 4],
       100_000_000_000_000n, // 100,000 SAROSDEV
-      200_000_000n,         // 0.2 SOL (balanced with ratePrice 0.000002)
+      200_000_000n, // 0.2 SOL (balanced with ratePrice 0.000002)
       async (positionBins, pair) => {
         expect(positionBins.length).toBeGreaterThan(3);
 
@@ -113,7 +113,7 @@ describe('Liquidity Shape Distribution', () => {
       LiquidityShape.Curve,
       [-6, 6],
       75_000_000_000_000n, // 75,000 SAROSDEV
-      150_000_000n,        // 0.15 SOL (balanced with ratePrice 0.000002)
+      150_000_000n, // 0.15 SOL (balanced with ratePrice 0.000002)
       (bins, pair) => {
         expect(bins.length).toBeGreaterThan(0);
 
@@ -167,7 +167,7 @@ describe('Liquidity Shape Distribution', () => {
       LiquidityShape.BidAsk,
       [-3, 3],
       50_000_000_000_000n, // 50,000 SAROSDEV
-      100_000_000n,        // 0.1 SOL (balanced with ratePrice 0.000002)
+      100_000_000n, // 0.1 SOL (balanced with ratePrice 0.000002)
       (bins) => {
         expect(bins.length).toBeGreaterThan(0);
 

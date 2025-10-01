@@ -34,7 +34,12 @@ export async function ensureTokenAndPool(
     const saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
     return {
       token: { ...saved.token, mint: new PublicKey(saved.token.mint) },
-      pool: { ...saved.pool, pair: new PublicKey(saved.pool.pair), tokenX: new PublicKey(saved.pool.tokenX), tokenY: new PublicKey(saved.pool.tokenY) },
+      pool: {
+        ...saved.pool,
+        pair: new PublicKey(saved.pool.pair),
+        tokenX: new PublicKey(saved.pool.tokenX),
+        tokenY: new PublicKey(saved.pool.tokenY),
+      },
     };
   }
 
@@ -61,9 +66,7 @@ export async function ensureTokenAndPool(
     payer: payer.publicKey,
   });
 
- 
-
-await waitForConfirmation(await connection.sendTransaction( result.transaction, [payer]), connection);
+  await waitForConfirmation(await connection.sendTransaction(result.transaction, [payer]), connection);
 
   const pool: TestPool = {
     pair: result.pair,
@@ -73,7 +76,17 @@ await waitForConfirmation(await connection.sendTransaction( result.transaction, 
     ratePrice: 0.000002,
   };
 
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ token: { ...token, mint: token.mint.toBase58() }, pool: { ...pool, pair: pool.pair.toBase58(), tokenX: pool.tokenX.toBase58(), tokenY: pool.tokenY.toBase58() } }, null, 2));
+  fs.writeFileSync(
+    CONFIG_FILE,
+    JSON.stringify(
+      {
+        token: { ...token, mint: token.mint.toBase58() },
+        pool: { ...pool, pair: pool.pair.toBase58(), tokenX: pool.tokenX.toBase58(), tokenY: pool.tokenY.toBase58() },
+      },
+      null,
+      2
+    )
+  );
 
   return { token, pool };
 }

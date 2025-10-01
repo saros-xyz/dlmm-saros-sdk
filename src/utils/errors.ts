@@ -91,19 +91,15 @@ export class SarosDLMMError extends Error {
   static AccountFetchFailed(): SarosDLMMError {
     return new SarosDLMMError('Failed to fetch account data', SarosDLMMErrorCode.AccountFetchFailed);
   }
-static TokenMintNotFound(address?: string): SarosDLMMError {
-  const msg = address
-    ? `Token mint account not found: ${address}`
-    : 'Token mint account not found';
-  return new SarosDLMMError(msg, SarosDLMMErrorCode.TokenMintNotFound);
-}
+  static TokenMintNotFound(address?: string): SarosDLMMError {
+    const msg = address ? `Token mint account not found: ${address}` : 'Token mint account not found';
+    return new SarosDLMMError(msg, SarosDLMMErrorCode.TokenMintNotFound);
+  }
 
-static BinArrayNotFound(address?: string): SarosDLMMError {
-  const msg = address
-    ? `Bin array account not found: ${address}`
-    : 'Bin array account not found';
-  return new SarosDLMMError(msg, SarosDLMMErrorCode.BinArrayNotFound);
-}
+  static BinArrayNotFound(address?: string): SarosDLMMError {
+    const msg = address ? `Bin array account not found: ${address}` : 'Bin array account not found';
+    return new SarosDLMMError(msg, SarosDLMMErrorCode.BinArrayNotFound);
+  }
 
   // --------------------------
   // Generic operation errors

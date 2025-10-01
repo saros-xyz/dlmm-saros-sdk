@@ -2,7 +2,14 @@ import { BN } from '@coral-xyz/anchor';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { SarosBaseService, SarosConfig } from './base/index';
-import { calculateBinArrayIndex, getBinArrayWithAdjacent, getLiquidityBinArrays, getQuoteBinArrays, getRemovalBinArrays, getSwapBinArrays } from '../utils/bin-arrays';
+import {
+  calculateBinArrayIndex,
+  getBinArrayWithAdjacent,
+  getLiquidityBinArrays,
+  getQuoteBinArrays,
+  getRemovalBinArrays,
+  getSwapBinArrays,
+} from '../utils/bin-arrays';
 import { getFeeAmount, getFeeForAmount, getFeeMetadata, getProtocolFee, getTotalFee } from '../utils/fees';
 import { Volatility } from '../utils/volatility';
 import { BinArrayRange } from '../utils/bin-range';
@@ -80,21 +87,20 @@ export class SarosDLMMPair extends SarosBaseService {
     return this.pairAddress;
   }
 
-/**
- * Refresh pair data
- */
-public async refetchState(): Promise<void> {
-  try {
-    //@ts-ignore
-    this.pairAccount = await this.lbProgram.account.pair.fetch(this.pairAddress);
-    if (!this.pairAccount) throw SarosDLMMError.PairFetchFailed();
+  /**
+   * Refresh pair data
+   */
+  public async refetchState(): Promise<void> {
+    try {
+      //@ts-ignore
+      this.pairAccount = await this.lbProgram.account.pair.fetch(this.pairAddress);
+      if (!this.pairAccount) throw SarosDLMMError.PairFetchFailed();
 
-    this.metadata = await this.buildPairMetadata();
-  } catch (error) {
-    SarosDLMMError.handleError(error, SarosDLMMError.PairFetchFailed());
+      this.metadata = await this.buildPairMetadata();
+    } catch (error) {
+      SarosDLMMError.handleError(error, SarosDLMMError.PairFetchFailed());
+    }
   }
-}
-
 
   private async buildPairMetadata(): Promise<PairMetadata> {
     const { tokenMintX, tokenMintY, hook } = this.pairAccount;
@@ -313,11 +319,7 @@ public async refetchState(): Promise<void> {
       options: { swapForY, isExactInput },
     } = params;
     try {
-      const { binArrays } = await getQuoteBinArrays(
-        this.pairAccount.activeId,
-        this.pairAddress,
-        this.lbProgram
-      );
+      const { binArrays } = await getQuoteBinArrays(this.pairAccount.activeId, this.pairAddress, this.lbProgram);
 
       const binRange = new BinArrayRange(binArrays[0], binArrays[1], binArrays[2]);
       const totalSupply = binRange
@@ -740,7 +742,7 @@ public async refetchState(): Promise<void> {
       this.lbProgram.programId,
       payer,
       this.lbProgram,
-      tx,
+      tx
     );
 
     if (this.pairAccount.tokenMintY.equals(WRAP_SOL_PUBKEY) || this.pairAccount.tokenMintX.equals(WRAP_SOL_PUBKEY)) {

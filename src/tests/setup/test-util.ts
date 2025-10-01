@@ -61,4 +61,3 @@ export async function getTokenBalance(connection: Connection, owner: PublicKey, 
 export async function getWsolAccountRent(connection: Connection): Promise<bigint> {
   return BigInt(await connection.getMinimumBalanceForRentExemption(165));
 }
-
