@@ -3,7 +3,7 @@ import * as spl from '@solana/spl-token';
 import { chunk } from 'lodash';
 import { PositionAccount } from '../types';
 
-export function derivePositionAccount(positionMint: PublicKey, payer: PublicKey): PublicKey {
+export function derivePositionTokenAccount(positionMint: PublicKey, payer: PublicKey): PublicKey {
   return spl.getAssociatedTokenAddressSync(positionMint, payer, true, spl.TOKEN_2022_PROGRAM_ID);
 }
 

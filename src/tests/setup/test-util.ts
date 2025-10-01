@@ -54,3 +54,11 @@ export async function getTokenBalance(connection: Connection, owner: PublicKey, 
   }
 }
 
+/**
+ * Get the rent-exempt minimum balance for a wSOL token account (165 bytes).
+ * Used to calculate the rent returned when a wSOL account is closed after a swap.
+ */
+export async function getWsolAccountRent(connection: Connection): Promise<bigint> {
+  return BigInt(await connection.getMinimumBalanceForRentExemption(165));
+}
+

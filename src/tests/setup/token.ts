@@ -57,7 +57,7 @@ export async function ensureTokenAndPool(
     tokenX: { mintAddress: sarosMint, decimals: 9 },
     tokenY: { mintAddress: WRAP_SOL, decimals: 9 },
     binStep: 1,
-    ratePrice: 1,
+    ratePrice: 0.000002,
     payer: payer.publicKey,
   });
 
@@ -70,7 +70,7 @@ await waitForConfirmation(await connection.sendTransaction( result.transaction, 
     tokenX: sarosMint,
     tokenY: WRAP_SOL,
     binStep: 1,
-    ratePrice: 1,
+    ratePrice: 0.000002,
   };
 
   fs.writeFileSync(CONFIG_FILE, JSON.stringify({ token: { ...token, mint: token.mint.toBase58() }, pool: { ...pool, pair: pool.pair.toBase58(), tokenX: pool.tokenX.toBase58(), tokenY: pool.tokenY.toBase58() } }, null, 2));

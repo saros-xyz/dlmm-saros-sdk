@@ -25,7 +25,7 @@ export async function loadOrCreateWallet(connection: Connection): Promise<TestWa
 
   // Ensure funded
   const balanceLamports = await connection.getBalance(keypair.publicKey);
-  if (balanceLamports < 0.5 * LAMPORTS_PER_SOL) {
+  if (balanceLamports < 0.3 * LAMPORTS_PER_SOL) {
     console.log(`Airdropping SOL to ${keypair.publicKey.toBase58()}`);
     const sig = await connection.requestAirdrop(keypair.publicKey, 2 * LAMPORTS_PER_SOL);
     await connection.confirmTransaction(sig, 'confirmed');

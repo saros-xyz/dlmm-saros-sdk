@@ -114,6 +114,10 @@ import { deriveBinArrayHookPDA, deriveBinArrayPDA } from './pda';
 
   /**
    * Get bin arrays for liquidity operations with initialization support
+   *
+   * IMPORTANT: The program IDL requires bin_array_lower and bin_array_upper to be
+   * different writable accounts. Even if a position fits within a single bin array,
+   * we must provide two consecutive bin array accounts to satisfy the program's requirements.
    */
   export async function getLiquidityBinArrays(
     lowerBinId: number,
@@ -126,14 +130,17 @@ import { deriveBinArrayHookPDA, deriveBinArrayPDA } from './pda';
     transaction?: Transaction
   ): Promise<{ binArrayLower: PublicKey; binArrayUpper: PublicKey }> {
     const lowerIndex = calculateBinArrayIndex(lowerBinId);
-    const upperIndex = calculateBinArrayIndex(upperBinId);
 
+    // Always use consecutive bin array indices (lowerIndex and lowerIndex + 1)
+    // The program requires two different writable accounts even if the position
+    // fits entirely within a single bin array
     const binArrayLower = deriveBinArrayPDA(lowerIndex, pairAddress, programId);
-    const binArrayUpper = deriveBinArrayPDA(upperIndex, pairAddress, programId);
+    const binArrayUpper = deriveBinArrayPDA(lowerIndex + 1, pairAddress, programId);
 
     if (transaction && payer && lbProgram) {
-      const indexes = lowerIndex === upperIndex ? [lowerIndex] : [lowerIndex, upperIndex];
-      const addresses = indexes.map((idx) => deriveBinArrayPDA(idx, pairAddress, programId));
+      // Always initialize both consecutive bin arrays
+      const indexes = [lowerIndex, lowerIndex + 1];
+      const addresses = [binArrayLower, binArrayUpper];
 
       const accountInfos = await connection.getMultipleAccountsInfo(addresses);
       for (let i = 0; i < indexes.length; i++) {

@@ -36,7 +36,7 @@ import {
 import { addSolTransferInstructions, addOptimalComputeBudget } from '../utils/transaction';
 import { createUniformDistribution, Distribution, calculateDistributionAmounts } from '../utils/bin-distribution';
 import { ensureHookTokenAccount } from '../utils/hooks';
-import { derivePositionAccount, getMultiplePositionAccounts } from '../utils/positions';
+import { derivePositionTokenAccount, getMultiplePositionAccounts } from '../utils/positions';
 import { handleSolWrapping } from '../utils/transaction';
 import { calculateRemovedShares } from '../utils/remove-liquidity';
 import { deriveHookPDA, derivePositionHookPDA, derivePositionPDA } from '../utils/pda';
@@ -676,11 +676,12 @@ export class SarosDLMMPair extends SarosBaseService {
       this.connection,
       this.lbProgram.programId,
       payer,
-      this.lbProgram
+      this.lbProgram,
+      transaction
     );
 
     const position = derivePositionPDA(positionMint, this.lbProgram.programId);
-    const positionTokenAccount = derivePositionAccount(positionMint, payer);
+    const positionTokenAccount = derivePositionTokenAccount(positionMint, payer);
 
     const ix = await this.lbProgram.methods
       .createPosition(new BN(binIdLeft), new BN(binIdRight))
@@ -758,7 +759,7 @@ export class SarosDLMMPair extends SarosBaseService {
 
     const hook = deriveHookPDA(this.hooksConfig, this.pairAddress, this.hooksProgram.programId);
     const position = derivePositionPDA(positionMint, this.lbProgram.programId);
-    const positionTokenAccount = derivePositionAccount(positionMint, payer);
+    const positionTokenAccount = derivePositionTokenAccount(positionMint, payer);
 
     const ix = await this.lbProgram.methods
       .increasePosition(new BN(amountTokenX.toString()), new BN(amountTokenY.toString()), liquidityDistribution)
@@ -782,6 +783,11 @@ export class SarosDLMMPair extends SarosBaseService {
         user: payer,
         positionMint,
       })
+      .remainingAccounts([
+        { pubkey: this.pairAddress, isWritable: false, isSigner: false },
+        { pubkey: binArrayLower, isWritable: false, isSigner: false },
+        { pubkey: binArrayUpper, isWritable: false, isSigner: false },
+      ])
       .instruction();
 
     await addOptimalComputeBudget(tx, this.connection, this.bufferGas);
@@ -831,7 +837,7 @@ export class SarosDLMMPair extends SarosBaseService {
         const tx = new Transaction();
         await addOptimalComputeBudget(tx, this.connection, this.bufferGas);
 
-        const positionTokenAccount = derivePositionAccount(positionMint, payer);
+        const positionTokenAccount = derivePositionTokenAccount(positionMint, payer);
         const reserveXY = await this.getPositionReserves(position);
         const hookPosition = derivePositionHookPDA(hook, position, this.hooksProgram.programId);
 

@@ -26,7 +26,7 @@ describe('Test Setup Verification', () => {
 
     expect(pool).toBeDefined();
     expect(pool.binStep).toBe(1);   // we set binStep = 1 in new token.ts
-    expect(pool.ratePrice).toBe(1); // we set ratePrice = 1 in new token.ts
+    expect(pool.ratePrice).toBe(0.000002); // we set ratePrice = 0.000002 in new token.ts
 
     console.log(`Pool: ${pool.pair.toString()}`);
   });
