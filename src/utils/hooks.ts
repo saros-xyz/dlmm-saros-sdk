@@ -1,9 +1,6 @@
 import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 
-/**
- * Ensure hook token account exists for a specific token
- */
 export async function ensureHookTokenAccount(
   hook: PublicKey,
   tokenMint: PublicKey,

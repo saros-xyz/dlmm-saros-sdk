@@ -1,4 +1,4 @@
-import { ACTIVE_ID, MAX_BASIS_POINTS } from '../constants';
+import { CENTER_BIN_ID, MAX_BASIS_POINTS } from '../constants';
 import { SarosDLMMError } from './errors';
 
 export const getPriceFromId = (
@@ -12,7 +12,7 @@ export const getPriceFromId = (
   }
 
   const base = 1 + binStep / MAX_BASIS_POINTS;
-  const exponent = binId - ACTIVE_ID;
+  const exponent = binId - CENTER_BIN_ID;
   const decimalPow = Math.pow(10, decimalTokenX - decimalTokenY);
 
   return Math.pow(base, exponent) * decimalPow;
@@ -35,7 +35,7 @@ export const getIdFromPrice = (
 
   const base = 1 + binStep / MAX_BASIS_POINTS;
   const exponent = Math.log(price * decimalPow) / Math.log(base);
-  const binId = Math.round(exponent + ACTIVE_ID);
+  const binId = Math.round(exponent + CENTER_BIN_ID);
 
   return binId;
 };

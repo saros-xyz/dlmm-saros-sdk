@@ -1,9 +1,7 @@
 import { PRECISION_BIGINT, SCALE_OFFSET, MAX_BASIS_POINTS_BIGINT } from '../constants';
 import { SarosDLMMError } from './errors';
 
-/**
- * Calculates the input amount required for a swap based on the desired output amount and price.
- */
+/** Calculates the input amount required for a swap based on the desired output amount and price. */
 export const getAmountInByPrice = (
   amountOut: bigint,
   priceScaled: bigint,
@@ -23,9 +21,7 @@ export const getAmountInByPrice = (
   }
 };
 
-/**
- * Calculates the output amount based on the input amount, price, and scaling factors.
- */
+/** Calculates the output amount based on the input amount, price, and scaling factors. */
 export const getAmountOutByPrice = (
   amountIn: bigint,
   priceScaled: bigint,
@@ -57,9 +53,7 @@ export const getMinOutputWithSlippage = (amountOut: bigint, slippage: number): b
   return (amountOut * (PRECISION_BIGINT - BigInt(slippageScaled))) / PRECISION_BIGINT;
 };
 
-/**
- * Calculate maximum input amount with slippage protection for exact output swaps
- */
+/** Calculate maximum input amount with slippage protection for exact output swaps */
 export const getMaxInputWithSlippage = (amountIn: bigint, slippage: number): bigint => {
   const slippageFraction = slippage / 100;
   const slippageScaled = Math.round(slippageFraction * Number(PRECISION_BIGINT));
@@ -71,9 +65,7 @@ export const getMaxInputWithSlippage = (amountIn: bigint, slippage: number): big
   return (amountIn * PRECISION_BIGINT) / BigInt(denominatorScaled);
 };
 
-/**
- * Calculate price impact for swaps
- */
+/** Calculate price impact for swaps */
 export const getPriceImpact = (amountOut: bigint, maxAmountOut: bigint): number => {
   if (maxAmountOut === 0n) return 0;
 

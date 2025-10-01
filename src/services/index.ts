@@ -16,9 +16,7 @@ export class SarosDLMM extends SarosBaseService {
     super(config);
   }
 
-  /**
-   * Create a new pair/pool
-   */
+  /** Create a new DLMM liquidity pair/pool on Saros. */
   public async createPair(params: CreatePairParams): Promise<CreatePairResponse> {
     const { tokenX, tokenY, binStep, ratePrice, payer } = params;
 
@@ -96,25 +94,19 @@ export class SarosDLMM extends SarosBaseService {
     }
   }
 
-  /**
-   * Get a pair instance with loaded data
-   */
+  /** Get a pair instance with state loaded */
   public async getPair(pairAddress: PublicKey): Promise<SarosDLMMPair> {
     const pair = new SarosDLMMPair(this.config, pairAddress);
-    await pair.refetchState();
+    await pair.loadState();
     return pair;
   }
 
-  /**
-   * Get multiple pair instances with loaded data
-   */
+  /** Get multiple pair instances with state loaded */
   public async getPairs(pairAddresses: PublicKey[]): Promise<SarosDLMMPair[]> {
     return await Promise.all(pairAddresses.map((addr) => this.getPair(addr)));
   }
 
-  /**
-   * Get list of all Saros DLMM pair addresses
-   */
+  /** List all Saros DLMM pair addresses */
   public async getAllPairAddresses(): Promise<string[]> {
     const programId = this.getDexProgramId();
     const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
@@ -131,9 +123,7 @@ export class SarosDLMM extends SarosBaseService {
       .map((acc) => acc.pubkey.toString());
   }
 
-  /**
-   * Listen for new pair addresses being created and call postTxFunction with the new address
-   */
+  /** Listen for new pair addresses being created and call postTxFunction with the new address */
   public async listenForNewPairs(postTxFunction: (address: string) => Promise<void>) {
     const LB_PROGRAM_ID = this.getDexProgramId();
     const subscriptionId = this.connection.onLogs(
@@ -156,9 +146,7 @@ export class SarosDLMM extends SarosBaseService {
     return () => this.connection.removeOnLogsListener(subscriptionId);
   }
 
-  /**
-   * Search for pairs by one or two token mints
-   */
+  /** Search for pairs by one or two token mints */
   public async findPairs(mintA: PublicKey, mintB?: PublicKey): Promise<string[]> {
     const programId = this.getDexProgramId();
 

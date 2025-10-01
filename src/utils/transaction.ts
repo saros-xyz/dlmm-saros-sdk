@@ -13,9 +13,7 @@ import { BN } from '@coral-xyz/anchor';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
 import { SarosDLMMError } from './errors';
 
-/**
- * Get optimal gas price from recent prioritization fees
- */
+/** Get optimal gas price from recent prioritization fees */
 const getOptimalGasPrice = async (connection: Connection, bufferMultiplier: number = 1.5): Promise<number> => {
   try {
     const fees = await Promise.race([
@@ -76,9 +74,7 @@ export const addCloseAccountInstruction = (transaction: Transaction, vault: Publ
   transaction.add(spl.createCloseAccountInstruction(vault, payer, payer));
 };
 
-/**
- * Extracts the pair address from an initialize_pair transaction by parsing the instruction accounts
- */
+/** Extracts the pair address from an initialize_pair transaction by parsing the instruction accounts */
 export async function extractPairFromTx(connection: Connection, signature: string): Promise<PublicKey | null> {
   const parsedTransaction = await connection.getTransaction(signature, {
     maxSupportedTransactionVersion: 0,
@@ -113,9 +109,7 @@ export interface SolWrappingOptions {
   isPreSwap?: boolean;
 }
 
-/**
- * Handle SOL wrapping/unwrapping for swap and liquidity operations
- */
+/** Handle SOL wrapping/unwrapping for swap and liquidity operations */
 export const handleSolWrapping = (
   transaction: Transaction,
   tokenMintX: PublicKey,

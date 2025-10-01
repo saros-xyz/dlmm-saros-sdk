@@ -1,9 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 
-/**
- * Account structure for a Pair
- */
+/** Account structure for a Pair */
 export interface DLMMPairAccount {
   bump: number[];
   liquidityBookConfig: PublicKey;
@@ -34,9 +32,7 @@ export interface DLMMPairAccount {
   hook: PublicKey | null;
 }
 
-/**
- * a User Position within a Pair
- */
+/** a User Position within a pair */
 export interface PositionAccount {
   pair: PublicKey;
   /** position NFT */
@@ -49,9 +45,7 @@ export interface PositionAccount {
   space: number[];
 }
 
-/**
- * Bin data for for a single price bin
- */
+/** Bin data for for a single price bin */
 export interface Bin {
   /** Token X (base token) reserves in this bin */
   reserveX: BN;
@@ -61,9 +55,7 @@ export interface Bin {
   totalSupply: BN;
 }
 
-/**
- * Collection of bins with their array index
- */
+/** Collection of bins with their array index */
 export interface BinArray {
   /** Array of bin data structures */
   bins: Bin[];

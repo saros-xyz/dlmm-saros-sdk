@@ -1,8 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 
-/**
- * Swap direction and execution mode
- */
+/** Swap direction and execution mode */
 export interface SwapOptions {
   /** Swap direction: true = X to Y, false = Y to X */
   swapForY: boolean;
@@ -10,9 +8,7 @@ export interface SwapOptions {
   isExactInput: boolean;
 }
 
-/**
- * Parameters for executing a swap transaction
- */
+/** Parameters for executing a swap transaction */
 export interface SwapParams {
   /** Token being sold */
   tokenIn: PublicKey;
@@ -38,9 +34,7 @@ export interface SwapParams {
   hook?: PublicKey;
 }
 
-/**
- * Parameters for getting a swap quote
- */
+/** Parameters for getting a swap quote */
 export interface QuoteParams {
   /** Amount to quote */
   amount: bigint;
@@ -50,9 +44,7 @@ export interface QuoteParams {
   slippage: number;
 }
 
-/**
- * Swap quote information
- */
+/** Swap quote information */
 export interface QuoteResponse {
   /** Required input amount (exact quote without slippage) */
   amountIn: bigint;
@@ -74,9 +66,7 @@ export interface QuoteResponse {
   minTokenOut: bigint;
 }
 
-/**
- * Parameters for calculating theoretical maximum output with known token decimals
- */
+/** Parameters for calculating theoretical maximum output with known token decimals */
 export interface GetMaxAmountOutWithFeeParams {
   /** Input amount in token's smallest unit */
   amount: bigint;
@@ -88,9 +78,7 @@ export interface GetMaxAmountOutWithFeeParams {
   decimalTokenY?: number;
 }
 
-/**
- * Get the max amount out including fees
- */
+/** Get the max amount out including fees */
 export interface GetMaxAmountOutWithFeeResponse {
   /** Maximum possible output amount (accounting for fees but not slippage) */
   maxAmountOut: bigint;

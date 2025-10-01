@@ -1,11 +1,11 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
 
 export interface CreatePairParams {
-  /** tokenX = your base token */
+  /** tokenX = base token */
   tokenX: TokenInfo;
-  /** tokenY = your quote token */
+  /** tokenY = quote token */
   tokenY: TokenInfo;
-  /** Determines fee tier and price precision */
+  /** Determines fee tier and price precision (bin size) */
   binStep: number;
   /** Initial price to set the active bin */
   ratePrice: number;
@@ -13,10 +13,11 @@ export interface CreatePairParams {
   payer: PublicKey;
 }
 
+/** Response after creating a new liquidity pair/pool. */
 export interface CreatePairResponse {
   /** Transaction to execute */
   transaction: Transaction;
-  /** Address of the created LB pair */
+  /** Address of the created liquidity book pair */
   pair: PublicKey;
   /** Active bin ID where initial liquidity will be placed */
   activeBin: number;

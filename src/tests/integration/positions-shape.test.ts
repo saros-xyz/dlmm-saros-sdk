@@ -31,8 +31,6 @@ async function runShapeTest(
       connection
     );
 
-    await pair.refetchState();
-
     const addTx = await pair.addLiquidityByShape({
       positionMint: positionKeypair.publicKey,
       payer: wallet.keypair.publicKey,
@@ -43,7 +41,6 @@ async function runShapeTest(
     });
     await waitForConfirmation(await connection.sendTransaction(addTx, [wallet.keypair]), connection);
 
-    await pair.refetchState();
     const positions = await pair.getUserPositions({
       payer: wallet.keypair.publicKey,
     });

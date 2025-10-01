@@ -127,9 +127,7 @@ export async function getPairTokenAccounts(
   }
 }
 
-/**
- * Get both user vault addresses for tokenX and tokenY
- */
+/** Get both user vault addresses for tokenX and tokenY */
 export async function getUserVaults(
   tokenMintX: PublicKey,
   tokenMintY: PublicKey,

@@ -22,7 +22,7 @@ export function createUniformDistribution(params: CreateLiquidityDistributionPar
   const [minBin, maxBin] = binRange;
 
   if (minBin > maxBin) {
-    throw new Error('Invalid binRange: minBin must be <= maxBin');
+    throw SarosDLMMError.InvalidBinRange;
   }
 
   const relativeIds = Array.from({ length: maxBin - minBin + 1 }, (_, i) => i + minBin);
@@ -215,7 +215,7 @@ export function createUniformDistribution(params: CreateLiquidityDistributionPar
     return liquidityDistribution;
   }
 
-  throw new SarosDLMMError(`Unsupported liquidity shape: ${shape}`, 'INVALID_SHAPE');
+  throw SarosDLMMError.InvalidShape();
 }
 
 const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribution[] => {

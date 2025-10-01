@@ -1,21 +1,26 @@
-// Explicit exports for the SDK
-// New pair-centric architecture: SarosDLMM (static factory) + SarosDLMMPair (instance)
+// Explicit exports for SDK
 
 // Main SDK classes
 export { SarosDLMM } from './services';
 export { SarosDLMMPair } from './services/pair';
 
-// Program IDs
-export { DLMM_PROGRAM_IDS } from './constants';
+// Constants
+export {
+  DLMM_PROGRAM_IDS,
+  BIN_ARRAY_INDEX,
+  BIN_ARRAY_SIZE,
+  MODE,
+  LiquidityShape,
+  RemoveLiquidityType,
+} from './constants';
 
-// Public enums (values)
-export { MODE, LiquidityShape, RemoveLiquidityType } from './constants';
-
-// helpers
+// (legacy) price helpers
 export { getPriceFromId, getIdFromPrice } from './utils/price';
-export { getFeeMetadata } from './utils/fees';
 
-// reenable if we want to support legacy 'addLiquidityToPosition'
+// derive address helpers
+export * from './utils/pda';
+
+// re-enable if legacy 'addLiquidityToPosition' is added back to sdk
 // export type { Distribution, createUniformDistribution } from './utils/bin-distribution';
 
 // Public types

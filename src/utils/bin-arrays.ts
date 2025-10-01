@@ -8,12 +8,7 @@ export function calculateBinArrayIndex(binId: number): number {
   return Math.floor(binId / BIN_ARRAY_SIZE);
 }
 
-/**
- * Calculate a range of bin array indices around an active binId.
- *
- * @param activeId current active bin id
- * @param arrayRange number of bin arrays to include (default 1 = include the active + 1 neighbor each side)
- */
+/** Calculate a range of bin array indices around an active binId  */
 export function calculateBinArrayRange(activeId: number, arrayRange: number = 1): number[] {
   const activeIndex = calculateBinArrayIndex(activeId);
   const indices: number[] = [];
@@ -24,9 +19,7 @@ export function calculateBinArrayRange(activeId: number, arrayRange: number = 1)
   return indices;
 }
 
-/**
- * Get adjacent bin array addresses (lower and upper) in one call
- */
+/** Get adjacent bin array addresses (lower and upper) in one call */
 export function getBinArrayAddresses(
   binArrayIndex: number,
   pairAddress: PublicKey,
@@ -38,9 +31,7 @@ export function getBinArrayAddresses(
   };
 }
 
-/**
- * Get bin array reserves with adjacent fallback logic
- */
+/** Get bin array reserves with adjacent fallback logic */
 export async function getBinArrayWithAdjacent(
   binArrayIndex: number,
   pairAddress: PublicKey,
@@ -64,9 +55,7 @@ export async function getBinArrayWithAdjacent(
   }
 }
 
-/**
- * Get valid bin arrays for swap operations
- */
+/** Get valid bin arrays for swap operations */
 export async function getSwapBinArrays(
   activeId: number,
   pairAddress: PublicKey,
@@ -155,9 +144,7 @@ export async function getLiquidityBinArrays(
   return { binArrayLower, binArrayUpper };
 }
 
-/**
- * Get bin arrays for quote calculations with fallback handling
- */
+/** Get bin arrays for quote calculations with fallback handling */
 export async function getQuoteBinArrays(
   activeId: number,
   pairAddress: PublicKey,
@@ -204,9 +191,7 @@ export function getRemovalBinArrays(
   };
 }
 
-/**
- * Initialize multiple bin arrays
- */
+/** Initialize multiple bin arrays */
 export async function initializeMultipleBinArrays(
   binArrayIndexes: number[],
   pairAddress: PublicKey,

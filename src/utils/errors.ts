@@ -16,6 +16,8 @@ export enum SarosDLMMErrorCode {
 
   // Position errors
   CannotAddZero = 'CANNOT_ADD_ZERO',
+  InvalidShape = 'INVALID_SHAPE',
+  InvalidBinRange = 'INVALID_BIN_RANGE',
 
   // Account errors
   AccountFetchFailed = 'ACCOUNT_FETCH_FAILED',
@@ -83,6 +85,14 @@ export class SarosDLMMError extends Error {
   // --------------------------
   static CannotAddZero(): SarosDLMMError {
     return new SarosDLMMError('Cannot add zero liquidity', SarosDLMMErrorCode.CannotAddZero);
+  }
+
+  static InvalidShape(): SarosDLMMError {
+    return new SarosDLMMError('Unsupported liquidity shape', SarosDLMMErrorCode.InvalidShape);
+  }
+
+  static InvalidBinRange(): SarosDLMMError {
+    return new SarosDLMMError('Invalid binRange: minBin must be <= maxBin', SarosDLMMErrorCode.InvalidBinRange);
   }
 
   // --------------------------

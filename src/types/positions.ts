@@ -1,17 +1,13 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { LiquidityShape, RemoveLiquidityType } from '../constants/config';
 
-/**
- * Parameters for retrieving all user positions in a specific pair
- */
+/** Parameters for retrieving all user positions in a specific pair */
 export interface GetUserPositionsParams {
   /** The wallet/account that owns the positions */
   payer: PublicKey;
 }
 
-/**
- * Parameters for creating a new liquidity position
- */
+/** Parameters for creating a new liquidity position */
 export interface CreatePositionParams {
   /** The wallet that will own the position and pay transaction fees */
   payer: PublicKey;
@@ -21,9 +17,7 @@ export interface CreatePositionParams {
   binRange: [number, number];
 }
 
-/**
- * Parameters for adding liquidity to an existing position using a specific shape
- */
+/** Parameters for adding liquidity by a LiquidityShape to an existing position */
 export interface AddLiquidityByShapeParams {
   /** The NFT mint representing the position to add liquidity to */
   positionMint: PublicKey;
@@ -41,9 +35,7 @@ export interface AddLiquidityByShapeParams {
   binRange: [number, number];
 }
 
-/**
- * Parameters for removing liquidity from positions
- */
+/** Parameters for removing 1 or more liquidity positions */
 export interface RemoveLiquidityParams {
   /** List of NFT position mints to remove liquidity from */
   positionMints: PublicKey[];
@@ -53,9 +45,7 @@ export interface RemoveLiquidityParams {
   type: RemoveLiquidityType;
 }
 
-/**
- * Response containing all transactions needed to complete liquidity removal
- */
+/** Response containing all transactions for liquidity removal including account setup and cleanup */
 export interface RemoveLiquidityResponse {
   /** Execute FIRST if present - creates any required token accounts */
   setupTransaction?: Transaction;
@@ -67,9 +57,7 @@ export interface RemoveLiquidityResponse {
   closedPositions: PublicKey[];
 }
 
-/**
- * Detailed balance information for a single bin within a position
- */
+/** Detailed balance information for a single bin within a position */
 export interface PositionReserve {
   /** Amount of base token reserves in this bin */
   baseReserve: bigint;

@@ -1,17 +1,29 @@
+/**
+ * Supported network modes (devnet, mainet)
+ */
 export enum MODE {
   DEVNET = 'devnet',
   MAINNET = 'mainnet',
 }
 
+/**
+ * Shapes for distributing liquidity across a price range:
+ * - Spot: uniform distribution
+ * - Curve: bell curve centered on active bin
+ * - BidAsk: linear weighting toward edges
+ */
 export enum LiquidityShape {
-  /** Distributes liquidity uniformly across the selected price range */
   Spot = 'Spot',
-  /** Distributes liquidity in a bell curve/gaussian distribution centered around active bin */
   Curve = 'Curve',
-  /** Distributes liquidity with linear weighting - higher concentration on the edges */
   BidAsk = 'BidAsk',
 }
 
+/**
+ * Options for removing liquidity:
+ * - All: withdraw all liquidity
+ * - TokenX: withdraw only Token X
+ * - TokenY: withdraw only Token Y
+ */
 export enum RemoveLiquidityType {
   All = 'All',
   TokenX = 'TokenX',
