@@ -112,7 +112,7 @@ const onSwap = async () => {
 	const { amountIn, amountOut, priceImpact, amount, otherAmountOffset } =
 		quoteData // slippage included
 
-  const pairInfo = await liquidityBookServices.getPairAccount(new PublicKey(POOL_PARAMS.address));
+  	const pairInfo = await liquidityBookServices.getPairAccount(new PublicKey(POOL_PARAMS.address));
 
 	const transaction = await liquidityBookServices.swap({
 		amount,
