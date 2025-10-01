@@ -336,8 +336,8 @@ export class SarosDLMMPair extends SarosBaseService {
             : new BN(0);
 
         return {
-          baseReserve: BigInt(baseReserve.toString()),
-          quoteReserve: BigInt(quoteReserve.toString()),
+          reserveX: BigInt(baseReserve.toString()),
+          reserveY: BigInt(quoteReserve.toString()),
           totalSupply: BigInt(totalSupply.toString()),
           binId: firstBinId + idx,
           binPosition: binId,
@@ -346,8 +346,8 @@ export class SarosDLMMPair extends SarosBaseService {
       }
 
       return {
-        baseReserve: 0n,
-        quoteReserve: 0n,
+        reserveX: 0n,
+        reserveY: 0n,
         totalSupply: 0n,
         binId: firstBinId + idx,
         binPosition: binId,

@@ -50,7 +50,7 @@ async function runShapeTest(
     const bins = await pair.getPositionReserves(new PublicKey(position.position));
 
     await validate(
-      bins.filter((b) => b.baseReserve > 0n || b.quoteReserve > 0n),
+      bins.filter((b) => b.reserveX > 0n || b.reserveY > 0n),
       pair
     );
   } finally {
@@ -134,8 +134,8 @@ describe('Liquidity Shape Distribution', () => {
           const nearCenterY = sortedY.slice(0, Math.ceil(sortedY.length / 2));
           const farEdgeY = sortedY.slice(Math.ceil(sortedY.length / 2));
           if (nearCenterY.length && farEdgeY.length) {
-            const avgNearY = average(nearCenterY.map((b) => b.quoteReserve));
-            const avgFarY = average(farEdgeY.map((b) => b.quoteReserve));
+            const avgNearY = average(nearCenterY.map((b) => b.reserveY));
+            const avgFarY = average(farEdgeY.map((b) => b.reserveY));
             expect(avgNearY).toBeGreaterThan(avgFarY);
           }
         }
@@ -146,15 +146,15 @@ describe('Liquidity Shape Distribution', () => {
           const nearCenterX = sortedX.slice(0, Math.ceil(sortedX.length / 2));
           const farEdgeX = sortedX.slice(Math.ceil(sortedX.length / 2));
           if (nearCenterX.length && farEdgeX.length) {
-            const avgNearX = average(nearCenterX.map((b) => b.baseReserve));
-            const avgFarX = average(farEdgeX.map((b) => b.baseReserve));
+            const avgNearX = average(nearCenterX.map((b) => b.reserveX));
+            const avgFarX = average(farEdgeX.map((b) => b.reserveX));
             expect(avgNearX).toBeGreaterThan(avgFarX);
           }
         }
 
         // Center bins should have liquidity
         expect(centerBins.length).toBeGreaterThan(0);
-        expect(centerBins.some((b) => b.baseReserve > 0n || b.quoteReserve > 0n)).toBe(true);
+        expect(centerBins.some((b) => b.reserveX > 0n || b.reserveY > 0n)).toBe(true);
       }
     );
   });
@@ -177,14 +177,14 @@ describe('Liquidity Shape Distribution', () => {
         if (negativeBins.length > 1) {
           const sortedY = [...negativeBins].sort((a, b) => Math.abs(b.binPosition) - Math.abs(a.binPosition));
           const farthestY = sortedY[0]; // Most negative bin
-          expect(farthestY.quoteReserve).toBeGreaterThan(0n);
+          expect(farthestY.reserveY).toBeGreaterThan(0n);
 
           // Verify liquidity increases toward edges (inverse of Curve)
           const edgeY = sortedY.slice(0, Math.ceil(sortedY.length / 2));
           const innerY = sortedY.slice(Math.ceil(sortedY.length / 2));
           if (edgeY.length && innerY.length) {
-            const avgEdgeY = average(edgeY.map((b) => b.quoteReserve));
-            const avgInnerY = average(innerY.map((b) => b.quoteReserve));
+            const avgEdgeY = average(edgeY.map((b) => b.reserveY));
+            const avgInnerY = average(innerY.map((b) => b.reserveY));
             expect(avgEdgeY).toBeGreaterThanOrEqual(avgInnerY);
           }
         }
@@ -194,14 +194,14 @@ describe('Liquidity Shape Distribution', () => {
         if (positiveBins.length > 1) {
           const sortedX = [...positiveBins].sort((a, b) => Math.abs(b.binPosition) - Math.abs(a.binPosition));
           const farthestX = sortedX[0]; // Most positive bin
-          expect(farthestX.baseReserve).toBeGreaterThan(0n);
+          expect(farthestX.reserveX).toBeGreaterThan(0n);
 
           // Verify liquidity increases toward edges
           const edgeX = sortedX.slice(0, Math.ceil(sortedX.length / 2));
           const innerX = sortedX.slice(Math.ceil(sortedX.length / 2));
           if (edgeX.length && innerX.length) {
-            const avgEdgeX = average(edgeX.map((b) => b.baseReserve));
-            const avgInnerX = average(innerX.map((b) => b.baseReserve));
+            const avgEdgeX = average(edgeX.map((b) => b.reserveX));
+            const avgInnerX = average(innerX.map((b) => b.reserveX));
             expect(avgEdgeX).toBeGreaterThanOrEqual(avgInnerX);
           }
         }

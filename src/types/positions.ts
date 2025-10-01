@@ -59,10 +59,10 @@ export interface RemoveLiquidityResponse {
 
 /** Detailed balance information for a single bin within a position */
 export interface PositionReserve {
-  /** Amount of base token reserves in this bin */
-  baseReserve: bigint;
-  /** Amount of quote token reserves in this bin */
-  quoteReserve: bigint;
+  /** Amount of tokenX reserves in this bin */
+  reserveX: bigint;
+  /** Amount of tokenY reserves in this bin */
+  reserveY: bigint;
   /** Total liquidity supply in this bin across all positions */
   totalSupply: bigint;
   /** User's share of liquidity in this specific bin */

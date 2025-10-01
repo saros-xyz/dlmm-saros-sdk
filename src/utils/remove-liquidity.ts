@@ -22,7 +22,7 @@ export const calculateRemovedShares = (
 
   if (type === RemoveLiquidityType.TokenX) {
     removedShares = reserveXY.map((reserve: PositionReserve) => {
-      if (reserve.baseReserve > 0n && reserve.quoteReserve === 0n) {
+      if (reserve.reserveX > 0n && reserve.reserveY === 0n) {
         return new BN(reserve.liquidityShare.toString());
       }
       return new BN(0);
@@ -31,7 +31,7 @@ export const calculateRemovedShares = (
 
   if (type === RemoveLiquidityType.TokenY) {
     removedShares = reserveXY.map((reserve: PositionReserve) => {
-      if (reserve.quoteReserve > 0n && reserve.baseReserve === 0n) {
+      if (reserve.reserveY > 0n && reserve.reserveX === 0n) {
         return new BN(reserve.liquidityShare.toString());
       }
       return new BN(0);
@@ -42,8 +42,8 @@ export const calculateRemovedShares = (
     type === RemoveLiquidityType.All
       ? item.liquidityShare > 0n
       : type === RemoveLiquidityType.TokenY
-        ? item.baseReserve > 0n
-        : item.quoteReserve > 0n
+        ? item.reserveX > 0n
+        : item.reserveY > 0n
   );
 
   const shouldClosePosition =
