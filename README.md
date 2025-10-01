@@ -112,12 +112,14 @@ const onSwap = async () => {
 	const { amountIn, amountOut, priceImpact, amount, otherAmountOffset } =
 		quoteData // slippage included
 
+  const pairInfo = await liquidityBookServices.getPairAccount(new PublicKey(POOL_PARAMS.address));
+
 	const transaction = await liquidityBookServices.swap({
 		amount,
 		tokenMintX: new PublicKey(POOL_PARAMS.baseToken.mintAddress),
 		tokenMintY: new PublicKey(POOL_PARAMS.quoteToken.mintAddress),
 		otherAmountOffset,
-		hook: new PublicKey(liquidityBookServices.hooksConfig), // Optional, if you have a hook for reward
+		hook: pairInfo.hook,
 		isExactInput: true, // input amount in
 		swapForY: true, // swap from C98 to USDC
 		pair: new PublicKey(POOL_PARAMS.address),
