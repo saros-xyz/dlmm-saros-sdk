@@ -18,11 +18,19 @@ export interface SwapParams {
   tokenIn: PublicKey;
   /** Token being bought */
   tokenOut: PublicKey;
-  /** Amount to swap */
+  /**
+   * Amount to swap
+   * - Exact input: amount of tokenIn to sell
+   * - Exact output: amount of tokenOut to receive
+   */
   amount: bigint;
   /** Swap direction and execution mode */
   options: SwapOptions;
-  /** Minimum acceptable output amount (slippage protection) */
+  /**
+   * Slippage protection limit (use quote.minTokenOut)
+   * - Exact input: minimum output to accept (reverts if actual < this)
+   * - Exact output: maximum input to pay (reverts if actual > this)
+   */
   minTokenOut: bigint;
   /** Wallet executing the swap */
   payer: PublicKey;
@@ -46,15 +54,23 @@ export interface QuoteParams {
  * Swap quote information
  */
 export interface QuoteResponse {
-  /** Required input amount */
+  /** Required input amount (exact quote without slippage) */
   amountIn: bigint;
-  /** Expected output amount */
+  /** Expected output amount (exact quote without slippage) */
   amountOut: bigint;
   /** Price impact as percentage */
   priceImpact: number;
-  /** Amount with slippage applied */
+  /**
+   * Amount with slippage applied
+   * - Exact input: same as amountIn
+   * - Exact output: maximum input with slippage
+   */
   amount: bigint;
-  /** Minimum output amount with slippage */
+  /**
+   * Slippage protection limit (pass this to swap.minTokenOut)
+   * - Exact input: minimum output with slippage
+   * - Exact output: maximum input with slippage
+   */
   minTokenOut: bigint;
 }
 

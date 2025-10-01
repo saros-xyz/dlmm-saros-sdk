@@ -83,7 +83,9 @@ describe('Quote Validation (Mainnet)', () => {
       });
 
       expect(quote.amountOut).toBe(desiredOutput);
-      expect(quote.minTokenOut).toBe(desiredOutput);
+      // For exact output, minTokenOut = max input with slippage
+      expect(quote.minTokenOut).toBeGreaterThan(0n);
+      expect(quote.minTokenOut).toBeGreaterThanOrEqual(quote.amountIn);
     });
 
     it('returns valid quote for exact output Y→X', async () => {
@@ -97,7 +99,9 @@ describe('Quote Validation (Mainnet)', () => {
       });
 
       expect(quote.amountOut).toBe(desiredOutput);
-      expect(quote.minTokenOut).toBe(desiredOutput);
+      // For exact output, minTokenOut = max input with slippage
+      expect(quote.minTokenOut).toBeGreaterThan(0n);
+      expect(quote.minTokenOut).toBeGreaterThanOrEqual(quote.amountIn);
     });
   });
 

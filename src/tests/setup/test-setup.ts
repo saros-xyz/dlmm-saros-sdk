@@ -1,41 +1,17 @@
-import { TestWalletSetup } from './wallet-setup';
-import { createTokensIfNeeded } from './token-creator';
-import { Connection } from '@solana/web3.js';
+// vitest-setup.ts
+import { beforeAll } from 'vitest';
+import { setupTestEnvironment, TestEnvironment } from './environment';
 
-let setupPromise: Promise<void> | null = null;
+declare global {
+  // Make env available across all test files
+  var testEnv: TestEnvironment;
+}
 
-async function setupTestEnvironment() {
-  // Only setup once per test run
-  if ((global as any).testWallet) {
-    return;
-  }
-
+// Boot once for all tests
+beforeAll(async () => {
   console.log('🔧 Setting up test environment...');
-
-  const connection = new Connection(process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com', 'confirmed');
-  const walletSetup = new TestWalletSetup({}, connection);
-  // Check if tokens exist, create them if not
-  await createTokensIfNeeded(walletSetup);
-
-  // Setup wallet and load tokens
-  const testWallet = await walletSetup.setup();
-
-  // Make wallet available globally
-  (global as any).testWallet = testWallet;
-  (global as any).testConnection = walletSetup.getConnection();
-  (global as any).testWalletSetup = walletSetup;
-
+  global.testEnv = await setupTestEnvironment();
   console.log(
-    `✅ Ready: ${testWallet.address} | ${testWallet.tokens.length} tokens | ${testWallet.balance.toFixed(2)} SOL`
+    `✅ Ready: ${global.testEnv.wallet.address} | ${global.testEnv.token.symbol} | balance: ${global.testEnv.wallet.balance.toFixed(2)} SOL`
   );
-}
-
-export async function ensureTestEnvironment() {
-  if (!setupPromise) {
-    setupPromise = setupTestEnvironment();
-  }
-  return setupPromise;
-}
-
-// Run the setup immediately when this module is imported
-setupPromise = setupTestEnvironment();
+});

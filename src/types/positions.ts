@@ -68,26 +68,6 @@ export interface RemoveLiquidityResponse {
 }
 
 /**
- * Parameters for retrieving detailed bin-by-bin balances of a position
- */
-export interface GetPositionReservesParams {
-  /** The position account address (derived from position mint) */
-  position: PublicKey;
-  /** The wallet that owns the position */
-  payer: PublicKey;
-}
-
-/**
- * Parameters for retrieving bin array information from a pair
- */
-export interface GetBinArrayReservesParams {
-  /** The bin array index to fetch */
-  binArrayIndex: number;
-  /** The wallet requesting the information (used for transaction context if needed) */
-  payer: PublicKey;
-}
-
-/**
  * Detailed balance information for a single bin within a position
  */
 export interface PositionReserve {

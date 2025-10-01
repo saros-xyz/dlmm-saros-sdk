@@ -3,17 +3,12 @@ import { SarosDLMM } from '../../services';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { LiquidityShape, MODE } from '../../constants';
 import {
-  IntegrationTestSetup,
-  setupIntegrationTest,
-  createTestKeypair,
   waitForConfirmation,
   cleanupLiquidity,
   getTokenBalance,
-} from '../setup/test-helpers';
-import { ensureTestEnvironment } from '../setup/test-setup';
+} from '../setup/test-util';
 import { SarosDLMMPair } from '../../services/pair';
 
-let testSetup: IntegrationTestSetup;
 let sdk: SarosDLMM;
 let pair: SarosDLMMPair;
 let positionKeypair: Keypair;
@@ -21,59 +16,58 @@ let tokenX: PublicKey;
 let tokenY: PublicKey;
 
 beforeAll(async () => {
-  await ensureTestEnvironment();
-  testSetup = setupIntegrationTest();
-  sdk = new SarosDLMM({ mode: MODE.DEVNET, connection: testSetup.connection });
+      const { wallet, pool, connection } = global.testEnv;
 
-  const { testWallet, connection, testPool } = testSetup;
-  const pairAddress = new PublicKey(testPool.pair);
+  sdk = new SarosDLMM({ mode: MODE.DEVNET, connection: connection });
+
+  const pairAddress = new PublicKey(pool.pair);
 
   pair = await sdk.getPair(pairAddress);
-  positionKeypair = createTestKeypair();
+  positionKeypair = new Keypair();
 
-  tokenX = new PublicKey(testPool.tokenX);
-  tokenY = new PublicKey(testPool.tokenY);
+  tokenX = new PublicKey(pool.tokenX);
+  tokenY = new PublicKey(pool.tokenY);
 
   // Create large position for multiple swaps
   const createTx = await pair.createPosition({
-    binRange: [-10, 10],
-    payer: testWallet.keypair.publicKey,
+    binRange: [-5, 5],
+    payer: wallet.keypair.publicKey,
     positionMint: positionKeypair.publicKey,
   });
   await waitForConfirmation(
-    await connection.sendTransaction(createTx, [testWallet.keypair, positionKeypair]),
+    await connection.sendTransaction(createTx, [wallet.keypair, positionKeypair]),
     connection
   );
 
   // Add substantial liquidity
-  const baseAmount = 100_000_000_000n; // 100 tokens
-  const quoteAmount = 100_000_000n; // 100 tokens
+  const baseAmount  = 100_000_000_000_000n; // 100,000 tokens (9 decimals)
+  const quoteAmount = 100_000_000n; // .1 tokens
   const addTx = await pair.addLiquidityByShape({
     positionMint: positionKeypair.publicKey,
-    payer: testWallet.keypair.publicKey,
+    payer: wallet.keypair.publicKey,
     amountTokenX: baseAmount,
     amountTokenY: quoteAmount,
     liquidityShape: LiquidityShape.Spot,
-    binRange: [-10, 10],
+    binRange: [-5, 5],
   });
-  await waitForConfirmation(await connection.sendTransaction(addTx, [testWallet.keypair]), connection);
+  await waitForConfirmation(await connection.sendTransaction(addTx, [wallet.keypair]), connection);
 
   console.log('✅ Test position created with liquidity');
 });
 
 afterAll(async () => {
-  const { testWallet, connection } = testSetup;
-  await cleanupLiquidity(pair, positionKeypair, testWallet, connection);
+    const { wallet, connection } = global.testEnv;
+  await cleanupLiquidity(pair, positionKeypair, wallet, connection);
   console.log('✅ Test position cleaned up');
 });
 
 describe('Swap Integration Tests', () => {
   describe('Exact Input Swaps', () => {
     it('performs X→Y swap with exact input', async () => {
-      const { testWallet, connection } = testSetup;
+    const { wallet, connection } = global.testEnv;
 
-      const balBeforeBase = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenX);
-      const balBeforeQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenY);
+      const balBeforeBase = await getTokenBalance(connection, wallet.keypair.publicKey, tokenX);
+      const balBeforeQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const amountIn = 1_000_000_000n; // 1 token
       const quote = await pair.getQuote({
@@ -90,13 +84,13 @@ describe('Swap Integration Tests', () => {
         amount: amountIn,
         options: { swapForY: true, isExactInput: true },
         minTokenOut: quote.minTokenOut,
-        payer: testWallet.keypair.publicKey,
+        payer: wallet.keypair.publicKey,
       });
 
-      await waitForConfirmation(await connection.sendTransaction(tx, [testWallet.keypair]), connection);
+      await waitForConfirmation(await connection.sendTransaction(tx, [wallet.keypair]), connection);
 
-      const balAfterBase = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenX);
-      const balAfterQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenY);
+      const balAfterBase = await getTokenBalance(connection, wallet.keypair.publicKey, tokenX);
+      const balAfterQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const spentBase = balBeforeBase - balAfterBase;
       const gainedQuote = balAfterQuote - balBeforeQuote;
@@ -109,10 +103,10 @@ describe('Swap Integration Tests', () => {
     });
 
     it('performs Y→X swap with exact input', async () => {
-      const { testWallet, connection } = testSetup;
+    const { wallet, connection } = global.testEnv;
 
-      const balBeforeBase = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenX);
-      const balBeforeQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenY);
+      const balBeforeBase = await getTokenBalance(connection, wallet.keypair.publicKey, tokenX);
+      const balBeforeQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const amountIn = 1_000_000n; // 1 quote token
       const quote = await pair.getQuote({
@@ -129,13 +123,13 @@ describe('Swap Integration Tests', () => {
         amount: amountIn,
         options: { swapForY: false, isExactInput: true },
         minTokenOut: quote.minTokenOut,
-        payer: testWallet.keypair.publicKey,
+        payer: wallet.keypair.publicKey,
       });
 
-      await waitForConfirmation(await connection.sendTransaction(tx, [testWallet.keypair]), connection);
+      await waitForConfirmation(await connection.sendTransaction(tx, [wallet.keypair]), connection);
 
-      const balAfterBase = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenX);
-      const balAfterQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenY);
+      const balAfterBase = await getTokenBalance(connection, wallet.keypair.publicKey, tokenX);
+      const balAfterQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const spentQuote = balBeforeQuote - balAfterQuote;
       const gainedBase = balAfterBase - balBeforeBase;
@@ -149,10 +143,10 @@ describe('Swap Integration Tests', () => {
 
   describe('Exact Output Swaps', () => {
     it('performs X→Y swap with exact output', async () => {
-      const { testWallet, connection } = testSetup;
+    const { wallet, connection } = global.testEnv;
 
-      const balBeforeBase = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenX);
-      const balBeforeQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenY);
+      const balBeforeBase = await getTokenBalance(connection, wallet.keypair.publicKey, tokenX);
+      const balBeforeQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const desiredOutput = 500_000n; // Want exactly 0.5 quote tokens
       const quote = await pair.getQuote({
@@ -169,13 +163,13 @@ describe('Swap Integration Tests', () => {
         amount: desiredOutput,
         options: { swapForY: true, isExactInput: false },
         minTokenOut: quote.minTokenOut,
-        payer: testWallet.keypair.publicKey,
+        payer: wallet.keypair.publicKey,
       });
 
-      await waitForConfirmation(await connection.sendTransaction(tx, [testWallet.keypair]), connection);
+      await waitForConfirmation(await connection.sendTransaction(tx, [wallet.keypair]), connection);
 
-      const balAfterBase = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenX);
-      const balAfterQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenY);
+      const balAfterBase = await getTokenBalance(connection, wallet.keypair.publicKey, tokenX);
+      const balAfterQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const spentBase = balBeforeBase - balAfterBase;
       const gainedQuote = balAfterQuote - balBeforeQuote;
@@ -186,10 +180,10 @@ describe('Swap Integration Tests', () => {
     });
 
     it('performs Y→X swap with exact output', async () => {
-      const { testWallet, connection } = testSetup;
+    const { wallet, connection } = global.testEnv;
 
-      const balBeforeBase = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenX);
-      const balBeforeQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenY);
+      const balBeforeBase = await getTokenBalance(connection, wallet.keypair.publicKey, tokenX);
+      const balBeforeQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const desiredOutput = 500_000_000n; // Want exactly 0.5 base tokens
       const quote = await pair.getQuote({
@@ -206,13 +200,13 @@ describe('Swap Integration Tests', () => {
         amount: desiredOutput,
         options: { swapForY: false, isExactInput: false },
         minTokenOut: quote.minTokenOut,
-        payer: testWallet.keypair.publicKey,
+        payer: wallet.keypair.publicKey,
       });
 
-      await waitForConfirmation(await connection.sendTransaction(tx, [testWallet.keypair]), connection);
+      await waitForConfirmation(await connection.sendTransaction(tx, [wallet.keypair]), connection);
 
-      const balAfterBase = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenX);
-      const balAfterQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenY);
+      const balAfterBase = await getTokenBalance(connection, wallet.keypair.publicKey, tokenX);
+      const balAfterQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const spentQuote = balBeforeQuote - balAfterQuote;
       const gainedBase = balAfterBase - balBeforeBase;
@@ -225,9 +219,9 @@ describe('Swap Integration Tests', () => {
 
   describe('Quote Accuracy', () => {
     it('actual swap results match quote predictions', async () => {
-      const { testWallet, connection } = testSetup;
+    const { wallet, connection } = global.testEnv;
 
-      const balBeforeQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenY);
+      const balBeforeQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const amountIn = 2_000_000_000n;
       const quote = await pair.getQuote({
@@ -242,12 +236,12 @@ describe('Swap Integration Tests', () => {
         amount: amountIn,
         options: { swapForY: true, isExactInput: true },
         minTokenOut: quote.minTokenOut,
-        payer: testWallet.keypair.publicKey,
+        payer: wallet.keypair.publicKey,
       });
 
-      await waitForConfirmation(await connection.sendTransaction(tx, [testWallet.keypair]), connection);
+      await waitForConfirmation(await connection.sendTransaction(tx, [wallet.keypair]), connection);
 
-      const balAfterQuote = await getTokenBalance(connection, testWallet.keypair.publicKey, tokenY);
+      const balAfterQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const gainedQuote = balAfterQuote - balBeforeQuote;
 

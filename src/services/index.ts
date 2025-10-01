@@ -3,13 +3,13 @@ import bs58 from 'bs58';
 import { utils } from '@coral-xyz/anchor';
 import { SarosBaseService, SarosConfig } from './base/index';
 import { SarosDLMMPair } from './pair';
-import { BinArrays } from '../utils/bin-arrays';
 import { CreatePairParams, CreatePairResponse } from '../types';
 import { getIdFromPrice } from '../utils/price';
 import { extractPairFromTx } from '../utils/transaction';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
 import { SarosDLMMError } from '../utils/errors';
 import { deriveBinStepConfigPDA, deriveQuoteAssetBadgePDA } from '../utils/pda';
+import { calculateBinArrayIndex, getBinArrayAddresses, initializeMultipleBinArrays } from '../utils/bin-arrays';
 
 export class SarosDLMM extends SarosBaseService {
   constructor(config: SarosConfig) {
@@ -51,8 +51,8 @@ export class SarosDLMM extends SarosBaseService {
       const quoteAssetBadge = deriveQuoteAssetBadgePDA(this.lbConfig, tokenYMint, this.lbProgram.programId);
 
       // Calculate bin array addresses
-      const binArrayIndex = BinArrays.calculateBinArrayIndex(id);
-      const { binArrayLower, binArrayUpper } = BinArrays.getBinArrayAddresses(
+      const binArrayIndex = calculateBinArrayIndex(id);
+      const { binArrayLower, binArrayUpper } = getBinArrayAddresses(
         binArrayIndex,
         pair,
         this.lbProgram.programId
@@ -75,7 +75,7 @@ export class SarosDLMM extends SarosBaseService {
       tx.add(initializePairIx);
 
       // Initialize bin arrays
-      await BinArrays.initializeMultipleBinArrays(
+      await initializeMultipleBinArrays(
         [binArrayIndex, binArrayIndex + 1],
         pair,
         payer,

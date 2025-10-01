@@ -1,11 +1,11 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { PublicKey } from '@solana/web3.js';
-import { IntegrationTestSetup, setupIntegrationTest, cleanupLiquidity } from '../setup/test-helpers';
-import { ensureTestEnvironment } from '../setup/test-setup';
+import { cleanupLiquidity } from '../setup/test-util';
+import { MODE } from '../../constants';
+import { SarosDLMM } from '../../services';
 // Batch cleanup for reclaim stray positions on devnet after running tests
 // must uncomment line in @vitest.config.ts and then run 'pnpm test:cleanup'
 
-let testSetup: IntegrationTestSetup;
 const RATE_LIMIT_DELAY = 150;
 const BATCH_SIZE = 10;
 
@@ -14,9 +14,11 @@ async function sleep(ms: number) {
 }
 
 async function getAllUserPositions(pairAddress: PublicKey, userPublicKey: PublicKey) {
-  const { lbServices } = testSetup;
+  const { connection } = global.testEnv;
 
-  const pairInstance = await lbServices.getPair(pairAddress);
+  const sdk = new SarosDLMM({ mode: MODE.DEVNET, connection });
+
+  const pairInstance = await sdk.getPair(pairAddress);
   const userPositions = await pairInstance.getUserPositions({
     payer: userPublicKey,
   });
@@ -30,7 +32,7 @@ async function getAllUserPositions(pairAddress: PublicKey, userPublicKey: Public
 }
 
 async function batchRemoveLiquidity(pairInstance: any, positions: Array<{ positionMint: PublicKey }>) {
-  const { testWallet, connection } = testSetup;
+  const { wallet, connection } = global.testEnv;
   const results = {
     successful: 0,
     failed: 0,
@@ -47,7 +49,7 @@ async function batchRemoveLiquidity(pairInstance: any, positions: Array<{ positi
     for (const { positionMint } of batch) {
       try {
         console.log(`  Processing position ${positionMint.toString().slice(0, 8)}...`);
-        await cleanupLiquidity(pairInstance, { publicKey: positionMint } as any, testWallet, connection);
+        await cleanupLiquidity(pairInstance, { publicKey: positionMint } as any, wallet, connection);
 
         results.successful++;
         console.log(`  ✅ Success`);
@@ -71,18 +73,13 @@ async function batchRemoveLiquidity(pairInstance: any, positions: Array<{ positi
   return results;
 }
 
-beforeAll(async () => {
-  await ensureTestEnvironment();
-  testSetup = setupIntegrationTest();
-});
-
 describe('Batch Position Closing', () => {
   it('closes all user positions in the test pool to reclaim devnet SOL', async () => {
-    const { testWallet, testPool } = testSetup;
-    const pairAddress = new PublicKey(testPool.pair);
+    const { wallet, pool } = global.testEnv;
+    const pairAddress = new PublicKey(pool.pair);
 
-    console.log(`\n🔍 Scanning pool ${testPool.pair.slice(0, 8)}...`);
-    const { pairInstance, positions } = await getAllUserPositions(pairAddress, testWallet.keypair.publicKey);
+    console.log(`\n🔍 Scanning pool ${pool.pair.toString().slice(0, 8)}...`);
+    const { pairInstance, positions } = await getAllUserPositions(pairAddress, wallet.keypair.publicKey);
 
     if (positions.length === 0) {
       console.log('✨ No positions found - nothing to clean up');

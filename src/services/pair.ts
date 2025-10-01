@@ -2,7 +2,7 @@ import { BN } from '@coral-xyz/anchor';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { SarosBaseService, SarosConfig } from './base/index';
-import { BinArrays } from '../utils/bin-arrays';
+import { calculateBinArrayIndex, getBinArrayWithAdjacent, getLiquidityBinArrays, getQuoteBinArrays, getRemovalBinArrays, getSwapBinArrays } from '../utils/bin-arrays';
 import { getFeeAmount, getFeeForAmount, getFeeMetadata, getProtocolFee, getTotalFee } from '../utils/fees';
 import { Volatility } from '../utils/volatility';
 import { BinArrayRange } from '../utils/bin-range';
@@ -19,8 +19,6 @@ import {
   QuoteParams,
   SwapParams,
   GetMaxAmountOutWithFeeParams,
-  GetBinArrayReservesParams,
-  GetPositionReservesParams,
   CreatePositionParams,
   AddLiquidityByShapeParams,
   RemoveLiquidityParams,
@@ -167,7 +165,10 @@ export class SarosDLMMPair extends SarosBaseService {
         amountIn: amountIn,
         amountOut: amountOut,
         amount: maxAmountIn,
-        minTokenOut: isExactInput ? minAmountOut : amountOut,
+        // minTokenOut serves as slippage protection:
+        // - Exact input: minimum output willing to accept
+        // - Exact output: maximum input willing to pay
+        minTokenOut: isExactInput ? minAmountOut : maxAmountIn,
         priceImpact: priceImpact,
       };
     } catch (error) {
@@ -177,27 +178,45 @@ export class SarosDLMMPair extends SarosBaseService {
 
   /**
    * Execute a swap transaction on this pair
+   *
+   * @example
+   * // Always get a quote first, then pass quote.minTokenOut to swap
+   * const quote = await pair.getQuote({
+   *   amount: 1_000_000n,
+   *   options: { swapForY: true, isExactInput: true },
+   *   slippage: 1
+   * });
+   *
+   * const tx = await pair.swap({
+   *   tokenIn: tokenX,
+   *   tokenOut: tokenY,
+   *   amount: 1_000_000n,
+   *   options: { swapForY: true, isExactInput: true },
+   *   minTokenOut: quote.minTokenOut, // <- Slippage protection
+   *   payer: wallet.publicKey
+   * });
    */
   public async swap(params: SwapParams): Promise<Transaction> {
     const {
-      tokenIn: tokenMintX,
-      tokenOut: tokenMintY,
       amount,
-      minTokenOut: otherAmountOffset,
+      minTokenOut,
       options: { swapForY, isExactInput },
       payer,
       hook,
     } = params;
 
     if (amount <= 0n) throw SarosDLMMError.ZeroAmount;
-    if (otherAmountOffset < 0n) throw SarosDLMMError.ZeroAmount;
+    if (minTokenOut < 0n) throw SarosDLMMError.ZeroAmount;
 
     const tokenVaultX = this.tokenVaultX;
     const tokenVaultY = this.tokenVaultY;
+    const tokenMintX = this.pairAccount.tokenMintX;
+    const tokenMintY = this.pairAccount.tokenMintY;
+
     // Use provided hook or default to instance hook config
     const hookConfig = hook || this.hooksConfig;
 
-    const { binArrayLower, binArrayUpper } = await BinArrays.getSwapBinArrays(
+    const { binArrayLower, binArrayUpper } = await getSwapBinArrays(
       this.pairAccount.activeId,
       this.pairAddress,
       this.connection,
@@ -219,10 +238,13 @@ export class SarosDLMMPair extends SarosBaseService {
       isPreSwap: true,
     });
 
+    // minTokenOut is the slippage protection:
+    // - Exact input: minimum output to accept
+    // - Exact output: maximum input to pay
     const swapInstructions = await this.lbProgram.methods
       .swap(
         new BN(amount.toString()),
-        new BN(otherAmountOffset.toString()),
+        new BN(minTokenOut.toString()),
         swapForY,
         isExactInput ? { exactInput: {} } : { exactOutput: {} }
       )
@@ -234,8 +256,8 @@ export class SarosDLMMPair extends SarosBaseService {
         tokenVaultY,
         userVaultX,
         userVaultY,
-        tokenMintX: this.pairAccount.tokenMintX,
-        tokenMintY: this.pairAccount.tokenMintY,
+        tokenMintX,
+        tokenMintY,
         tokenProgramX: this.tokenProgramX,
         tokenProgramY: this.tokenProgramY,
         user: payer,
@@ -264,14 +286,13 @@ export class SarosDLMMPair extends SarosBaseService {
    */
   public async getMaxAmountOutWithFee(params: GetMaxAmountOutWithFeeParams): Promise<GetMaxAmountOutWithFeeResponse> {
     try {
-      const { amount, swapForY = false, decimalTokenX: decimalBase = 9, decimalTokenY: decimalQuote = 9 } = params;
+      const { amount, swapForY = false, decimalTokenX = 9, decimalTokenY = 9 } = params;
       if (amount <= 0n) throw SarosDLMMError.ZeroAmount;
 
       const { activeId, binStep } = this.pairAccount;
 
       const feePrice = getTotalFee(this.pairAccount, this.volatilityManager.getVolatilityAccumulator());
-      const activePrice = getPriceFromId(binStep, activeId, 9, 9);
-      const price = getPriceFromId(binStep, activeId, decimalBase, decimalQuote);
+      const activePrice = getPriceFromId(binStep, activeId, decimalTokenX, decimalTokenY);
 
       const feeAmount = getFeeAmount(amount, feePrice);
       const amountAfterFee = amount - feeAmount;
@@ -279,7 +300,7 @@ export class SarosDLMMPair extends SarosBaseService {
         ? (amountAfterFee * BigInt(activePrice)) >> BigInt(SCALE_OFFSET)
         : (amountAfterFee << BigInt(SCALE_OFFSET)) / BigInt(activePrice);
 
-      return { maxAmountOut, price };
+      return { maxAmountOut, price: activePrice };
     } catch {
       return { maxAmountOut: 0n, price: 0 };
     }
@@ -291,7 +312,7 @@ export class SarosDLMMPair extends SarosBaseService {
       options: { swapForY, isExactInput },
     } = params;
     try {
-      const { binArrays } = await BinArrays.getQuoteBinArrays(
+      const { binArrays } = await getQuoteBinArrays(
         this.pairAccount.activeId,
         this.pairAddress,
         this.lbProgram
@@ -457,7 +478,7 @@ export class SarosDLMMPair extends SarosBaseService {
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
     const amountOut = amountOutLeft > binReserveOutBigInt ? binReserveOutBigInt : amountOutLeft;
 
-    const price = getPriceFromId(binStep, activeId, 9, 9);
+    const price = getPriceFromId(binStep, activeId, this.metadata.tokenX.decimals, this.metadata.tokenY.decimals);
     const priceScaled = BigInt(Math.round(Number(price) * Math.pow(2, SCALE_OFFSET)));
 
     const amountInWithoutFee = getAmountInByPrice(amountOut, priceScaled, swapForY, 'up');
@@ -494,7 +515,7 @@ export class SarosDLMMPair extends SarosBaseService {
 
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
 
-    const price = getPriceFromId(binStep, activeId, 9, 9);
+    const price = getPriceFromId(binStep, activeId, this.metadata.tokenX.decimals, this.metadata.tokenY.decimals);
     const priceScaled = BigInt(Math.round(Number(price) * Math.pow(2, SCALE_OFFSET)));
 
     let maxAmountIn = getAmountInByPrice(binReserveOutBigInt, priceScaled, swapForY, 'up');
@@ -548,25 +569,49 @@ export class SarosDLMMPair extends SarosBaseService {
   /**
    * Get bin array information for this pair
    */
-  public async getBinArrayReserves(params: GetBinArrayReservesParams): Promise<BinArray> {
-    const { binArrayIndex } = params;
+  public async getBinArrayReserves(binArrayIndex: number): Promise<BinArray> {
     try {
-      return await BinArrays.getBinArrayWithAdjacent(binArrayIndex, this.pairAddress, this.lbProgram);
+      return await getBinArrayWithAdjacent(binArrayIndex, this.pairAddress, this.lbProgram);
     } catch (_error) {
       throw SarosDLMMError.BinArrayInfoFailed;
     }
   }
 
   /**
+   * Get reserves around the active bin (pool-level).
+   */
+  public async getActiveReserves(range: number = 1) {
+    const { activeId } = this.pairAccount;
+    const binArrayIndex = calculateBinArrayIndex(activeId);
+    const { bins, index } = await this.getBinArrayReserves(binArrayIndex);
+
+    const firstBinIndex = index * BIN_ARRAY_SIZE;
+
+    return Array.from({ length: range * 2 + 1 }, (_, i) => {
+      const binId = activeId - range + i;
+      const relativeIdx = binId - firstBinIndex;
+      const bin = bins[relativeIdx];
+
+      return bin
+        ? {
+            binId,
+            reserveX: BigInt(bin.reserveX.toString()),
+            reserveY: BigInt(bin.reserveY.toString()),
+            totalSupply: BigInt(bin.totalSupply.toString()),
+          }
+        : null;
+    }).filter(Boolean);
+  }
+
+  /**
    * Get detailed token balances for each bin in a position
    */
-  public async getPositionReserves(params: GetPositionReservesParams): Promise<PositionReserve[]> {
-    const { position, payer } = params;
+  public async getPositionReserves(position: PublicKey): Promise<PositionReserve[]> {
     const positionInfo = await this.getPositionAccount(position);
     const firstBinId = positionInfo.lowerBinId;
-    const binArrayIndex = BinArrays.calculateBinArrayIndex(firstBinId);
+    const binArrayIndex = calculateBinArrayIndex(firstBinId);
 
-    const { bins, index } = await this.getBinArrayReserves({ binArrayIndex, payer });
+    const { bins, index } = await this.getBinArrayReserves(binArrayIndex);
 
     const firstBinIndex = index * BIN_ARRAY_SIZE;
     const binIds = Array.from(
@@ -624,7 +669,7 @@ export class SarosDLMMPair extends SarosBaseService {
 
     const transaction = new Transaction();
 
-    await BinArrays.getLiquidityBinArrays(
+    await getLiquidityBinArrays(
       lowerBinId,
       upperBinId,
       this.pairAddress,
@@ -686,12 +731,15 @@ export class SarosDLMMPair extends SarosBaseService {
     const lowerBinId = this.pairAccount.activeId + binRange[0];
     const upperBinId = this.pairAccount.activeId + binRange[1];
 
-    const { binArrayLower, binArrayUpper } = await BinArrays.getLiquidityBinArrays(
+    const { binArrayLower, binArrayUpper } = await getLiquidityBinArrays(
       lowerBinId,
       upperBinId,
       this.pairAddress,
       this.connection,
-      this.lbProgram.programId
+      this.lbProgram.programId,
+      tx,
+      payer,
+      this.lbProgram
     );
 
     if (this.pairAccount.tokenMintY.equals(WRAP_SOL_PUBKEY) || this.pairAccount.tokenMintX.equals(WRAP_SOL_PUBKEY)) {
@@ -770,10 +818,10 @@ export class SarosDLMMPair extends SarosBaseService {
       positionMints.map(async (positionMint) => {
         const position = derivePositionPDA(positionMint, this.lbProgram.programId);
         const positionAccount = await this.getPositionAccount(position);
-        const binArrayIndex = BinArrays.calculateBinArrayIndex(positionAccount.lowerBinId);
-        const { index } = await this.getBinArrayReserves({ binArrayIndex, payer });
+        const binArrayIndex = calculateBinArrayIndex(positionAccount.lowerBinId);
+        const { index } = await this.getBinArrayReserves(binArrayIndex);
 
-        const { binArrayLower, binArrayUpper, hookBinArrayLower, hookBinArrayUpper } = BinArrays.getRemovalBinArrays(
+        const { binArrayLower, binArrayUpper, hookBinArrayLower, hookBinArrayUpper } = getRemovalBinArrays(
           index,
           this.pairAddress,
           hook,
@@ -785,7 +833,7 @@ export class SarosDLMMPair extends SarosBaseService {
         await addOptimalComputeBudget(tx, this.connection, this.bufferGas);
 
         const positionTokenAccount = derivePositionAccount(positionMint, payer);
-        const reserveXY = await this.getPositionReserves({ position, payer });
+        const reserveXY = await this.getPositionReserves(position);
         const hookPosition = derivePositionHookPDA(hook, position, this.hooksProgram.programId);
 
         const { removedShares, shouldClosePosition } = calculateRemovedShares(

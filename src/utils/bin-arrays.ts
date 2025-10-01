@@ -4,8 +4,8 @@ import { BIN_ARRAY_SIZE } from '../constants';
 import { SarosDLMMError } from './errors';
 import { deriveBinArrayHookPDA, deriveBinArrayPDA } from './pda';
 
-export class BinArrays {
-  public static calculateBinArrayIndex(binId: number): number {
+
+  export function calculateBinArrayIndex(binId: number): number {
     return Math.floor(binId / BIN_ARRAY_SIZE);
   }
 
@@ -15,8 +15,8 @@ export class BinArrays {
    * @param activeId current active bin id
    * @param arrayRange number of bin arrays to include (default 1 = include the active + 1 neighbor each side)
    */
-  public static calculateBinArrayRange(activeId: number, arrayRange: number = 1): number[] {
-    const activeIndex = this.calculateBinArrayIndex(activeId);
+  export function calculateBinArrayRange(activeId: number, arrayRange: number = 1): number[] {
+    const activeIndex = calculateBinArrayIndex(activeId);
     const indices: number[] = [];
 
     for (let i = -Math.floor(arrayRange / 2); i <= Math.floor(arrayRange / 2); i++) {
@@ -28,7 +28,7 @@ export class BinArrays {
   /**
    * Get adjacent bin array addresses (lower and upper) in one call
    */
-  public static getBinArrayAddresses(
+  export function getBinArrayAddresses(
     binArrayIndex: number,
     pairAddress: PublicKey,
     programId: PublicKey
@@ -42,7 +42,7 @@ export class BinArrays {
   /**
    * Get bin array reserves with adjacent fallback logic
    */
-  public static async getBinArrayWithAdjacent(
+  export async function getBinArrayWithAdjacent(
     binArrayIndex: number,
     pairAddress: PublicKey,
     lbProgram: any
@@ -68,13 +68,13 @@ export class BinArrays {
   /**
    * Get valid bin arrays for swap operations
    */
-  public static async getSwapBinArrays(
+  export async function getSwapBinArrays(
     activeId: number,
     pairAddress: PublicKey,
     connection: Connection,
     programId: PublicKey
   ): Promise<{ binArrayLower: PublicKey; binArrayUpper: PublicKey }> {
-    const currentBinArrayIndex = this.calculateBinArrayIndex(activeId);
+    const currentBinArrayIndex = calculateBinArrayIndex(activeId);
     const surroundingIndexes = [currentBinArrayIndex - 1, currentBinArrayIndex, currentBinArrayIndex + 1];
 
     const binArrayAddresses = surroundingIndexes.map((idx) => deriveBinArrayPDA(idx, pairAddress, programId));
@@ -115,7 +115,7 @@ export class BinArrays {
   /**
    * Get bin arrays for liquidity operations with initialization support
    */
-  public static async getLiquidityBinArrays(
+  export async function getLiquidityBinArrays(
     lowerBinId: number,
     upperBinId: number,
     pairAddress: PublicKey,
@@ -125,8 +125,8 @@ export class BinArrays {
     payer?: PublicKey,
     lbProgram?: any
   ): Promise<{ binArrayLower: PublicKey; binArrayUpper: PublicKey }> {
-    const lowerIndex = this.calculateBinArrayIndex(lowerBinId);
-    const upperIndex = this.calculateBinArrayIndex(upperBinId);
+    const lowerIndex = calculateBinArrayIndex(lowerBinId);
+    const upperIndex = calculateBinArrayIndex(upperBinId);
 
     const binArrayLower = deriveBinArrayPDA(lowerIndex, pairAddress, programId);
     const binArrayUpper = deriveBinArrayPDA(upperIndex, pairAddress, programId);
@@ -153,12 +153,12 @@ export class BinArrays {
   /**
    * Get bin arrays for quote calculations with fallback handling
    */
-  public static async getQuoteBinArrays(
+  export async function getQuoteBinArrays(
     activeId: number,
     pairAddress: PublicKey,
     lbProgram: any
   ): Promise<{ binArrays: any[]; binArrayIndexes: number[] }> {
-    const currentBinArrayIndex = this.calculateBinArrayIndex(activeId);
+    const currentBinArrayIndex = calculateBinArrayIndex(activeId);
     const binArrayIndexes = [currentBinArrayIndex - 1, currentBinArrayIndex, currentBinArrayIndex + 1];
 
     const binArrayAddresses = binArrayIndexes.map((idx) => deriveBinArrayPDA(idx, pairAddress, lbProgram.programId));
@@ -179,7 +179,7 @@ export class BinArrays {
    * Get bin arrays and hook bin arrays for liquidity removal
    * Requires bin_array_lower and bin_array_upper to be distinct accounts.
    */
-  public static getRemovalBinArrays(
+  export function getRemovalBinArrays(
     index: number,
     pairAddress: PublicKey,
     hook: PublicKey,
@@ -202,7 +202,7 @@ export class BinArrays {
   /**
    * Initialize multiple bin arrays
    */
-  public static async initializeMultipleBinArrays(
+  export async function initializeMultipleBinArrays(
     binArrayIndexes: number[],
     pairAddress: PublicKey,
     payer: PublicKey,
@@ -233,4 +233,4 @@ export class BinArrays {
       SarosDLMMError.handleError(error, SarosDLMMError.BinArrayInfoFailed);
     }
   }
-}
+

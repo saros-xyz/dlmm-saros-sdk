@@ -36,9 +36,7 @@ export type {
   PositionAccount,
   GetMaxAmountOutWithFeeParams,
   GetMaxAmountOutWithFeeResponse,
-  GetPositionReservesParams,
   PositionReserve,
-  GetBinArrayReservesParams,
   BinArray,
   Bin,
 } from './types';
