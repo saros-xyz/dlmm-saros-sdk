@@ -22,8 +22,8 @@ export class SarosDLMM extends SarosBaseService {
   public async createPair(params: CreatePairParams): Promise<CreatePairResponse> {
     const { tokenX, tokenY, binStep, ratePrice, payer } = params;
 
-    if (ratePrice <= 0) throw SarosDLMMError.InvalidPrice;
-    if (binStep < 1 || binStep > 10000) throw SarosDLMMError.InvalidBinStep;
+    if (ratePrice <= 0) throw SarosDLMMError.InvalidPrice();
+    if (binStep < 1 || binStep > 10000) throw SarosDLMMError.InvalidBinStep();
 
     try {
       const tokenXMint = tokenX.mintAddress;
@@ -96,7 +96,7 @@ export class SarosDLMM extends SarosBaseService {
         tokenY: tokenYMint,
       };
     } catch (error) {
-      SarosDLMMError.handleError(error, SarosDLMMError.PairCreationFailed);
+      SarosDLMMError.handleError(error, SarosDLMMError.PairCreationFailed());
     }
   }
 
@@ -119,25 +119,22 @@ export class SarosDLMM extends SarosBaseService {
   /**
    * Get list of all Saros DLMM pair addresses
    */
-  public async getAllPairAddresses(): Promise<string[]> {
-    try {
-      const programId = this.getDexProgramId();
-      const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
-      if (!pairAccount) throw SarosDLMMError.NoPairFound;
+ public async getAllPairAddresses(): Promise<string[]> {
+  const programId = this.getDexProgramId();
+  const pairAccount = LiquidityBookIDL.accounts.find((acc) => acc.name === 'Pair');
+  if (!pairAccount) throw SarosDLMMError.NoPairFound();
 
-      const accounts = await this.connection.getProgramAccounts(new PublicKey(programId), {
-        filters: [{ memcmp: { offset: 0, bytes: bs58.encode(pairAccount.discriminator) } }],
-      });
+  const accounts = await this.connection.getProgramAccounts(new PublicKey(programId), {
+    filters: [{ memcmp: { offset: 0, bytes: bs58.encode(pairAccount.discriminator) } }],
+  });
 
-      if (accounts.length === 0) throw SarosDLMMError.NoPairFound;
+  if (accounts.length === 0) throw SarosDLMMError.NoPairFound();
 
-      return accounts
-        .filter((acc) => acc.account.owner.toString() === programId.toString() && acc.account.data.length >= 8)
-        .map((acc) => acc.pubkey.toString());
-    } catch (error) {
-      SarosDLMMError.handleError(error, SarosDLMMError.NoPairFound);
-    }
-  }
+  return accounts
+    .filter((acc) => acc.account.owner.toString() === programId.toString() && acc.account.data.length >= 8)
+    .map((acc) => acc.pubkey.toString());
+}
+
 
   /**
    * Listen for new pair addresses being created and call postTxFunction with the new address

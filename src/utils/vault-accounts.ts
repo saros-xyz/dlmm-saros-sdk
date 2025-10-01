@@ -34,10 +34,10 @@ export async function getPairTokenAccounts(
     const mintAccountInfos = await connection.getMultipleAccountsInfo([tokenMintX, tokenMintY]);
 
     if (!mintAccountInfos[0]) {
-      throw SarosDLMMError.createAccountError(SarosDLMMError.TokenMintNotFound, tokenMintX.toBase58());
+      throw SarosDLMMError.TokenMintNotFound(tokenMintX.toBase58());
     }
     if (!mintAccountInfos[1]) {
-      throw SarosDLMMError.createAccountError(SarosDLMMError.TokenMintNotFound, tokenMintY.toBase58());
+      throw SarosDLMMError.TokenMintNotFound( tokenMintY.toBase58());
     }
 
     const tokenProgramX = getTokenProgramFromAccountInfo(tokenMintX, mintAccountInfos[0]);
@@ -123,7 +123,7 @@ export async function getPairTokenAccounts(
       quoteDecimals,
     };
   } catch (error) {
-    SarosDLMMError.handleError(error, SarosDLMMError.AccountFetchFailed);
+    SarosDLMMError.handleError(error, SarosDLMMError.AccountFetchFailed());
   }
 }
 
@@ -142,10 +142,10 @@ export async function getUserVaults(
     const mintAccountInfos = await connection.getMultipleAccountsInfo([tokenMintX, tokenMintY]);
 
     if (!mintAccountInfos[0]) {
-      throw SarosDLMMError.createAccountError(SarosDLMMError.TokenMintNotFound, tokenMintX.toBase58());
+      throw SarosDLMMError.TokenMintNotFound(tokenMintX.toBase58());
     }
     if (!mintAccountInfos[1]) {
-      throw SarosDLMMError.createAccountError(SarosDLMMError.TokenMintNotFound, tokenMintY.toBase58());
+      throw SarosDLMMError.TokenMintNotFound( tokenMintY.toBase58());
     }
 
     const tokenProgramX = getTokenProgramFromAccountInfo(tokenMintX, mintAccountInfos[0]);
@@ -186,7 +186,7 @@ export async function getUserVaults(
 
     return { userVaultX: vaultX, userVaultY: vaultY };
   } catch (error) {
-    SarosDLMMError.handleError(error, SarosDLMMError.AccountFetchFailed);
+    SarosDLMMError.handleError(error, SarosDLMMError.AccountFetchFailed());
   }
 }
 
@@ -200,7 +200,7 @@ function getTokenProgramFromAccountInfo(address: PublicKey, accountInfo: any): P
   }
 
   if (!accountInfo) {
-    throw SarosDLMMError.createAccountError(SarosDLMMError.TokenMintNotFound, address.toBase58());
+    throw SarosDLMMError.TokenMintNotFound(address.toBase58());
   }
 
   const owner = accountInfo.owner.toBase58();

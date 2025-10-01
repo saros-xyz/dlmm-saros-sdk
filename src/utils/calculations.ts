@@ -66,7 +66,7 @@ export const getMaxInputWithSlippage = (amountIn: bigint, slippage: number): big
   const denominatorScaled = Number(PRECISION_BIGINT) - slippageScaled;
 
   if (denominatorScaled <= 0) {
-    throw SarosDLMMError.InvalidSlippage;
+    throw SarosDLMMError.InvalidSlippage();
   }
   return (amountIn * PRECISION_BIGINT) / BigInt(denominatorScaled);
 };

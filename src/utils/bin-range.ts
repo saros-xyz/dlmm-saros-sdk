@@ -7,7 +7,7 @@ export class BinArrayRange {
 
   constructor(binArrayPrevious: BinArray, binArrayCurrent: BinArray, binArrayNext: BinArray) {
     if (binArrayCurrent.index !== binArrayPrevious.index + 1 || binArrayNext.index !== binArrayCurrent.index + 1) {
-      throw SarosDLMMError.BinArrayIndexMismatch;
+      throw SarosDLMMError.BinArrayIndexMismatch();
     }
 
     this.bins = {};

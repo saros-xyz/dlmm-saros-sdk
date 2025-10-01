@@ -8,7 +8,7 @@ export const getPriceFromId = (
   decimalTokenY: number
 ): number => {
   if (binStep <= 0 || binStep > MAX_BASIS_POINTS) {
-    throw SarosDLMMError.InvalidBinStep;
+    throw SarosDLMMError.InvalidBinStep();
   }
 
   const base = 1 + binStep / MAX_BASIS_POINTS;
@@ -25,10 +25,10 @@ export const getIdFromPrice = (
   decimalTokenY: number
 ): number => {
   if (price <= 0) {
-    throw SarosDLMMError.InvalidPrice;
+    throw SarosDLMMError.InvalidPrice();
   }
   if (binStep <= 0 || binStep > MAX_BASIS_POINTS) {
-    throw SarosDLMMError.InvalidBinStep;
+    throw SarosDLMMError.InvalidBinStep();
   }
 
   const decimalPow = Math.pow(10, decimalTokenY - decimalTokenX);

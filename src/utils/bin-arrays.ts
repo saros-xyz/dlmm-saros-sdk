@@ -88,7 +88,7 @@ import { deriveBinArrayHookPDA, deriveBinArrayPDA } from './pda';
           .filter((_, i) => !binArrayAccountsInfo[i])
           .map((addr) => addr.toBase58())
           .join(', ');
-        throw SarosDLMMError.createAccountError(SarosDLMMError.BinArrayNotFound, missingAddresses);
+        throw SarosDLMMError.BinArrayNotFound(missingAddresses);
       }
 
       let binArrayLowerIndex: number;
@@ -108,7 +108,7 @@ import { deriveBinArrayHookPDA, deriveBinArrayPDA } from './pda';
         binArrayUpper: deriveBinArrayPDA(binArrayUpperIndex, pairAddress, programId),
       };
     } catch (error) {
-      SarosDLMMError.handleError(error, SarosDLMMError.BinArrayInfoFailed);
+      SarosDLMMError.handleError(error, SarosDLMMError.BinArrayInfoFailed());
     }
   }
 
@@ -237,7 +237,7 @@ import { deriveBinArrayHookPDA, deriveBinArrayPDA } from './pda';
         }
       }
     } catch (error) {
-      SarosDLMMError.handleError(error, SarosDLMMError.BinArrayInfoFailed);
+      SarosDLMMError.handleError(error, SarosDLMMError.BinArrayInfoFailed());
     }
   }
 

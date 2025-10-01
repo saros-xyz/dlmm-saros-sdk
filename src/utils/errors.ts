@@ -1,63 +1,128 @@
+export enum SarosDLMMErrorCode {
+  // Pair errors
+  PairFetchFailed = 'PAIR_FETCH_FAILED',
+  NoPairFound = 'NO_PAIR_FOUND',
+  InvalidPrice = 'INVALID_PRICE',
+  InvalidBinStep = 'INVALID_BIN_STEP',
+  PairCreationFailed = 'PAIR_CREATION_FAILED',
+
+  // Swap errors
+  ZeroAmount = 'ZERO_AMOUNT',
+  InvalidSlippage = 'INVALID_SLIPPAGE',
+  BinHasNoReserves = 'BIN_NO_RESERVES',
+  SwapExceedsMaxBinCrossings = 'MAX_BIN_CROSSINGS',
+  NoValidBinArrays = 'NO_VALID_BIN_ARRAYS',
+  BinArrayIndexMismatch = 'BIN_ARRAY_INDEX_MISMATCH',
+
+  // Position errors
+  CannotAddZero = 'CANNOT_ADD_ZERO',
+
+  // Account errors
+  AccountFetchFailed = 'ACCOUNT_FETCH_FAILED',
+  TokenMintNotFound = 'TOKEN_MINT_NOT_FOUND',
+  BinArrayNotFound = 'BIN_ARRAY_NOT_FOUND',
+
+  // Generic operation errors
+  QuoteCalculationFailed = 'QUOTE_CALCULATION_FAILED',
+  TransactionNotFound = 'TRANSACTION_NOT_FOUND',
+  BinArrayInfoFailed = 'BIN_ARRAY_INFO_FAILED',
+}
+
 export class SarosDLMMError extends Error {
   constructor(
     message: string,
-    public code: string
+    public code: SarosDLMMErrorCode
   ) {
     super(message);
     this.name = 'SarosDLMMError';
   }
 
+  // --------------------------
   // Pair errors
-  static readonly PairFetchFailed = new SarosDLMMError('Failed to fetch pair account', 'PAIR_FETCH_FAILED');
-  static readonly NoPairFound = new SarosDLMMError('No pairs found', 'NO_PAIR_FOUND');
-  static readonly InvalidPrice = new SarosDLMMError('Invalid price provided', 'INVALID_PRICE');
-  static readonly InvalidBinStep = new SarosDLMMError('Invalid bin step provided', 'INVALID_BIN_STEP');
-  static readonly PairCreationFailed = new SarosDLMMError('Failed to create pair', 'PAIR_CREATION_FAILED');
-
-  // Swap errors
-  static readonly ZeroAmount = new SarosDLMMError('Amount cannot be zero', 'ZERO_AMOUNT');
-  static readonly InvalidSlippage = new SarosDLMMError('Invalid slippage percentage', 'INVALID_SLIPPAGE');
-  static readonly BinHasNoReserves = new SarosDLMMError('Bin has no reserves', 'BIN_NO_RESERVES');
-  static readonly SwapExceedsMaxBinCrossings = new SarosDLMMError(
-    'Swap exceeds maximum bin crossings',
-    'MAX_BIN_CROSSINGS'
-  );
-  static readonly NoValidBinArrays = new SarosDLMMError('No valid bin arrays found for swap', 'NO_VALID_BIN_ARRAYS');
-  static readonly BinArrayIndexMismatch = new SarosDLMMError(
-    'Bin arrays do not form a valid range',
-    'BIN_ARRAY_INDEX_MISMATCH'
-  );
-
-  // Position errors
-  static readonly CannotAddZero = new SarosDLMMError('Cannot add zero liquidity', 'CANNOT_ADD_ZERO');
-  static readonly PositionNotFound = new SarosDLMMError('Position not found', 'POSITION_NOT_FOUND');
-  static readonly InsufficientLiquidity = new SarosDLMMError('Insufficient liquidity', 'INSUFFICIENT_LIQUIDITY');
-
-  // Account fetch errors
-  static readonly AccountFetchFailed = new SarosDLMMError('Failed to fetch account data', 'ACCOUNT_FETCH_FAILED');
-  static readonly TokenMintNotFound = new SarosDLMMError('Token mint account not found', 'TOKEN_MINT_NOT_FOUND');
-  static readonly TokenAccountNotFound = new SarosDLMMError('Token account not found', 'TOKEN_ACCOUNT_NOT_FOUND');
-  static readonly BinArrayNotFound = new SarosDLMMError('Bin array account not found', 'BIN_ARRAY_NOT_FOUND');
-
-  // Generic operation errors
-  static readonly QuoteCalculationFailed = new SarosDLMMError('Quote calculation failed', 'QUOTE_CALCULATION_FAILED');
-  static readonly TransactionNotFound = new SarosDLMMError('Transaction not found', 'TRANSACTION_NOT_FOUND');
-  static readonly BinArrayInfoFailed = new SarosDLMMError('Failed to get bin array info', 'BIN_ARRAY_INFO_FAILED');
-
-  /**
-   * Handle errors by re-throwing SarosDLMMError or wrapping unknown errors
-   */
-  static handleError(error: unknown, fallbackError: SarosDLMMError): never {
-    if (error instanceof SarosDLMMError) {
-      throw error;
-    }
-    throw fallbackError;
+  // --------------------------
+  static PairFetchFailed(): SarosDLMMError {
+    return new SarosDLMMError('Failed to fetch pair account', SarosDLMMErrorCode.PairFetchFailed);
+  }
+  static NoPairFound(): SarosDLMMError {
+    return new SarosDLMMError('No pairs found', SarosDLMMErrorCode.NoPairFound);
+  }
+  static InvalidPrice(): SarosDLMMError {
+    return new SarosDLMMError('Invalid price provided', SarosDLMMErrorCode.InvalidPrice);
+  }
+  static InvalidBinStep(): SarosDLMMError {
+    return new SarosDLMMError('Invalid bin step provided', SarosDLMMErrorCode.InvalidBinStep);
+  }
+  static PairCreationFailed(): SarosDLMMError {
+    return new SarosDLMMError('Failed to create pair', SarosDLMMErrorCode.PairCreationFailed);
   }
 
-  /**
-   * Create account-specific error with address for debugging
-   */
-  static createAccountError(baseError: SarosDLMMError, address: string): SarosDLMMError {
-    return new SarosDLMMError(`${baseError.message}: ${address}`, baseError.code);
+  // --------------------------
+  // Swap errors
+  // --------------------------
+  static ZeroAmount(): SarosDLMMError {
+    return new SarosDLMMError('Amount cannot be zero', SarosDLMMErrorCode.ZeroAmount);
+  }
+  static InvalidSlippage(): SarosDLMMError {
+    return new SarosDLMMError('Invalid slippage percentage', SarosDLMMErrorCode.InvalidSlippage);
+  }
+  static BinHasNoReserves(): SarosDLMMError {
+    return new SarosDLMMError('Bin has no reserves', SarosDLMMErrorCode.BinHasNoReserves);
+  }
+  static SwapExceedsMaxBinCrossings(): SarosDLMMError {
+    return new SarosDLMMError('Swap exceeds maximum bin crossings', SarosDLMMErrorCode.SwapExceedsMaxBinCrossings);
+  }
+  static NoValidBinArrays(): SarosDLMMError {
+    return new SarosDLMMError('No valid bin arrays found for swap', SarosDLMMErrorCode.NoValidBinArrays);
+  }
+  static BinArrayIndexMismatch(): SarosDLMMError {
+    return new SarosDLMMError('Bin arrays do not form a valid range', SarosDLMMErrorCode.BinArrayIndexMismatch);
+  }
+
+  // --------------------------
+  // Position errors
+  // --------------------------
+  static CannotAddZero(): SarosDLMMError {
+    return new SarosDLMMError('Cannot add zero liquidity', SarosDLMMErrorCode.CannotAddZero);
+  }
+
+  // --------------------------
+  // Account fetch errors
+  // --------------------------
+  static AccountFetchFailed(): SarosDLMMError {
+    return new SarosDLMMError('Failed to fetch account data', SarosDLMMErrorCode.AccountFetchFailed);
+  }
+static TokenMintNotFound(address?: string): SarosDLMMError {
+  const msg = address
+    ? `Token mint account not found: ${address}`
+    : 'Token mint account not found';
+  return new SarosDLMMError(msg, SarosDLMMErrorCode.TokenMintNotFound);
+}
+
+static BinArrayNotFound(address?: string): SarosDLMMError {
+  const msg = address
+    ? `Bin array account not found: ${address}`
+    : 'Bin array account not found';
+  return new SarosDLMMError(msg, SarosDLMMErrorCode.BinArrayNotFound);
+}
+
+  // --------------------------
+  // Generic operation errors
+  // --------------------------
+  static QuoteCalculationFailed(): SarosDLMMError {
+    return new SarosDLMMError('Quote calculation failed', SarosDLMMErrorCode.QuoteCalculationFailed);
+  }
+  static TransactionNotFound(): SarosDLMMError {
+    return new SarosDLMMError('Transaction not found', SarosDLMMErrorCode.TransactionNotFound);
+  }
+  static BinArrayInfoFailed(): SarosDLMMError {
+    return new SarosDLMMError('Failed to get bin array info', SarosDLMMErrorCode.BinArrayInfoFailed);
+  }
+
+  // --------------------------
+  // Utilities
+  // --------------------------
+  static handleError(error: unknown, fallbackError: SarosDLMMError): never {
+    if (error instanceof SarosDLMMError) throw error;
+    throw fallbackError;
   }
 }

@@ -80,20 +80,21 @@ export class SarosDLMMPair extends SarosBaseService {
     return this.pairAddress;
   }
 
-  /**
-   * Refresh pair data
-   */
-  public async refetchState(): Promise<void> {
-    try {
-      //@ts-ignore
-      this.pairAccount = await this.lbProgram.account.pair.fetch(this.pairAddress);
-      if (!this.pairAccount) throw SarosDLMMError.PairFetchFailed;
+/**
+ * Refresh pair data
+ */
+public async refetchState(): Promise<void> {
+  try {
+    //@ts-ignore
+    this.pairAccount = await this.lbProgram.account.pair.fetch(this.pairAddress);
+    if (!this.pairAccount) throw SarosDLMMError.PairFetchFailed();
 
-      this.metadata = await this.buildPairMetadata();
-    } catch (error) {
-      SarosDLMMError.handleError(error, SarosDLMMError.PairFetchFailed);
-    }
+    this.metadata = await this.buildPairMetadata();
+  } catch (error) {
+    SarosDLMMError.handleError(error, SarosDLMMError.PairFetchFailed());
   }
+}
+
 
   private async buildPairMetadata(): Promise<PairMetadata> {
     const { tokenMintX, tokenMintY, hook } = this.pairAccount;
@@ -130,8 +131,8 @@ export class SarosDLMMPair extends SarosBaseService {
    * Get a quote for a swap on this pair
    */
   public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
-    if (params.amount <= 0n) throw SarosDLMMError.ZeroAmount;
-    if (params.slippage < 0 || params.slippage >= 100) throw SarosDLMMError.InvalidSlippage;
+    if (params.amount <= 0n) throw SarosDLMMError.ZeroAmount();
+    if (params.slippage < 0 || params.slippage >= 100) throw SarosDLMMError.InvalidSlippage();
 
     try {
       const { tokenX, tokenY } = this.metadata;
@@ -172,7 +173,7 @@ export class SarosDLMMPair extends SarosBaseService {
         priceImpact: priceImpact,
       };
     } catch (error) {
-      SarosDLMMError.handleError(error, SarosDLMMError.QuoteCalculationFailed);
+      SarosDLMMError.handleError(error, SarosDLMMError.QuoteCalculationFailed());
     }
   }
 
@@ -205,8 +206,8 @@ export class SarosDLMMPair extends SarosBaseService {
       hook,
     } = params;
 
-    if (amount <= 0n) throw SarosDLMMError.ZeroAmount;
-    if (minTokenOut < 0n) throw SarosDLMMError.ZeroAmount;
+    if (amount <= 0n) throw SarosDLMMError.ZeroAmount();
+    if (minTokenOut < 0n) throw SarosDLMMError.ZeroAmount();
 
     const tokenVaultX = this.tokenVaultX;
     const tokenVaultY = this.tokenVaultY;
@@ -287,7 +288,7 @@ export class SarosDLMMPair extends SarosBaseService {
   public async getMaxAmountOutWithFee(params: GetMaxAmountOutWithFeeParams): Promise<GetMaxAmountOutWithFeeResponse> {
     try {
       const { amount, swapForY = false, decimalTokenX = 9, decimalTokenY = 9 } = params;
-      if (amount <= 0n) throw SarosDLMMError.ZeroAmount;
+      if (amount <= 0n) throw SarosDLMMError.ZeroAmount();
 
       const { activeId, binStep } = this.pairAccount;
 
@@ -347,7 +348,7 @@ export class SarosDLMMPair extends SarosBaseService {
         };
       }
     } catch (error) {
-      SarosDLMMError.handleError(error, SarosDLMMError.QuoteCalculationFailed);
+      SarosDLMMError.handleError(error, SarosDLMMError.QuoteCalculationFailed());
     }
   }
 
@@ -396,7 +397,7 @@ export class SarosDLMMPair extends SarosBaseService {
       }
 
       if (totalBinUsed >= MAX_BIN_CROSSINGS) {
-        throw SarosDLMMError.SwapExceedsMaxBinCrossings;
+        throw SarosDLMMError.SwapExceedsMaxBinCrossings();
       }
 
       return amountIn;
@@ -448,7 +449,7 @@ export class SarosDLMMPair extends SarosBaseService {
         activeId = this.moveActiveId(activeId, swapForY);
       }
       if (totalBinUsed >= MAX_BIN_CROSSINGS) {
-        throw SarosDLMMError.SwapExceedsMaxBinCrossings;
+        throw SarosDLMMError.SwapExceedsMaxBinCrossings();
       }
 
       return amountOut;
@@ -472,7 +473,7 @@ export class SarosDLMMPair extends SarosBaseService {
     const binReserveOut = swapForY ? reserveY : reserveX;
 
     if (binReserveOut.isZero()) {
-      throw SarosDLMMError.BinHasNoReserves;
+      throw SarosDLMMError.BinHasNoReserves();
     }
 
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
@@ -510,7 +511,7 @@ export class SarosDLMMPair extends SarosBaseService {
     const binReserveOut = swapForY ? reserveY : reserveX;
 
     if (binReserveOut.isZero()) {
-      throw SarosDLMMError.BinHasNoReserves;
+      throw SarosDLMMError.BinHasNoReserves();
     }
 
     const binReserveOutBigInt = BigInt(binReserveOut.toString());
@@ -573,7 +574,7 @@ export class SarosDLMMPair extends SarosBaseService {
     try {
       return await getBinArrayWithAdjacent(binArrayIndex, this.pairAddress, this.lbProgram);
     } catch (_error) {
-      throw SarosDLMMError.BinArrayInfoFailed;
+      throw SarosDLMMError.BinArrayInfoFailed();
     }
   }
 
@@ -707,7 +708,7 @@ export class SarosDLMMPair extends SarosBaseService {
 
     const { tokenMintX, tokenMintY } = this.pairAccount;
     if (amountTokenX <= 0n && amountTokenY <= 0n) {
-      throw SarosDLMMError.CannotAddZero;
+      throw SarosDLMMError.CannotAddZero();
     }
 
     const tx = userTxn || new Transaction();

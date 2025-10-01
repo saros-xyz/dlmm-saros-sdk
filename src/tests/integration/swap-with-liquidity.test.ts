@@ -74,6 +74,7 @@ describe('Swap Integration Tests', () => {
       const wsolAccountRent = await getWsolAccountRent(connection);
 
       const amountIn = 1_000_000_000n; // 1 SAROSDEV
+      await pair.refetchState();
       const quote = await pair.getQuote({
         amount: amountIn,
         options: { swapForY: true, isExactInput: true },
@@ -129,6 +130,7 @@ describe('Swap Integration Tests', () => {
       const wsolAccountRent = await getWsolAccountRent(connection);
 
       const amountIn = 1_000_000n; // 0.001 SOL
+       await pair.refetchState();
       const quote = await pair.getQuote({
         amount: amountIn,
         options: { swapForY: false, isExactInput: true },
@@ -186,6 +188,7 @@ describe('Swap Integration Tests', () => {
       const wsolAccountRent = await getWsolAccountRent(connection);
 
       const desiredOutput = 1_000n; // Want exactly 1,000 lamports of SOL
+       await pair.refetchState();
       const quote = await pair.getQuote({
         amount: desiredOutput,
         options: { swapForY: true, isExactInput: false },
@@ -231,6 +234,7 @@ describe('Swap Integration Tests', () => {
       const balBeforeQuote = await getTokenBalance(connection, wallet.keypair.publicKey, tokenY);
 
       const desiredOutput = 100_000_000n; // Want exactly 0.1 base tokens
+       await pair.refetchState();
       const quote = await pair.getQuote({
         amount: desiredOutput,
         options: { swapForY: false, isExactInput: false },

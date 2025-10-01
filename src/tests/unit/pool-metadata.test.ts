@@ -75,7 +75,7 @@ describe('Pool Metadata', () => {
   });
 
   it('throws SarosDLMMError for invalid pool', async () => {
-    await expect(sdk.getPair(new PublicKey(POOLS.INVALID.address))).rejects.toThrow(SarosDLMMError.PairFetchFailed);
+    await expect(sdk.getPair(new PublicKey(POOLS.INVALID.address))).rejects.toThrow(SarosDLMMError.PairFetchFailed());
   });
 });
 

@@ -83,7 +83,7 @@ export async function extractPairFromTx(connection: Connection, signature: strin
   const parsedTransaction = await connection.getTransaction(signature, {
     maxSupportedTransactionVersion: 0,
   });
-  if (!parsedTransaction) throw SarosDLMMError.TransactionNotFound;
+  if (!parsedTransaction) throw SarosDLMMError.TransactionNotFound();
 
   const compiledMessage = parsedTransaction.transaction.message;
   const message = TransactionMessage.decompile(compiledMessage);
