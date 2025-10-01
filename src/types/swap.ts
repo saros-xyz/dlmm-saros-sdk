@@ -43,22 +43,6 @@ export interface QuoteParams {
 }
 
 /**
- * Parameters for executing a swap transaction (static factory method)
- */
-export interface StaticSwapParams extends SwapParams {
-  /** The DLMM pair address */
-  pair: PublicKey;
-}
-
-/**
- * Parameters for getting a swap quote (static factory method)
- */
-export interface StaticQuoteParams extends QuoteParams {
-  /** The DLMM pair address */
-  pair: PublicKey;
-}
-
-/**
  * Swap quote information
  */
 export interface QuoteResponse {
@@ -89,15 +73,7 @@ export interface GetMaxAmountOutWithFeeParams {
 }
 
 /**
- * Parameters for calculating theoretical maximum output (static factory method)
- */
-export interface StaticGetMaxAmountOutWithFeeParams extends GetMaxAmountOutWithFeeParams {
-  /** The DLMM pair address */
-  pair: PublicKey;
-}
-
-/**
- * Result of theoretical maximum output calculation
+ * Get the max amount out including fees
  */
 export interface GetMaxAmountOutWithFeeResponse {
   /** Maximum possible output amount (accounting for fees but not slippage) */
