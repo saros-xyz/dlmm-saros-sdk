@@ -1,5 +1,5 @@
 {
-  "address": "EZoLi7fVCWjns7ukzjggSeDpG2GEGJbGs3MTRxAE29d4",
+  "address": "2Qy2sxJpWYsN35D54LgHE6M5ATZMnnim7nPwSGyffFAa",
   "metadata": {
     "name": "liquidity_book",
     "version": "0.1.0",
@@ -2237,119 +2237,11 @@
         },
         {
           "name": "user_vault_x",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "token_program_x"
-              },
-              {
-                "kind": "account",
-                "path": "pair.token_mint_x",
-                "account": "Pair"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "user_vault_y",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "user"
-              },
-              {
-                "kind": "account",
-                "path": "token_program_y"
-              },
-              {
-                "kind": "account",
-                "path": "pair.token_mint_y",
-                "account": "Pair"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+          "writable": true
         },
         {
           "name": "user",
@@ -3522,6 +3414,16 @@
       "code": 6027,
       "name": "InvalidHook",
       "msg": "Invalid Hook Provided"
+    },
+    {
+      "code": 6028,
+      "name": "UserVaultXMismatch",
+      "msg": "Token Account X Mismatch"
+    },
+    {
+      "code": 6029,
+      "name": "UserVaultYMismatch",
+      "msg": "Token Account Y Mismatch"
     }
   ],
   "types": [
