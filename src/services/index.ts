@@ -97,7 +97,7 @@ export class SarosDLMM extends SarosBaseService {
   /** Get a pair instance with state loaded */
   public async getPair(pairAddress: PublicKey): Promise<SarosDLMMPair> {
     const pair = new SarosDLMMPair(this.config, pairAddress);
-    await pair.loadState();
+    await pair.refreshState();
     return pair;
   }
 

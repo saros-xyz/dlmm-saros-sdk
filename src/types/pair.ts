@@ -46,6 +46,10 @@ export interface PairMetadata {
   dynamicFee: number;
   /** Protocol fee as a percentage of the dynamic fee (e.g. 0.002 => 0.002%) */
   protocolFee: number;
+  /** Current active bin ID */
+  activeId: number;
+  /** Current price at the active bin (tokenY per tokenX) */
+  activePrice: number;
   extra: {
     hook?: PublicKey;
   };

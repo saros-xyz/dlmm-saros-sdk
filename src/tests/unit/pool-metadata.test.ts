@@ -68,10 +68,27 @@ describe('Pool Metadata', () => {
   it('fetches SOL/USDC metadata', async () => {
     const pair = await sdk.getPair(new PublicKey(POOLS.SOL_USDC.address));
     const metadata = pair.getPairMetadata();
-
     expect(metadata.pair.toString()).toBe(POOLS.SOL_USDC.address);
     expect(metadata.tokenX.decimals).toBe(POOLS.SOL_USDC.tokenXDecimals);
     expect(metadata.tokenY.decimals).toBe(POOLS.SOL_USDC.tokenYDecimals);
+  });
+
+  it('fetches USDC/USDT metadata with correct active bin price', async () => {
+    const pair = await sdk.getPair(new PublicKey(POOLS.USDC_USDT.address));
+    const metadata = pair.getPairMetadata();
+
+    expect(metadata.pair.toString()).toBe(POOLS.USDC_USDT.address);
+    expect(metadata.tokenX.decimals).toBe(POOLS.USDC_USDT.tokenXDecimals);
+    expect(metadata.tokenY.decimals).toBe(POOLS.USDC_USDT.tokenYDecimals);
+
+    // Verify active bin info exists
+    expect(metadata.activeId).toBeTypeOf('number');
+    expect(metadata.activeId).toBeGreaterThan(0);
+
+    // USDC/USDT should trade close to 1:1 (within 10%)
+    expect(metadata.activePrice).toBeTypeOf('number');
+    expect(metadata.activePrice).toBeGreaterThan(0.9);
+    expect(metadata.activePrice).toBeLessThan(1.1);
   });
 
   it('throws SarosDLMMError for invalid pool', async () => {
@@ -90,7 +107,6 @@ describe('Pool Discovery', () => {
 
   it('searches pairs by USDC and SOL token mint', async () => {
     const addresses = await sdk.findPairs(new PublicKey(TOKEN_MINTS.USDC), new PublicKey(TOKEN_MINTS.SOL));
-    console.log(addresses);
     expect(Array.isArray(addresses)).toBe(true);
     expect(addresses.length).toBeGreaterThan(2); // we have at least three (oct. 2025)
     addresses.forEach((address) => {

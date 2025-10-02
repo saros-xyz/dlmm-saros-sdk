@@ -81,8 +81,8 @@ export class SarosDLMMPair extends SarosBaseService {
     return this.pairAddress;
   }
 
-  /** load pair state data */
-  public async loadState(pairAddress?: string): Promise<void> {
+  /** Refresh pair state data (active bin, price, reserves, etc.) */
+  public async refreshState(pairAddress?: string): Promise<void> {
     try {
       //@ts-ignore
       this.pairAccount = await this.lbProgram.account.pair.fetch(this.pairAddress || pairAddress);
@@ -683,7 +683,7 @@ export class SarosDLMMPair extends SarosBaseService {
   // -----------------------------------------------------------------------------
 
   private async buildPairMetadata(): Promise<PairMetadata> {
-    const { tokenMintX, tokenMintY, hook } = this.pairAccount;
+    const { tokenMintX, tokenMintY, hook, activeId, binStep } = this.pairAccount;
     const tokenAccountsData = await getPairTokenAccounts(tokenMintX, tokenMintY, this.pairAddress, this.connection);
     const feeInfo = getFeeMetadata(this.pairAccount);
 
@@ -692,6 +692,8 @@ export class SarosDLMMPair extends SarosBaseService {
     this.tokenVaultY = tokenAccountsData.vaultY;
     this.tokenProgramX = tokenAccountsData.tokenProgramX;
     this.tokenProgramY = tokenAccountsData.tokenProgramY;
+
+    const activePrice = getPriceFromId(binStep, activeId, tokenAccountsData.baseDecimals, tokenAccountsData.quoteDecimals);
 
     return {
       pair: this.pairAddress,
@@ -709,6 +711,8 @@ export class SarosDLMMPair extends SarosBaseService {
       baseFee: feeInfo.baseFee,
       dynamicFee: feeInfo.dynamicFee,
       protocolFee: feeInfo.protocolFee,
+      activeId,
+      activePrice,
       extra: { hook: hook || undefined },
     };
   }
