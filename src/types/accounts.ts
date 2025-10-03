@@ -29,7 +29,7 @@ export interface DLMMPairAccount {
   };
   protocolFeesX: BN;
   protocolFeesY: BN;
-  hook: PublicKey | null;
+  hook: PublicKey | undefined;
 }
 
 /** a User Position within a pair */

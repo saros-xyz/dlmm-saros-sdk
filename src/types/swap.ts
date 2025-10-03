@@ -30,8 +30,6 @@ export interface SwapParams {
   minTokenOut: bigint;
   /** Wallet executing the swap */
   payer: PublicKey;
-  /** Optional, if you have a hook for reward */
-  hook?: PublicKey;
 }
 
 /** Parameters for getting a swap quote */

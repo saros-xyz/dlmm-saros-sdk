@@ -1,5 +1,5 @@
 {
-  "address": "GPeBPLGzkxsdqTLw1pBjtiDMbk7xF88V1eokjfZNsFky",
+  "address": "BXpvgXGKDKax82p9JK2E8jRoKLify6eq3mMaW1wHVhuK",
   "metadata": {
     "name": "rewarder_hook",
     "version": "0.1.0",
@@ -44,7 +44,10 @@
         },
         {
           "name": "pair",
-          "signer": true
+          "signer": true,
+          "relations": [
+            "hook"
+          ]
         },
         {
           "name": "active_bin_hook_bin_array_lower",
@@ -131,7 +134,10 @@
         },
         {
           "name": "pair",
-          "signer": true
+          "signer": true,
+          "relations": [
+            "hook"
+          ]
         },
         {
           "name": "active_bin_hook_bin_array_lower",
@@ -213,7 +219,10 @@
         },
         {
           "name": "pair",
-          "signer": true
+          "signer": true,
+          "relations": [
+            "hook"
+          ]
         },
         {
           "name": "active_bin_hook_bin_array_lower",
@@ -1141,12 +1150,14 @@
         },
         {
           "name": "hook_reserve",
+          "writable": true,
           "relations": [
             "hook"
           ]
         },
         {
-          "name": "authority_reserve"
+          "name": "authority_reserve",
+          "writable": true
         },
         {
           "name": "authority",
@@ -1360,6 +1371,11 @@
       "code": 6011,
       "name": "InvalidDeltaBins",
       "msg": "Invalid delta bins"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidLBPosition",
+      "msg": "Invalid LB position"
     }
   ],
   "types": [

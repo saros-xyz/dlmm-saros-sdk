@@ -46,7 +46,7 @@ import { ensureHookTokenAccount } from '../utils/hooks';
 import { derivePositionTokenAccount, getMultiplePositionAccounts } from '../utils/positions';
 import { handleSolWrapping } from '../utils/transaction';
 import { calculateRemovedShares } from '../utils/remove-liquidity';
-import { deriveHookPDA, derivePositionHookPDA, derivePositionPDA } from '../utils/pda';
+import { deriveBinArrayHookPDA, deriveHookPDA, derivePositionHookPDA, derivePositionPDA } from '../utils/pda';
 
 export class SarosDLMMPair extends SarosBaseService {
   private pairAddress: PublicKey;
@@ -572,8 +572,7 @@ export class SarosDLMMPair extends SarosBaseService {
       amount,
       minTokenOut,
       options: { swapForY, isExactInput },
-      payer,
-      hook,
+      payer
     } = params;
 
     if (amount <= 0n) throw SarosDLMMError.ZeroAmount();
@@ -584,10 +583,7 @@ export class SarosDLMMPair extends SarosBaseService {
     const tokenMintX = this.pairAccount.tokenMintX;
     const tokenMintY = this.pairAccount.tokenMintY;
 
-    // Use provided hook or default to instance hook config
-    const hookConfig = hook || this.hooksConfig;
-
-    const { binArrayLower, binArrayUpper } = await getSwapBinArrays(
+    const { binArrayLower, binArrayUpper, binArrayLowerIndex, binArrayUpperIndex } = await getSwapBinArrays(
       this.pairAccount.activeId,
       this.pairAddress,
       this.connection,
@@ -608,6 +604,26 @@ export class SarosDLMMPair extends SarosBaseService {
       amount,
       isPreSwap: true,
     });
+
+    let remainingAccounts = [
+      { pubkey: this.pairAddress, isWritable: false, isSigner: false },
+      { pubkey: binArrayLower, isWritable: false, isSigner: false },
+      { pubkey: binArrayUpper, isWritable: false, isSigner: false },
+    ];
+
+    // Add binArrayHook if pair has a hook
+    if(!!this.pairAccount.hook){
+      const binArrayHookLower = deriveBinArrayHookPDA(this.pairAccount.hook, binArrayLowerIndex,  this.hooksProgram.programId)
+      const binArrayHookUpper = deriveBinArrayHookPDA(this.pairAccount.hook, binArrayUpperIndex, this.hooksProgram.programId)
+
+      remainingAccounts = [
+        { pubkey: binArrayHookLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayHookUpper, isWritable: true, isSigner: false },
+        { pubkey: this.pairAddress, isWritable: false, isSigner: false },
+        { pubkey: binArrayHookLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayHookUpper, isWritable: true, isSigner: false },
+      ];
+    }
 
     // minTokenOut is the slippage protection:
     // - Exact input: minimum output to accept
@@ -632,14 +648,10 @@ export class SarosDLMMPair extends SarosBaseService {
         tokenProgramX: this.tokenProgramX,
         tokenProgramY: this.tokenProgramY,
         user: payer,
-        hook: hookConfig,
+        hook: this.pairAccount.hook,
         hooksProgram: this.hooksProgram.programId,
       })
-      .remainingAccounts([
-        { pubkey: this.pairAddress, isWritable: false, isSigner: false },
-        { pubkey: binArrayLower, isWritable: false, isSigner: false },
-        { pubkey: binArrayUpper, isWritable: false, isSigner: false },
-      ])
+      .remainingAccounts(remainingAccounts)
       .instruction();
 
     tx.add(swapInstructions);

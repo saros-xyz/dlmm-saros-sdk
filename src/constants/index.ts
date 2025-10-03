@@ -9,8 +9,8 @@ export const DLMM_PROGRAM_IDS: Record<MODE, { lb: PublicKey; hooks: PublicKey }>
     hooks: new PublicKey('DgW5ARD9sU3W6SJqtyJSH3QPivxWt7EMvjER9hfFKWXF'),
   },
   [MODE.DEVNET]: {
-    lb: new PublicKey('DK6EoxvbMxJTkgcTAYfUnKyDZUTKb6wwPUFfpWsgeiR9'),
-    hooks: new PublicKey('2uAiHvYkmmvQkNh5tYtdR9sAUDwmbL7PjZcwAEYDqyES'),
+    lb: new PublicKey('BJG6uz2zY2XFG7uomiyi17qqDeYJUnbprGbpyzYN1ncU'),
+    hooks: new PublicKey('GN3UN8CtcSvC1VZxgHwfKqXXi642EwNk5K19FupZGMrZ'),
   },
 };
 
