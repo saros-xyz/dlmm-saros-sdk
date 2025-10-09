@@ -580,9 +580,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       true,
       tokenProgramY
     );
-    const infoHookTokenY = await this.connection.getAccountInfo(
-      associatedHookTokenY
-    );
+    const infoHookTokenY =
+      await this.connection.getAccountInfo(associatedHookTokenY);
 
     if (!infoHookTokenY) {
       const hookTokenYInstructions =
@@ -720,8 +719,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           type === "removeBoth"
             ? !new BN(item.liquidityShare).eq(new BN(0))
             : type === "removeQuoteToken"
-            ? !item.reserveX
-            : !item.reserveY
+              ? !item.reserveX
+              : !item.reserveY
         );
 
         const isClosePosition =
@@ -834,7 +833,6 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       swapForY,
       isExactInput,
       pair,
-      hook,
       payer,
     } = params;
 
@@ -859,10 +857,9 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           })
       )
     );
-    
-    const binArrayAccountsInfo = await this.connection.getMultipleAccountsInfo(
-      binArrayAddresses
-    );
+
+    const binArrayAccountsInfo =
+      await this.connection.getMultipleAccountsInfo(binArrayAddresses);
 
     const validIndexes = surroundingIndexes.filter(
       (_, i) => binArrayAccountsInfo[i]
@@ -935,9 +932,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       tokenProgramY
     );
 
-    const infoUserVaultX = await this.connection.getAccountInfo(
-      associatedUserVaultX
-    );
+    const infoUserVaultX =
+      await this.connection.getAccountInfo(associatedUserVaultX);
 
     if (!infoUserVaultX) {
       const userVaultXInstructions =
@@ -952,9 +948,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       tx.add(userVaultXInstructions);
     }
 
-    const infoUserVaultY = await this.connection.getAccountInfo(
-      associatedUserVaultY
-    );
+    const infoUserVaultY =
+      await this.connection.getAccountInfo(associatedUserVaultY);
 
     if (!infoUserVaultY) {
       const userVaultYInstructions =
@@ -975,11 +970,11 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       { pubkey: binArrayUpper, isWritable: false, isSigner: false },
     ];
 
-    if (hook) {
+    if (!!pairInfo.hook) {
       const hookBinArrayLower = PublicKey.findProgramAddressSync(
         [
           Buffer.from(utils.bytes.utf8.encode("bin_array")),
-          hook.toBuffer(),
+          pairInfo.hook.toBuffer(),
           new BN(binArrayLowerIndex).toArrayLike(Buffer, "le", 4),
         ],
         this.hooksProgram.programId
@@ -988,7 +983,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       const hookBinArrayUpper = PublicKey.findProgramAddressSync(
         [
           Buffer.from(utils.bytes.utf8.encode("bin_array")),
-          hook.toBuffer(),
+          pairInfo.hook.toBuffer(),
           new BN(binArrayUpperIndex).toArrayLike(Buffer, "le", 4),
         ],
         this.hooksProgram.programId
@@ -1056,7 +1051,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         tokenProgramX,
         tokenProgramY,
         user: payer,
-        hook: hook || null,
+        hook: pairInfo.hook || null,
         hooksProgram: this.hooksProgram.programId,
       })
       .remainingAccounts(remainingAccounts)
@@ -1252,9 +1247,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           const accountInfo = await connection.getAccountInfo(positionPda);
           if (!accountInfo) return null;
           //@ts-ignore
-          const position = await this.lbProgram.account.position.fetch(
-            positionPda
-          );
+          const position =
+            await this.lbProgram.account.position.fetch(positionPda);
           if (position.pair.toString() !== pair.toString()) return null;
           return { ...position, position: positionPda.toString() };
         } catch {
@@ -1362,9 +1356,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     if (transaction && payer) {
-      const infoPairVault = await this.connection.getAccountInfo(
-        associatedPairVault
-      );
+      const infoPairVault =
+        await this.connection.getAccountInfo(associatedPairVault);
 
       if (!infoPairVault) {
         const pairVaultYInstructions =
@@ -1393,9 +1386,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     if (transaction) {
-      const infoUserVault = await this.connection.getAccountInfo(
-        associatedUserVault
-      );
+      const infoUserVault =
+        await this.connection.getAccountInfo(associatedUserVault);
 
       if (!infoUserVault) {
         const userVaultYInstructions =
