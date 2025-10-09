@@ -57,14 +57,14 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
 
   get lbConfig() {
     if (this.mode === MODE.DEVNET) {
-      return new PublicKey("DK6EoxvbMxJTkgcTAYfUnKyDZUTKb6wwPUFfpWsgeiR9");
+      return new PublicKey("BJG6uz2zY2XFG7uomiyi17qqDeYJUnbprGbpyzYN1ncU");
     }
     return new PublicKey("BqPmjcPbAwE7mH23BY8q8VUEN4LSjhLUv41W87GsXVn8");
   }
 
   get hooksConfig() {
     if (this.mode === MODE.DEVNET) {
-      return new PublicKey("2uAiHvYkmmvQkNh5tYtdR9sAUDwmbL7PjZcwAEYDqyES");
+      return new PublicKey("GN3UN8CtcSvC1VZxgHwfKqXXi642EwNk5K19FupZGMrZ");
     }
     return new PublicKey("DgW5ARD9sU3W6SJqtyJSH3QPivxWt7EMvjER9hfFKWXF");
   }
@@ -580,9 +580,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       true,
       tokenProgramY
     );
-    const infoHookTokenY = await this.connection.getAccountInfo(
-      associatedHookTokenY
-    );
+    const infoHookTokenY =
+      await this.connection.getAccountInfo(associatedHookTokenY);
 
     if (!infoHookTokenY) {
       const hookTokenYInstructions =
@@ -720,8 +719,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           type === "removeBoth"
             ? !new BN(item.liquidityShare).eq(new BN(0))
             : type === "removeQuoteToken"
-            ? !item.reserveX
-            : !item.reserveY
+              ? !item.reserveX
+              : !item.reserveY
         );
 
         const isClosePosition =
@@ -834,7 +833,6 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       swapForY,
       isExactInput,
       pair,
-      hook,
       payer,
     } = params;
 
@@ -859,10 +857,9 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           })
       )
     );
-    
-    const binArrayAccountsInfo = await this.connection.getMultipleAccountsInfo(
-      binArrayAddresses
-    );
+
+    const binArrayAccountsInfo =
+      await this.connection.getMultipleAccountsInfo(binArrayAddresses);
 
     const validIndexes = surroundingIndexes.filter(
       (_, i) => binArrayAccountsInfo[i]
@@ -935,55 +932,71 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       tokenProgramY
     );
 
-    const infoUserVaultX = await this.connection.getAccountInfo(
-      associatedUserVaultX
-    );
+    const infoUserVaultX =
+      await this.connection.getAccountInfo(associatedUserVaultX);
 
     if (!infoUserVaultX) {
-      const userVaultXInstructions = spl.createAssociatedTokenAccountInstruction(
-        payer,
-        associatedUserVaultX,
-        payer,
-        tokenMintX,
-        tokenProgramX
-      );
+      const userVaultXInstructions =
+        spl.createAssociatedTokenAccountInstruction(
+          payer,
+          associatedUserVaultX,
+          payer,
+          tokenMintX,
+          tokenProgramX
+        );
 
       tx.add(userVaultXInstructions);
     }
 
-    const infoUserVaultY = await this.connection.getAccountInfo(
-      associatedUserVaultY
-    );
+    const infoUserVaultY =
+      await this.connection.getAccountInfo(associatedUserVaultY);
 
     if (!infoUserVaultY) {
-      const userVaultYInstructions = spl.createAssociatedTokenAccountInstruction(
-        payer,
-        associatedUserVaultY,
-        payer,
-        tokenMintY,
-        tokenProgramY
-      );
+      const userVaultYInstructions =
+        spl.createAssociatedTokenAccountInstruction(
+          payer,
+          associatedUserVaultY,
+          payer,
+          tokenMintY,
+          tokenProgramY
+        );
 
       tx.add(userVaultYInstructions);
     }
 
-    // const hookBinArrayLower = PublicKey.findProgramAddressSync(
-    //   [
-    //     Buffer.from(utils.bytes.utf8.encode("bin_array")),
-    //     hook.toBuffer(),
-    //     new BN(BIN_ARRAY_INDEX).toArrayLike(Buffer, "le", 4),
-    //   ],
-    //   this.hooksProgram.programId
-    // )[0];
+    let remainingAccounts = [
+      { pubkey: pair, isWritable: false, isSigner: false },
+      { pubkey: binArrayLower, isWritable: false, isSigner: false },
+      { pubkey: binArrayUpper, isWritable: false, isSigner: false },
+    ];
 
-    // const hookBinArrayUpper = PublicKey.findProgramAddressSync(
-    //   [
-    //     Buffer.from(utils.bytes.utf8.encode("bin_array")),
-    //     hook.toBuffer(),
-    //     new BN(BIN_ARRAY_INDEX + 1).toArrayLike(Buffer, "le", 4),
-    //   ],
-    //   this.hooksProgram.programId
-    // )[0];
+    if (!!pairInfo.hook) {
+      const hookBinArrayLower = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(utils.bytes.utf8.encode("bin_array")),
+          pairInfo.hook.toBuffer(),
+          new BN(binArrayLowerIndex).toArrayLike(Buffer, "le", 4),
+        ],
+        this.hooksProgram.programId
+      )[0];
+
+      const hookBinArrayUpper = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(utils.bytes.utf8.encode("bin_array")),
+          pairInfo.hook.toBuffer(),
+          new BN(binArrayUpperIndex).toArrayLike(Buffer, "le", 4),
+        ],
+        this.hooksProgram.programId
+      )[0];
+
+      remainingAccounts = [
+        { pubkey: hookBinArrayLower, isWritable: true, isSigner: false },
+        { pubkey: hookBinArrayUpper, isWritable: true, isSigner: false },
+        { pubkey: pair, isWritable: false, isSigner: false },
+        { pubkey: hookBinArrayLower, isWritable: true, isSigner: false },
+        { pubkey: hookBinArrayUpper, isWritable: true, isSigner: false },
+      ];
+    }
 
     if (
       tokenMintY.toString() === WRAP_SOL_ADDRESS ||
@@ -1038,14 +1051,10 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
         tokenProgramX,
         tokenProgramY,
         user: payer,
-        hook: hook || null,
-        hooksProgram: this.hooksProgram.programId
+        hook: pairInfo.hook || null,
+        hooksProgram: this.hooksProgram.programId,
       })
-      .remainingAccounts([
-        { pubkey: pair, isWritable: false, isSigner: false },
-        { pubkey: binArrayLower, isWritable: false, isSigner: false },
-        { pubkey: binArrayUpper, isWritable: false, isSigner: false },
-      ])
+      .remainingAccounts(remainingAccounts)
       .instruction();
 
     tx.add(swapInstructions);
@@ -1238,9 +1247,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
           const accountInfo = await connection.getAccountInfo(positionPda);
           if (!accountInfo) return null;
           //@ts-ignore
-          const position = await this.lbProgram.account.position.fetch(
-            positionPda
-          );
+          const position =
+            await this.lbProgram.account.position.fetch(positionPda);
           if (position.pair.toString() !== pair.toString()) return null;
           return { ...position, position: positionPda.toString() };
         } catch {
@@ -1348,9 +1356,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     if (transaction && payer) {
-      const infoPairVault = await this.connection.getAccountInfo(
-        associatedPairVault
-      );
+      const infoPairVault =
+        await this.connection.getAccountInfo(associatedPairVault);
 
       if (!infoPairVault) {
         const pairVaultYInstructions =
@@ -1379,9 +1386,8 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     if (transaction) {
-      const infoUserVault = await this.connection.getAccountInfo(
-        associatedUserVault
-      );
+      const infoUserVault =
+        await this.connection.getAccountInfo(associatedUserVault);
 
       if (!infoUserVault) {
         const userVaultYInstructions =

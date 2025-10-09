@@ -1,0 +1,162 @@
+{
+  "address": "hkif8yfVEYZGtnAgZeKgMC8m9H4Lgo4cGzB7Vn1AWtw",
+  "metadata": {
+    "name": "hook_interface",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "after_burn",
+      "discriminator": [6, 153, 69, 120, 1, 248, 63, 0],
+      "accounts": [
+        {
+          "name": "hook",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "pair",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "after_mint",
+      "discriminator": [134, 114, 182, 161, 82, 69, 14, 154],
+      "accounts": [
+        {
+          "name": "hook",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "pair",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "after_swap",
+      "discriminator": [235, 215, 232, 183, 152, 109, 5, 35],
+      "accounts": [
+        {
+          "name": "hook",
+          "writable": true
+        },
+        {
+          "name": "pair",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "after_transfer",
+      "discriminator": [153, 128, 220, 5, 209, 90, 39, 89],
+      "accounts": [
+        {
+          "name": "hook",
+          "writable": true
+        },
+        {
+          "name": "pair",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "before_burn",
+      "discriminator": [7, 177, 19, 160, 28, 229, 57, 73],
+      "accounts": [
+        {
+          "name": "hook",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "pair",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "before_mint",
+      "discriminator": [67, 27, 57, 7, 28, 168, 109, 153],
+      "accounts": [
+        {
+          "name": "hook",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "pair",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "before_swap",
+      "discriminator": [227, 59, 240, 68, 164, 9, 29, 254],
+      "accounts": [
+        {
+          "name": "hook",
+          "writable": true
+        },
+        {
+          "name": "pair",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "before_transfer",
+      "discriminator": [23, 118, 189, 23, 179, 222, 94, 146],
+      "accounts": [
+        {
+          "name": "hook",
+          "writable": true
+        },
+        {
+          "name": "pair",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "on_hook_set",
+      "discriminator": [23, 126, 214, 186, 197, 123, 0, 235],
+      "accounts": [
+        {
+          "name": "hook",
+          "writable": true
+        },
+        {
+          "name": "pair",
+          "signer": true
+        }
+      ],
+      "args": []
+    }
+  ]
+}

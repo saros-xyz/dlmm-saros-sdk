@@ -3,9 +3,9 @@ import { AnchorProvider, Idl, Program, Wallet } from "@coral-xyz/anchor";
 import { ILiquidityBookConfig, MODE } from "../types";
 import { CONFIG } from "../constants/config";
 import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
-import MdmaIDL from "../constants/idl/mdma_hook.json";
+import MdmaIDL from "../constants/idl/rewarder_hook.json";
 import LiquidityBookIDLDevnet from "../constants/idl_devnet/liquidity_book.json";
-import MdmaIDLDevnet from "../constants/idl_devnet/mdma_hook.json";
+import MdmaIDLDevnet from "../constants/idl_devnet/rewarder_hook.json";
 
 export abstract class LiquidityBookAbstract {
   connection: Connection;
