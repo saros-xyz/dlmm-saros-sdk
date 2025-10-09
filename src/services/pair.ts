@@ -46,7 +46,7 @@ import { ensureHookTokenAccount } from '../utils/hooks';
 import { derivePositionTokenAccount, getMultiplePositionAccounts } from '../utils/positions';
 import { handleSolWrapping } from '../utils/transaction';
 import { calculateRemovedShares } from '../utils/remove-liquidity';
-import { deriveBinArrayHookPDA, deriveHookPDA, derivePositionHookPDA, derivePositionPDA } from '../utils/pda';
+import { deriveBinArrayHookPDA, deriveBinArrayPDA, deriveHookPDA, derivePositionHookPDA, derivePositionPDA } from '../utils/pda';
 
 export class SarosDLMMPair extends SarosBaseService {
   private pairAddress: PublicKey;
@@ -174,6 +174,21 @@ export class SarosDLMMPair extends SarosBaseService {
       .instruction();
 
     transaction.add(ix);
+
+    if (!!this.pairAccount.hook) {
+      const hookPosition = derivePositionHookPDA(this.pairAccount.hook, position, this.hooksProgram.programId);
+      const initializeHookPositionTx = await this.hooksProgram.methods
+        .initializePosition()
+        .accountsPartial({
+          hook: this.pairAccount.hook,
+          lbPosition: position,
+          position: hookPosition,
+          user: payer,
+        })
+        .instruction();
+      transaction.add(initializeHookPositionTx);
+    }
+
     return transaction;
   }
 
@@ -238,8 +253,44 @@ export class SarosDLMMPair extends SarosBaseService {
       }
     }
 
-    const hook = deriveHookPDA(this.hooksConfig, this.pairAddress, this.hooksProgram.programId);
+    let accounts: {
+      pubkey: PublicKey;
+      isWritable: boolean;
+      isSigner: boolean;
+    }[] = [];
+
+    const hook = this.pairAccount.hook;
     const position = derivePositionPDA(positionMint, this.lbProgram.programId);
+
+    if (!!hook) {
+      const hookPosition = derivePositionHookPDA(hook, position, this.hooksProgram.programId);
+
+      const positionAccount = await this.getPositionAccount(position);
+
+      const binIndex = Math.floor(positionAccount.lowerBinId / BIN_ARRAY_SIZE)
+      const activeBinIndex = Math.floor(this.pairAccount.activeId / BIN_ARRAY_SIZE)
+
+
+      const binArrayHookActiveLower = deriveBinArrayHookPDA(hook, activeBinIndex, this.hooksProgram.programId);
+      const binArrayHookActiveUpper = deriveBinArrayHookPDA(hook, activeBinIndex + 1, this.hooksProgram.programId);
+
+      const binArrayActiveLower = deriveBinArrayPDA(activeBinIndex, this.pairAddress, this.lbProgram.programId);
+      const binArrayActiveUpper = deriveBinArrayPDA(activeBinIndex + 1, this.pairAddress, this.lbProgram.programId);
+
+      const binArrayHookLower = deriveBinArrayHookPDA(hook, binIndex, this.hooksProgram.programId);
+      const binArrayHookUpper = deriveBinArrayHookPDA(hook, binIndex + 1, this.hooksProgram.programId);
+
+      accounts = [
+        { pubkey: binArrayHookActiveLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayHookActiveUpper, isWritable: true, isSigner: false },
+        { pubkey: binArrayActiveLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayActiveUpper, isWritable: true, isSigner: false },
+        { pubkey: hookPosition, isWritable: true, isSigner: false },
+        { pubkey: binArrayHookLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayHookUpper, isWritable: true, isSigner: false },
+      ];
+    }
+
     const positionTokenAccount = derivePositionTokenAccount(positionMint, payer);
 
     const ix = await this.lbProgram.methods
@@ -264,11 +315,7 @@ export class SarosDLMMPair extends SarosBaseService {
         user: payer,
         positionMint,
       })
-      .remainingAccounts([
-        { pubkey: this.pairAddress, isWritable: false, isSigner: false },
-        { pubkey: binArrayLower, isWritable: false, isSigner: false },
-        { pubkey: binArrayUpper, isWritable: false, isSigner: false },
-      ])
+      .remainingAccounts(accounts)
       .instruction();
 
     await addOptimalComputeBudget(tx, this.connection, this.bufferGas);
@@ -612,9 +659,17 @@ export class SarosDLMMPair extends SarosBaseService {
     ];
 
     // Add binArrayHook if pair has a hook
-    if(!!this.pairAccount.hook){
-      const binArrayHookLower = deriveBinArrayHookPDA(this.pairAccount.hook, binArrayLowerIndex,  this.hooksProgram.programId)
-      const binArrayHookUpper = deriveBinArrayHookPDA(this.pairAccount.hook, binArrayUpperIndex, this.hooksProgram.programId)
+    if (!!this.pairAccount.hook) {
+      const binArrayHookLower = deriveBinArrayHookPDA(
+        this.pairAccount.hook,
+        binArrayLowerIndex,
+        this.hooksProgram.programId
+      );
+      const binArrayHookUpper = deriveBinArrayHookPDA(
+        this.pairAccount.hook,
+        binArrayUpperIndex,
+        this.hooksProgram.programId
+      );
 
       remainingAccounts = [
         { pubkey: binArrayHookLower, isWritable: true, isSigner: false },
