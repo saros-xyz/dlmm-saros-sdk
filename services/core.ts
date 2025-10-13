@@ -329,10 +329,19 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       relativeBinIdLeft,
       relativeBinIdRight,
       pair,
-      binArrayIndex,
       positionMint,
       transaction,
     } = params;
+
+    const pairInfo = await this.getPairAccount(pair);
+
+    const activeBinId = pairInfo.activeId;
+
+    const lowerBinId = activeBinId + relativeBinIdLeft;
+    const upperBinId = activeBinId + relativeBinIdRight;
+
+    const binArrayIndexLower = Math.floor(lowerBinId / BIN_ARRAY_SIZE);
+    const binArrayIndexUpper = Math.floor(upperBinId / BIN_ARRAY_SIZE);
 
     const position = PublicKey.findProgramAddressSync(
       [
@@ -342,6 +351,7 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
       this.lbProgram.programId
     )[0];
 
+    
     const positionVault = spl.getAssociatedTokenAddressSync(
       positionMint,
       payer,
@@ -350,16 +360,20 @@ export class LiquidityBookServices extends LiquidityBookAbstract {
     );
 
     await this.getBinArray({
-      binArrayIndex,
+      binArrayIndex: binArrayIndexLower,
       pair,
       payer,
     });
 
+     // access/create two binarray only if lowerBinId and upperBinId are not in the same binArray
+
+    if (binArrayIndexLower !== binArrayIndexUpper) {
     await this.getBinArray({
-      binArrayIndex: binArrayIndex + 1,
+      binArrayIndex: binArrayIndexUpper,
       pair,
       payer,
     });
+  }
 
     const initializePositionTx = await this.lbProgram.methods
       .createPosition(new BN(relativeBinIdLeft), new BN(relativeBinIdRight))
