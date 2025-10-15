@@ -515,7 +515,7 @@ export const findPosition = (index: number, activeBin = ACTIVE_ID) => (
 };
 
 export const getGasPrice = async (connection: Connection): Promise<number> => {
-  const buffNum = 100;
+  const buffNum = 1;
   try {
     return await new Promise(async (resolve) => {
       const timeout = setTimeout(() => {
