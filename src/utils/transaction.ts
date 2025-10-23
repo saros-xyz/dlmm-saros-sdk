@@ -9,7 +9,6 @@ import {
 import * as spl from '@solana/spl-token';
 import { Buffer } from 'buffer';
 import { CCU_LIMIT, UNIT_PRICE_DEFAULT, WRAP_SOL_PUBKEY } from '../constants';
-import { BN } from '@coral-xyz/anchor';
 import LiquidityBookIDL from '../constants/idl/liquidity_book.json';
 import { SarosDLMMError } from './errors';
 
@@ -55,16 +54,13 @@ export const addSolTransferInstructions = (
   transaction: Transaction,
   payer: PublicKey,
   vault: PublicKey,
-  amount: bigint | BN
+  amount: bigint
 ): void => {
-  // normalize to bigint
-  const lamports = amount instanceof BN ? BigInt(amount.toString()) : amount;
-
   transaction.add(
     SystemProgram.transfer({
       fromPubkey: payer,
       toPubkey: vault,
-      lamports,
+      lamports: amount,
     }),
     spl.createSyncNativeInstruction(vault)
   );
@@ -105,7 +101,7 @@ export async function extractPairFromTx(connection: Connection, signature: strin
 
 export interface SolWrappingOptions {
   swapForY?: boolean;
-  amount?: bigint | BN;
+  amount?: bigint;
   isPreSwap?: boolean;
 }
 

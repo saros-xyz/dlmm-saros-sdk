@@ -1,6 +1,5 @@
 import { MAX_BASIS_POINTS, MAX_BASIS_POINTS_BIGINT, LiquidityShape } from '../constants';
 import { SarosDLMMError } from './errors';
-import { BN } from '@coral-xyz/anchor';
 
 interface CreateLiquidityDistributionParams {
   shape: LiquidityShape;
@@ -218,6 +217,42 @@ export function createUniformDistribution(params: CreateLiquidityDistributionPar
   throw SarosDLMMError.InvalidShape();
 }
 
+/**
+ * Calculate scaled token amounts based on liquidity distribution percentages
+ */
+export function calculateDistributionAmounts(
+  liquidityDistribution: Distribution[],
+  amountTokenX: bigint,
+  amountTokenY: bigint,
+  useTokenY: boolean
+): { totalLiquidityPoints: number; scaledAmount: bigint } {
+  const totalLiquidityPoints = liquidityDistribution.reduce(
+    (prev, curr) => prev + (useTokenY ? curr.distributionY : curr.distributionX),
+    0
+  );
+
+  if (!totalLiquidityPoints) {
+    return { totalLiquidityPoints: 0, scaledAmount: 0n };
+  }
+
+  const totalAmount = useTokenY ? amountTokenY : amountTokenX;
+  const scaledAmount = (BigInt(totalLiquidityPoints) * totalAmount) / MAX_BASIS_POINTS_BIGINT;
+
+  return { totalLiquidityPoints, scaledAmount };
+}
+
+const divRem = (numerator: number, denominator: number) => {
+  if (denominator === 0) {
+    throw new Error('Division by zero');
+  }
+
+  // Calculate quotient and remainder
+  const quotient = numerator / denominator;
+  const remainder = numerator % denominator;
+
+  return [quotient, remainder];
+};
+
 const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribution[] => {
   const activeId = 0;
 
@@ -398,42 +433,4 @@ const getCurveDistributionFromBinRange = (binRange: [number, number]): Distribut
     };
   });
   return liquidityDistribution;
-};
-
-/**
- * Calculate scaled token amounts based on liquidity distribution percentages
- */
-export function calculateDistributionAmounts(
-  liquidityDistribution: Distribution[],
-  amountTokenX: bigint,
-  amountTokenY: bigint,
-  useTokenY: boolean
-): { totalLiquidityPoints: number; scaledAmount: BN } {
-  const totalLiquidityPoints = liquidityDistribution.reduce(
-    (prev, curr) => prev + (useTokenY ? curr.distributionY : curr.distributionX),
-    0
-  );
-
-  if (!totalLiquidityPoints) {
-    return { totalLiquidityPoints: 0, scaledAmount: new BN(0) };
-  }
-
-  const totalAmount = useTokenY ? amountTokenY : amountTokenX;
-  const scaledAmount = new BN(totalLiquidityPoints)
-    .mul(new BN(totalAmount.toString()))
-    .div(new BN(MAX_BASIS_POINTS_BIGINT.toString()));
-
-  return { totalLiquidityPoints, scaledAmount };
-}
-
-const divRem = (numerator: number, denominator: number) => {
-  if (denominator === 0) {
-    throw new Error('Division by zero');
-  }
-
-  // Calculate quotient and remainder
-  const quotient = numerator / denominator;
-  const remainder = numerator % denominator;
-
-  return [quotient, remainder];
 };

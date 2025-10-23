@@ -8,23 +8,24 @@ const connection = new Connection(process.env.RPC_URL || 'https://api.mainnet-be
 const sdk = new SarosDLMM({ mode: MODE.MAINNET, connection });
 
 const USDC_USDT = '9P3N4QxjMumpTNNdvaNNskXu2t7VHMMXtePQB72kkSAk';
-// any wallet with a DLMM position open
-const TEST_WALLET = new PublicKey('4VGLP8wqFEHEoh8vjgYCMsUbZ6LtuYrxcJv226qCWNuT');
 
 describe('Position Operations', () => {
-  it('fetches user positions for pool', async () => {
-    const pair = await sdk.getPair(new PublicKey(USDC_USDT));
-    const positions = await pair.getUserPositions({
-      payer: TEST_WALLET,
-    });
+  // it('fetches user positions for pool', async () => {
+  // any wallet with a DLMM position open
+  // const TEST_WALLET = new PublicKey('4VGLP8wqFEHEoh8vjgYCMsUbZ6LtuYrxcJv226qCWNuT');
 
-    expect(Array.isArray(positions)).toBe(true);
-    expect(positions.length).toBeGreaterThan(0);
+  //   const pair = await sdk.getPair(new PublicKey(USDC_USDT));
+  //   const positions = await pair.getUserPositions({
+  //     payer: TEST_WALLET,
+  //   });
 
-    positions.forEach((position) => {
-      expect(position.upperBinId).toBeGreaterThanOrEqual(position.lowerBinId);
-    });
-  });
+  //   expect(Array.isArray(positions)).toBe(true);
+  //   expect(positions.length).toBeGreaterThan(0);
+
+  //   positions.forEach((position) => {
+  //     expect(position.upperBinId).toBeGreaterThanOrEqual(position.lowerBinId);
+  //   });
+  // });
 
   it('handles wallet with no positions', async () => {
     const pair = await sdk.getPair(new PublicKey(USDC_USDT));

@@ -13,7 +13,13 @@ import {
 import { getFeeAmount, getFeeForAmount, getFeeMetadata, getProtocolFee, getTotalFee } from '../utils/fees';
 import { Volatility } from '../utils/volatility';
 import { BinArrayRange } from '../utils/bin-range';
-import { BIN_ARRAY_SIZE, MAX_BIN_CROSSINGS, SCALE_OFFSET, WRAP_SOL_PUBKEY } from '../constants';
+import {
+  BIN_ARRAY_SIZE,
+  MAX_BIN_CROSSINGS,
+  SCALE_OFFSET_BIGINT,
+  SCALE_MULTIPLIER,
+  WRAP_SOL_PUBKEY,
+} from '../constants';
 import {
   DLMMPairAccount,
   PairMetadata,
@@ -253,7 +259,7 @@ export class SarosDLMMPair extends SarosBaseService {
         isNativeY
       );
 
-      if (!scaledAmount.isZero()) {
+      if (scaledAmount > 0n) {
         const associatedUserVault = isNativeY ? userVaultY : userVaultX;
         addSolTransferInstructions(tx, payer, associatedUserVault, scaledAmount);
       }
@@ -371,29 +377,25 @@ export class SarosDLMMPair extends SarosBaseService {
     );
 
     return binIds.map((binId: number, idx: number) => {
-      const liquidityShare = positionInfo.liquidityShares[idx];
+      const liquidityShare = BigInt(positionInfo.liquidityShares[idx].toString());
       const activeBin = bins[binId];
 
       if (activeBin) {
-        const { reserveX, reserveY, totalSupply } = activeBin;
+        const reserveX = BigInt(activeBin.reserveX.toString());
+        const reserveY = BigInt(activeBin.reserveY.toString());
+        const totalSupply = BigInt(activeBin.totalSupply.toString());
 
-        const baseReserve =
-          reserveX.gt(new BN(0)) && totalSupply.gt(new BN(0))
-            ? liquidityShare.mul(reserveX).div(totalSupply)
-            : new BN(0);
+        const baseReserve = reserveX > 0n && totalSupply > 0n ? (liquidityShare * reserveX) / totalSupply : 0n;
 
-        const quoteReserve =
-          reserveY.gt(new BN(0)) && totalSupply.gt(new BN(0))
-            ? liquidityShare.mul(reserveY).div(totalSupply)
-            : new BN(0);
+        const quoteReserve = reserveY > 0n && totalSupply > 0n ? (liquidityShare * reserveY) / totalSupply : 0n;
 
         return {
-          reserveX: BigInt(baseReserve.toString()),
-          reserveY: BigInt(quoteReserve.toString()),
-          totalSupply: BigInt(totalSupply.toString()),
+          reserveX: baseReserve,
+          reserveY: quoteReserve,
+          totalSupply,
           binId: firstBinId + idx,
           binPosition: binId,
-          liquidityShare: BigInt(liquidityShare.toString()),
+          liquidityShare,
         };
       }
 
@@ -403,7 +405,7 @@ export class SarosDLMMPair extends SarosBaseService {
         totalSupply: 0n,
         binId: firstBinId + idx,
         binPosition: binId,
-        liquidityShare: BigInt(liquidityShare.toString()),
+        liquidityShare,
       };
     });
   }
@@ -494,7 +496,7 @@ export class SarosDLMMPair extends SarosBaseService {
           tx.add(ix);
         } else {
           const ix = await this.lbProgram.methods
-            .decreasePosition(removedShares)
+            .decreasePosition(removedShares.map((share) => new BN(share.toString())))
             .accountsPartial({
               pair: this.pairAddress,
               position,
@@ -739,8 +741,8 @@ export class SarosDLMMPair extends SarosBaseService {
       const feeAmount = getFeeAmount(amount, feePrice);
       const amountAfterFee = amount - feeAmount;
       const maxAmountOut = swapForY
-        ? (amountAfterFee * BigInt(activePrice)) >> BigInt(SCALE_OFFSET)
-        : (amountAfterFee << BigInt(SCALE_OFFSET)) / BigInt(activePrice);
+        ? (amountAfterFee * BigInt(activePrice)) >> SCALE_OFFSET_BIGINT
+        : (amountAfterFee << SCALE_OFFSET_BIGINT) / BigInt(activePrice);
 
       return { maxAmountOut, price: activePrice };
     } catch {
@@ -802,13 +804,11 @@ export class SarosDLMMPair extends SarosBaseService {
       const { binArrays } = await getQuoteBinArrays(this.pairAccount.activeId, this.pairAddress, this.lbProgram);
 
       const binRange = new BinArrayRange(binArrays[0], binArrays[1], binArrays[2]);
-      const totalSupply = binRange
-        .getAllBins()
-        .reduce((acc, cur) => acc.add(new BN(cur.totalSupply.toString())), new BN(0));
-      if (totalSupply.isZero()) {
+      const totalSupply = binRange.getAllBins().reduce((acc, cur) => acc + BigInt(cur.totalSupply.toString()), 0n);
+      if (totalSupply === 0n) {
         return {
-          amountIn: BigInt(0),
-          amountOut: BigInt(0),
+          amountIn: 0n,
+          amountOut: 0n,
         };
       }
 
@@ -836,7 +836,7 @@ export class SarosDLMMPair extends SarosBaseService {
 
   private async calculateAmountIn(amount: bigint, bins: BinArrayRange, pairInfo: DLMMPairAccount, swapForY: boolean) {
     try {
-      let amountIn = BigInt(0);
+      let amountIn = 0n;
       let amountOutLeft = amount;
       let activeId = pairInfo.activeId;
       let totalBinUsed = 0;
@@ -848,7 +848,7 @@ export class SarosDLMMPair extends SarosBaseService {
         (slot) => this.connection.getBlockTime(slot)
       );
 
-      while (amountOutLeft > BigInt(0)) {
+      while (amountOutLeft > 0n) {
         totalBinUsed++;
         this.volatilityManager.updateVolatilityAccumulator(pairInfo, activeId);
 
@@ -867,8 +867,8 @@ export class SarosDLMMPair extends SarosBaseService {
           fee,
           protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
-          reserveX: new BN(activeBin.reserveX.toString()),
-          reserveY: new BN(activeBin.reserveY.toString()),
+          reserveX: BigInt(activeBin.reserveX.toString()),
+          reserveY: BigInt(activeBin.reserveY.toString()),
         });
 
         amountIn += amountInWithFees;
@@ -890,7 +890,7 @@ export class SarosDLMMPair extends SarosBaseService {
 
   private async calculateAmountOut(amount: bigint, bins: BinArrayRange, pairInfo: DLMMPairAccount, swapForY: boolean) {
     try {
-      let amountOut = BigInt(0);
+      let amountOut = 0n;
       let amountInLeft = amount;
       let activeId = pairInfo.activeId;
       let totalBinUsed = 0;
@@ -902,7 +902,7 @@ export class SarosDLMMPair extends SarosBaseService {
         (slot) => this.connection.getBlockTime(slot)
       );
 
-      while (amountInLeft > BigInt(0)) {
+      while (amountInLeft > 0n) {
         totalBinUsed++;
         this.volatilityManager.updateVolatilityAccumulator(pairInfo, activeId);
 
@@ -920,8 +920,8 @@ export class SarosDLMMPair extends SarosBaseService {
           fee,
           protocolShare: pairInfo.staticFeeParameters.protocolShare,
           swapForY,
-          reserveX: new BN(activeBin.reserveX.toString()),
-          reserveY: new BN(activeBin.reserveY.toString()),
+          reserveX: BigInt(activeBin.reserveX.toString()),
+          reserveY: BigInt(activeBin.reserveY.toString()),
         });
 
         amountOut += amountOutOfBin;
@@ -947,22 +947,21 @@ export class SarosDLMMPair extends SarosBaseService {
     fee: bigint;
     protocolShare: number;
     swapForY: boolean;
-    reserveX: BN;
-    reserveY: BN;
+    reserveX: bigint;
+    reserveY: bigint;
   }) {
     const { binStep, activeId, amountOutLeft, protocolShare, swapForY, reserveX, reserveY, fee } = params;
     const protocolShareBigInt = BigInt(protocolShare);
     const binReserveOut = swapForY ? reserveY : reserveX;
 
-    if (binReserveOut.isZero()) {
+    if (binReserveOut === 0n) {
       throw SarosDLMMError.BinHasNoReserves();
     }
 
-    const binReserveOutBigInt = BigInt(binReserveOut.toString());
-    const amountOut = amountOutLeft > binReserveOutBigInt ? binReserveOutBigInt : amountOutLeft;
+    const amountOut = amountOutLeft > binReserveOut ? binReserveOut : amountOutLeft;
 
     const price = getPriceFromId(binStep, activeId, this.metadata.tokenX.decimals, this.metadata.tokenY.decimals);
-    const priceScaled = BigInt(Math.round(Number(price) * Math.pow(2, SCALE_OFFSET)));
+    const priceScaled = BigInt(Math.round(Number(price) * SCALE_MULTIPLIER));
 
     const amountInWithoutFee = getAmountInByPrice(amountOut, priceScaled, swapForY, 'up');
 
@@ -985,45 +984,43 @@ export class SarosDLMMPair extends SarosBaseService {
     fee: bigint;
     protocolShare: number;
     swapForY: boolean;
-    reserveX: BN;
-    reserveY: BN;
+    reserveX: bigint;
+    reserveY: bigint;
   }) {
     const { binStep, activeId, amountInLeft, protocolShare, swapForY, reserveX, reserveY, fee } = params;
     const protocolShareBigInt = BigInt(protocolShare);
     const binReserveOut = swapForY ? reserveY : reserveX;
 
-    if (binReserveOut.isZero()) {
+    if (binReserveOut === 0n) {
       throw SarosDLMMError.BinHasNoReserves();
     }
 
-    const binReserveOutBigInt = BigInt(binReserveOut.toString());
-
     const price = getPriceFromId(binStep, activeId, this.metadata.tokenX.decimals, this.metadata.tokenY.decimals);
-    const priceScaled = BigInt(Math.round(Number(price) * Math.pow(2, SCALE_OFFSET)));
+    const priceScaled = BigInt(Math.round(Number(price) * SCALE_MULTIPLIER));
 
-    let maxAmountIn = getAmountInByPrice(binReserveOutBigInt, priceScaled, swapForY, 'up');
+    let maxAmountIn = getAmountInByPrice(binReserveOut, priceScaled, swapForY, 'up');
 
     const maxFeeAmount = getFeeForAmount(maxAmountIn, fee);
     maxAmountIn += maxFeeAmount;
 
-    let amountOut = BigInt(0);
-    let amountIn = BigInt(0);
-    let feeAmount = BigInt(0);
+    let amountOut = 0n;
+    let amountIn = 0n;
+    let feeAmount = 0n;
 
     if (amountInLeft >= maxAmountIn) {
       feeAmount = maxFeeAmount;
       amountIn = maxAmountIn - feeAmount;
-      amountOut = binReserveOutBigInt;
+      amountOut = binReserveOut;
     } else {
       feeAmount = getFeeAmount(amountInLeft, fee);
       amountIn = amountInLeft - feeAmount;
       amountOut = getAmountOutByPrice(amountIn, priceScaled, swapForY, 'down');
-      if (amountOut > binReserveOutBigInt) {
-        amountOut = binReserveOutBigInt;
+      if (amountOut > binReserveOut) {
+        amountOut = binReserveOut;
       }
     }
 
-    const protocolFeeAmount = protocolShare > BigInt(0) ? getProtocolFee(feeAmount, protocolShareBigInt) : BigInt(0);
+    const protocolFeeAmount = protocolShare > 0 ? getProtocolFee(feeAmount, protocolShareBigInt) : 0n;
 
     return {
       amountInWithFees: amountIn + feeAmount,

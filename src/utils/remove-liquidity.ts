@@ -1,4 +1,3 @@
-import { BN } from '@coral-xyz/anchor';
 import { PositionReserve } from '../types';
 import { FIXED_LENGTH, RemoveLiquidityType } from '../constants';
 
@@ -7,34 +6,34 @@ export const calculateRemovedShares = (
   type: RemoveLiquidityType,
   start: number,
   end: number
-): { removedShares: BN[]; shouldClosePosition: boolean } => {
-  let removedShares: BN[] = [];
+): { removedShares: bigint[]; shouldClosePosition: boolean } => {
+  let removedShares: bigint[] = [];
 
   if (type === RemoveLiquidityType.All) {
     removedShares = reserveXY.map((reserve: PositionReserve) => {
       const binId = reserve.binId;
       if (binId >= Number(start) && binId <= Number(end)) {
-        return new BN(reserve.liquidityShare.toString());
+        return reserve.liquidityShare;
       }
-      return new BN(0);
+      return 0n;
     });
   }
 
   if (type === RemoveLiquidityType.TokenX) {
     removedShares = reserveXY.map((reserve: PositionReserve) => {
       if (reserve.reserveX > 0n && reserve.reserveY === 0n) {
-        return new BN(reserve.liquidityShare.toString());
+        return reserve.liquidityShare;
       }
-      return new BN(0);
+      return 0n;
     });
   }
 
   if (type === RemoveLiquidityType.TokenY) {
     removedShares = reserveXY.map((reserve: PositionReserve) => {
       if (reserve.reserveY > 0n && reserve.reserveX === 0n) {
-        return new BN(reserve.liquidityShare.toString());
+        return reserve.liquidityShare;
       }
-      return new BN(0);
+      return 0n;
     });
   }
 

@@ -1,5 +1,5 @@
 import { DLMMPairAccount } from '../types';
-import { VARIABLE_FEE_PRECISION, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT } from '../constants';
+import { VARIABLE_FEE_PRECISION_BIGINT, PRECISION_BIGINT, MAX_BASIS_POINTS_BIGINT } from '../constants';
 
 export interface FeeCalculationResult {
   baseFee: number;
@@ -10,27 +10,27 @@ export interface FeeCalculationResult {
 
 export function getVariableFee(pairInfo: DLMMPairAccount, volatilityAccumulator: number): bigint {
   const variableFeeControl = BigInt(pairInfo.staticFeeParameters.variableFeeControl);
-  if (variableFeeControl > BigInt(0)) {
+  if (variableFeeControl > 0n) {
     const prod = BigInt(Math.floor(volatilityAccumulator * pairInfo.binStep));
     const variableFee =
-      (prod * prod * variableFeeControl + BigInt(VARIABLE_FEE_PRECISION) - BigInt(1)) / BigInt(VARIABLE_FEE_PRECISION);
+      (prod * prod * variableFeeControl + VARIABLE_FEE_PRECISION_BIGINT - 1n) / VARIABLE_FEE_PRECISION_BIGINT;
     return variableFee;
   }
   return variableFeeControl;
 }
 
 export function getBaseFee(binStep: number, baseFactor: number): bigint {
-  return BigInt(binStep) * BigInt(baseFactor) * BigInt(10);
+  return BigInt(binStep) * BigInt(baseFactor) * 10n;
 }
 
 export function getFeeForAmount(amount: bigint, fee: bigint): bigint {
   const denominator = PRECISION_BIGINT - fee;
-  const feeForAmount = (amount * fee + denominator - BigInt(1)) / denominator;
+  const feeForAmount = (amount * fee + denominator - 1n) / denominator;
   return feeForAmount;
 }
 
 export function getFeeAmount(amount: bigint, fee: bigint): bigint {
-  const feeAmount = (amount * fee + PRECISION_BIGINT - BigInt(1)) / PRECISION_BIGINT;
+  const feeAmount = (amount * fee + PRECISION_BIGINT - 1n) / PRECISION_BIGINT;
   return feeAmount;
 }
 

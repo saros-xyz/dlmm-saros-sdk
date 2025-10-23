@@ -32,7 +32,7 @@ export async function getMultiplePositionAccounts(
   }
 }
 
-export async function getPositionAccount(
+async function getPositionAccount(
   positionPdas: PublicKey[],
   pairAddress: PublicKey,
   lbProgram: any

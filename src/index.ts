@@ -14,14 +14,7 @@ export {
   RemoveLiquidityType,
 } from './constants';
 
-// (legacy) price helpers
-export { getPriceFromId, getIdFromPrice } from './utils/price';
-
-// derive address helpers
-export * from './utils/pda';
-
-// re-enable if legacy 'addLiquidityToPosition' is added back to sdk
-// export type { Distribution, createUniformDistribution } from './utils/bin-distribution';
+export * from './utils/index';
 
 // Public types
 export type {

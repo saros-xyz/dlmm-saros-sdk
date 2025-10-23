@@ -1,4 +1,4 @@
-import { PRECISION_BIGINT, SCALE_OFFSET, MAX_BASIS_POINTS_BIGINT } from '../constants';
+import { PRECISION_BIGINT, SCALE_OFFSET_BIGINT, MAX_BASIS_POINTS_BIGINT } from '../constants';
 import { SarosDLMMError } from './errors';
 
 /** Calculates the input amount required for a swap based on the desired output amount and price. */
@@ -11,13 +11,13 @@ export const getAmountInByPrice = (
   if (swapForY) {
     // amountIn = (amountOut << scaleOffset) / priceScaled
     return rounding === 'up'
-      ? ((amountOut << BigInt(SCALE_OFFSET)) + priceScaled - BigInt(1)) / priceScaled
-      : (amountOut << BigInt(SCALE_OFFSET)) / priceScaled;
+      ? ((amountOut << SCALE_OFFSET_BIGINT) + priceScaled - 1n) / priceScaled
+      : (amountOut << SCALE_OFFSET_BIGINT) / priceScaled;
   } else {
     // amountIn = (amountOut * priceScaled) >> scaleOffset
     return rounding === 'up'
-      ? (amountOut * priceScaled + (BigInt(1) << BigInt(SCALE_OFFSET)) - BigInt(1)) >> BigInt(SCALE_OFFSET)
-      : (amountOut * priceScaled) >> BigInt(SCALE_OFFSET);
+      ? (amountOut * priceScaled + (1n << SCALE_OFFSET_BIGINT) - 1n) >> SCALE_OFFSET_BIGINT
+      : (amountOut * priceScaled) >> SCALE_OFFSET_BIGINT;
   }
 };
 
@@ -32,14 +32,14 @@ export const getAmountOutByPrice = (
     // price = (Y / X) & swapForY => amountOut = amountIn * price
     // amountOut = (amountIn * priceScaled) >> scaleOffset
     return rounding === 'up'
-      ? (amountIn * priceScaled + (BigInt(1) << BigInt(SCALE_OFFSET)) - BigInt(1)) >> BigInt(SCALE_OFFSET)
-      : (amountIn * priceScaled) >> BigInt(SCALE_OFFSET);
+      ? (amountIn * priceScaled + (1n << SCALE_OFFSET_BIGINT) - 1n) >> SCALE_OFFSET_BIGINT
+      : (amountIn * priceScaled) >> SCALE_OFFSET_BIGINT;
   } else {
     // price = (X / Y) & !swapForY => amountOut = amountIn / price
     // amountOut = (amountIn << scaleOffset) / priceScaled
     return rounding === 'up'
-      ? ((amountIn << BigInt(SCALE_OFFSET)) + priceScaled - BigInt(1)) / priceScaled
-      : (amountIn << BigInt(SCALE_OFFSET)) / priceScaled;
+      ? ((amountIn << SCALE_OFFSET_BIGINT) + priceScaled - 1n) / priceScaled
+      : (amountIn << SCALE_OFFSET_BIGINT) / priceScaled;
   }
 };
 
