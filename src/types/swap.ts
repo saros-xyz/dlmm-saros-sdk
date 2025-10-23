@@ -1,5 +1,11 @@
 import { PublicKey } from '@solana/web3.js';
 
+/**
+ * BigInt Usage Pattern
+ * Use native JavaScript `bigint` for all token amounts and calculations.
+ * Convert to BN when necessary, i.e. calling Anchor program methods.
+ */
+
 /** Swap direction and execution mode */
 export interface SwapOptions {
   /** Swap direction: true = X to Y, false = Y to X */
@@ -8,12 +14,18 @@ export interface SwapOptions {
   isExactInput: boolean;
 }
 
-/** Parameters for executing a swap transaction */
+/**
+ * Parameters for executing a swap transaction
+ *
+ * Note: tokenIn/tokenOut are optional legacy fields kept for backward compatibility.
+ * Use SwapOptions.swapForY to specify direction instead.
+ * Likely best to reexpose swap function from SDK base for backward compatibility with agg partners.
+ */
 export interface SwapParams {
-  /** Token being sold */
-  tokenIn: PublicKey;
-  /** Token being bought */
-  tokenOut: PublicKey;
+  /** Token being sold (optional, use options.swapForY for direction) */
+  tokenIn?: PublicKey;
+  /** Token being bought (optional, use options.swapForY for direction) */
+  tokenOut?: PublicKey;
   /**
    * Amount to swap
    * - Exact input: amount of tokenIn to sell
@@ -44,7 +56,7 @@ export interface QuoteParams {
 
 /** Swap quote information */
 export interface QuoteResponse {
-  /** Required input amount (exact quote without slippage) */
+  /** input amount (exact quote without slippage) */
   amountIn: bigint;
   /** Expected output amount (exact quote without slippage) */
   amountOut: bigint;
