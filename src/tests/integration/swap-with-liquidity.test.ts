@@ -189,7 +189,7 @@ describe('Swap Integration Tests', () => {
       const tx = await pair.swap({
         tokenIn: tokenX,
         tokenOut: tokenY,
-        amount: desiredOutput,
+        amount: quote.amountOut,
         options: { swapForY: true, isExactInput: false },
         minTokenOut: quote.minTokenOut,
         payer: wallet.keypair.publicKey,

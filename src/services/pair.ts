@@ -46,7 +46,13 @@ import { ensureHookTokenAccount } from '../utils/hooks';
 import { derivePositionTokenAccount, getMultiplePositionAccounts } from '../utils/positions';
 import { handleSolWrapping } from '../utils/transaction';
 import { calculateRemovedShares } from '../utils/remove-liquidity';
-import { deriveBinArrayHookPDA, deriveBinArrayPDA, deriveHookPDA, derivePositionHookPDA, derivePositionPDA } from '../utils/pda';
+import {
+  deriveBinArrayHookPDA,
+  deriveBinArrayPDA,
+  deriveHookPDA,
+  derivePositionHookPDA,
+  derivePositionPDA,
+} from '../utils/pda';
 
 export class SarosDLMMPair extends SarosBaseService {
   private pairAddress: PublicKey;
@@ -267,9 +273,8 @@ export class SarosDLMMPair extends SarosBaseService {
 
       const positionAccount = await this.getPositionAccount(position);
 
-      const binIndex = Math.floor(positionAccount.lowerBinId / BIN_ARRAY_SIZE)
-      const activeBinIndex = Math.floor(this.pairAccount.activeId / BIN_ARRAY_SIZE)
-
+      const binIndex = Math.floor(positionAccount.lowerBinId / BIN_ARRAY_SIZE);
+      const activeBinIndex = Math.floor(this.pairAccount.activeId / BIN_ARRAY_SIZE);
 
       const binArrayHookActiveLower = deriveBinArrayHookPDA(hook, activeBinIndex, this.hooksProgram.programId);
       const binArrayHookActiveUpper = deriveBinArrayHookPDA(hook, activeBinIndex + 1, this.hooksProgram.programId);
@@ -558,8 +563,7 @@ export class SarosDLMMPair extends SarosBaseService {
         options: { swapForY, isExactInput },
       } = params;
 
-      const data = await this.calculateInOutAmount(params);
-      const { amountIn, amountOut } = data;
+      const { amountIn, amountOut } = await this.calculateInOutAmount(params);
 
       let maxAmountIn = amountIn;
       let minAmountOut = amountOut;
@@ -619,7 +623,7 @@ export class SarosDLMMPair extends SarosBaseService {
       amount,
       minTokenOut,
       options: { swapForY, isExactInput },
-      payer
+      payer,
     } = params;
 
     if (amount <= 0n) throw SarosDLMMError.ZeroAmount();
@@ -760,7 +764,12 @@ export class SarosDLMMPair extends SarosBaseService {
     this.tokenProgramX = tokenAccountsData.tokenProgramX;
     this.tokenProgramY = tokenAccountsData.tokenProgramY;
 
-    const activePrice = getPriceFromId(binStep, activeId, tokenAccountsData.baseDecimals, tokenAccountsData.quoteDecimals);
+    const activePrice = getPriceFromId(
+      binStep,
+      activeId,
+      tokenAccountsData.baseDecimals,
+      tokenAccountsData.quoteDecimals
+    );
 
     return {
       pair: this.pairAddress,

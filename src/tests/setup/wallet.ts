@@ -39,7 +39,3 @@ export async function loadOrCreateWallet(connection: Connection): Promise<TestWa
     balance,
   };
 }
-
-export function generateTestKeypair(): Keypair {
-  return Keypair.generate();
-}

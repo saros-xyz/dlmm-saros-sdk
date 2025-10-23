@@ -61,7 +61,12 @@ export async function getSwapBinArrays(
   pairAddress: PublicKey,
   connection: Connection,
   programId: PublicKey
-): Promise<{ binArrayLower: PublicKey; binArrayUpper: PublicKey, binArrayLowerIndex: number, binArrayUpperIndex: number  }> {
+): Promise<{
+  binArrayLower: PublicKey;
+  binArrayUpper: PublicKey;
+  binArrayLowerIndex: number;
+  binArrayUpperIndex: number;
+}> {
   const currentBinArrayIndex = calculateBinArrayIndex(activeId);
   const surroundingIndexes = [currentBinArrayIndex - 1, currentBinArrayIndex, currentBinArrayIndex + 1];
 
