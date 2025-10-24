@@ -96,7 +96,6 @@ export class SarosDLMMPair extends SarosBaseService {
   /** Refresh pair state data (active bin, price, reserves, etc.) */
   public async refreshState(pairAddress?: string): Promise<void> {
     try {
-      //@ts-ignore
       this.pairAccount = await this.lbProgram.account.pair.fetch(this.pairAddress || pairAddress);
       if (!this.pairAccount) throw SarosDLMMError.PairFetchFailed();
 
@@ -108,7 +107,6 @@ export class SarosDLMMPair extends SarosBaseService {
 
   /** Get position account data by position address  */
   public async getPositionAccount(position: PublicKey): Promise<PositionAccount> {
-    //@ts-ignore
     return await this.lbProgram.account.position.fetch(position);
   }
 
@@ -174,7 +172,7 @@ export class SarosDLMMPair extends SarosBaseService {
     const positionTokenAccount = derivePositionTokenAccount(positionMint, payer);
 
     const ix = await this.lbProgram.methods
-      .createPosition(new BN(binIdLeft), new BN(binIdRight))
+      .createPosition(binIdLeft, binIdRight)
       .accountsPartial({
         pair: this.pairAddress,
         position,

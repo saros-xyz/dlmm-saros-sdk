@@ -17,7 +17,7 @@ export interface DLMMPairAccount {
     variableFeeControl: number;
     maxVolatilityAccumulator: number;
     protocolShare: number;
-    space: [number, number];
+    space: number[];
   };
   activeId: number;
   dynamicFeeParameters: {
@@ -25,11 +25,11 @@ export interface DLMMPairAccount {
     volatilityAccumulator: number;
     volatilityReference: number;
     idReference: number;
-    space: [number, number, number, number];
+    space: number[];
   };
   protocolFeesX: BN;
   protocolFeesY: BN;
-  hook: PublicKey | undefined;
+  hook: PublicKey | null;
 }
 
 /** a User Position within a pair */
@@ -37,8 +37,6 @@ export interface PositionAccount {
   pair: PublicKey;
   /** position NFT */
   positionMint: PublicKey;
-  /** position PDA */
-  position: PublicKey;
   liquidityShares: BN[];
   lowerBinId: number;
   upperBinId: number;
