@@ -15,6 +15,13 @@ import {
   GetTokenOutputParams,
   Pair,
 } from "../types/services";
+import {
+  getMint,
+  TOKEN_2022_PROGRAM_ID,
+  TransferFee,
+  calculateFee,
+  getTransferFeeConfig,
+} from "@solana/spl-token";
 
 class LBError extends Error {
   static BinNotFound = new LBError("Bin not found");
@@ -103,9 +110,22 @@ export class LBSwapService {
   public async calculateInOutAmount(params: GetTokenOutputParams) {
     const { amount, swapForY, pair, isExactInput } = params;
     try {
-       //@ts-ignore
+      //@ts-ignore
       const pairInfo: Pair = await this.lbProgram.account.pair.fetch(pair);
       if (!pairInfo) throw new Error("Pair not found");
+
+      // Get transfer fee configs for Token 2022 support
+      const [tokenBaseFeeConfig, tokenQuoteFeeConfig] = await Promise.all([
+        this.getTransferFeeFromOnchain(pairInfo.tokenMintX.toString()),
+        this.getTransferFeeFromOnchain(pairInfo.tokenMintY.toString()),
+      ]);
+
+      const inputTokenFeeConfig = swapForY
+        ? tokenBaseFeeConfig
+        : tokenQuoteFeeConfig;
+      const outputTokenFeeConfig = swapForY
+        ? tokenQuoteFeeConfig
+        : tokenBaseFeeConfig;
 
       const currentBinArrayIndex = Math.floor(
         pairInfo.activeId / BIN_ARRAY_SIZE
@@ -125,7 +145,7 @@ export class LBSwapService {
       // Fetch bin arrays in batch, fallback to empty if not found
       const binArrays: BinArray[] = await Promise.all(
         binArrayAddresses.map((address, i) =>
-           //@ts-ignore
+          //@ts-ignore
           this.lbProgram.account.binArray.fetch(address).catch((error: any) => {
             return { index: binArrayIndexes[i], bins: [] } as BinArray;
           })
@@ -148,31 +168,57 @@ export class LBSwapService {
         };
       }
 
-      const amountAfterTransferFee = amount;
-
       if (isExactInput) {
-        const amountOut = await this.calculateAmountOut(
+        let amountAfterTransferFee = amount;
+        let transferFeeIn = 0n;
+        let transferFeeOut = 0n;
+
+        if (inputTokenFeeConfig) {
+          transferFeeIn = calculateFee(inputTokenFeeConfig, amount);
+          amountAfterTransferFee = amount - transferFeeIn;
+        }
+
+        let amountOut = await this.calculateAmountOut(
           amountAfterTransferFee,
           binRange,
           pairInfo,
           swapForY
         );
+
+        if (outputTokenFeeConfig && amountOut) {
+          transferFeeOut = calculateFee(outputTokenFeeConfig, amountOut);
+          amountOut = amountOut - transferFeeOut;
+        }
 
         return {
           amountIn: amount,
           amountOut,
         };
       } else {
-        const amountIn = await this.calculateAmountIn(
-          amountAfterTransferFee,
+        let amountIncludingOutputFee = amount;
+        let transferFeeOut = 0n;
+        let transferFeeIn = 0n;
+
+        if (outputTokenFeeConfig) {
+          transferFeeOut = calculateFee(outputTokenFeeConfig, amount);
+          amountIncludingOutputFee = amount + transferFeeOut;
+        }
+
+        let amountIn = await this.calculateAmountIn(
+          amountIncludingOutputFee,
           binRange,
           pairInfo,
           swapForY
         );
 
+        if (inputTokenFeeConfig && amountIn) {
+          transferFeeIn = calculateFee(inputTokenFeeConfig, amountIn);
+          amountIn = amountIn + transferFeeIn;
+        }
+
         return {
           amountIn,
-          amountOut: amountAfterTransferFee,
+          amountOut: amount,
         };
       }
     } catch (error) {
@@ -635,6 +681,47 @@ export class LBSwapService {
         ? ((amountIn << BigInt(scaleOffset)) + priceScaled - BigInt(1)) /
             priceScaled
         : (amountIn << BigInt(scaleOffset)) / priceScaled;
+    }
+  }
+
+  private async getTransferFeeFromOnchain(
+    mintAddress: string
+  ): Promise<TransferFee | null> {
+    try {
+      const mintPubkey = new PublicKey(mintAddress);
+      const connection = this.connection;
+
+      const mintInfo = await getMint(
+        connection,
+        mintPubkey,
+        undefined,
+        TOKEN_2022_PROGRAM_ID
+      );
+      const transferFeeConfig = getTransferFeeConfig(mintInfo);
+
+      if (!transferFeeConfig) {
+        return null; // No transfer fee extension
+      }
+
+      // Get current epoch to determine which fee to use
+      const epochInfo = await connection.getEpochInfo();
+      const currentEpoch = BigInt(epochInfo.epoch);
+
+      // Determine current active transfer fee based on epoch
+      const currentTransferFee =
+        currentEpoch >= transferFeeConfig.newerTransferFee.epoch
+          ? transferFeeConfig.newerTransferFee
+          : transferFeeConfig.olderTransferFee;
+
+      const feeConfig: TransferFee = {
+        epoch: currentTransferFee.epoch,
+        maximumFee: currentTransferFee.maximumFee,
+        transferFeeBasisPoints: currentTransferFee.transferFeeBasisPoints,
+      };
+
+      return feeConfig;
+    } catch (error) {
+      throw new Error(error as string);
     }
   }
 }
