@@ -223,3 +223,8 @@ export interface UserPositionsParams {
   payer: PublicKey;
   pair: PublicKey;
 }
+
+export interface CheckBinArrayParams{
+  binArrayIndex:number,
+  pair:PublicKey
+}
