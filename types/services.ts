@@ -30,6 +30,12 @@ export interface GetBinArrayParams {
   payer?: PublicKey;
   transaction?: Transaction;
 }
+export interface GetHookBinArrayParams {
+  binArrayIndex: number;
+  hook: PublicKey;
+  payer: PublicKey;
+  transaction?: Transaction;
+}
 export interface SwapParams {
   tokenMintX: PublicKey;
   tokenMintY: PublicKey;
@@ -144,6 +150,8 @@ export interface AddLiquidityIntoPositionParams {
   amountX: number;
   binArrayLower: PublicKey;
   binArrayUpper: PublicKey;
+  lowerBinId?: number;
+  isAddOnly?: boolean;
 }
 
 export interface AddLiquidityParams {
@@ -168,13 +176,25 @@ export interface AddLiquidityParams {
   refId: number;
   payer: PublicKey;
 }
-
+export interface PositionHookOnChain {
+  userAccruedRewardsPerShare: BN[]
+  pendingRewards: BN
+  bump: number
+  space: number[]
+  user: PublicKey
+}
 export interface RemoveMultipleLiquidityParams {
   maxPositionList: {
     position: string;
     start: number;
     end: number;
     positionMint: string;
+    lowerBinId: number;
+    upperBinId: number;
+    bins: Bin[];
+    inRange?: boolean;
+    pendingRewards?: string;
+    hookPosition?: PositionHookOnChain
   }[];
   payer: PublicKey;
   type: "removeBoth" | "removeBaseToken" | "removeQuoteToken";
@@ -222,4 +242,34 @@ export interface ReserveParams {
 export interface UserPositionsParams {
   payer: PublicKey;
   pair: PublicKey;
+}
+
+export interface InitializeHookPosition {
+  hook: PublicKey;
+  payer: PublicKey;
+  lbPosition: PublicKey;
+  transaction: Transaction;
+}
+
+export interface CreatePositionResponse {
+  position: string;
+  hookPosition?: string;
+}
+
+export interface BinParams {
+  activeBinArrayLower: PublicKey;
+  activeBinArrayUpper: PublicKey;
+  activeBinHookBinArrayLower: PublicKey;
+  activeBinHookBinArrayUpper: PublicKey;
+  binHookArrayLower: PublicKey;
+  binHookArrayUpper: PublicKey;
+}
+
+export interface ClaimRewardParams extends BinParams {
+  position: PublicKey;
+  positionMint: PublicKey;
+  pair: PublicKey;
+  hook: PublicKey;
+  rewardTokenMint: PublicKey;
+  payer: PublicKey;
 }
