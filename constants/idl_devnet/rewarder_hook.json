@@ -9,16 +9,7 @@
   "instructions": [
     {
       "name": "before_burn",
-      "discriminator": [
-        7,
-        177,
-        19,
-        160,
-        28,
-        229,
-        57,
-        73
-      ],
+      "discriminator": [7, 177, 19, 160, 28, 229, 57, 73],
       "accounts": [
         {
           "name": "pair_account"
@@ -37,16 +28,18 @@
           "name": "position"
         },
         {
-          "name": "active_bin_array_lower"
+          "name": "bin_array_lower"
         },
         {
-          "name": "active_bin_array_upper"
+          "name": "bin_array_upper"
         },
         {
           "name": "pair",
           "signer": true,
           "relations": [
-            "hook"
+            "hook",
+            "active_bin_array_lower",
+            "active_bin_array_upper"
           ]
         },
         {
@@ -64,16 +57,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  112,
-                  111,
-                  115,
-                  105,
-                  116,
-                  105,
-                  111,
-                  110
-                ]
+                "value": [112, 111, 115, 105, 116, 105, 111, 110]
               },
               {
                 "kind": "account",
@@ -92,6 +76,14 @@
         },
         {
           "name": "position_hook_bin_array_upper",
+          "writable": true
+        },
+        {
+          "name": "active_bin_array_lower",
+          "writable": true
+        },
+        {
+          "name": "active_bin_array_upper",
           "writable": true
         }
       ],
@@ -99,16 +91,7 @@
     },
     {
       "name": "before_mint",
-      "discriminator": [
-        67,
-        27,
-        57,
-        7,
-        28,
-        168,
-        109,
-        153
-      ],
+      "discriminator": [67, 27, 57, 7, 28, 168, 109, 153],
       "accounts": [
         {
           "name": "pair_account"
@@ -127,16 +110,18 @@
           "name": "position"
         },
         {
-          "name": "active_bin_array_lower"
+          "name": "bin_array_lower"
         },
         {
-          "name": "active_bin_array_upper"
+          "name": "bin_array_upper"
         },
         {
           "name": "pair",
           "signer": true,
           "relations": [
-            "hook"
+            "hook",
+            "active_bin_array_lower",
+            "active_bin_array_upper"
           ]
         },
         {
@@ -154,16 +139,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  112,
-                  111,
-                  115,
-                  105,
-                  116,
-                  105,
-                  111,
-                  110
-                ]
+                "value": [112, 111, 115, 105, 116, 105, 111, 110]
               },
               {
                 "kind": "account",
@@ -183,22 +159,21 @@
         {
           "name": "position_hook_bin_array_upper",
           "writable": true
+        },
+        {
+          "name": "active_bin_array_lower",
+          "writable": true
+        },
+        {
+          "name": "active_bin_array_upper",
+          "writable": true
         }
       ],
       "args": []
     },
     {
       "name": "before_swap",
-      "discriminator": [
-        227,
-        59,
-        240,
-        68,
-        164,
-        9,
-        29,
-        254
-      ],
+      "discriminator": [227, 59, 240, 68, 164, 9, 29, 254],
       "accounts": [
         {
           "name": "pair_account"
@@ -220,9 +195,7 @@
         {
           "name": "pair",
           "signer": true,
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         },
         {
           "name": "active_bin_hook_bin_array_lower",
@@ -237,16 +210,7 @@
     },
     {
       "name": "claim",
-      "discriminator": [
-        62,
-        198,
-        214,
-        193,
-        213,
-        159,
-        108,
-        210
-      ],
+      "discriminator": [62, 198, 214, 193, 213, 159, 108, 210],
       "accounts": [
         {
           "name": "hook",
@@ -272,9 +236,7 @@
         },
         {
           "name": "position_mint",
-          "relations": [
-            "position"
-          ]
+          "relations": ["position"]
         },
         {
           "name": "position_token_account",
@@ -296,38 +258,9 @@
             "program": {
               "kind": "const",
               "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89
               ]
             }
           }
@@ -355,16 +288,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  112,
-                  111,
-                  115,
-                  105,
-                  116,
-                  105,
-                  111,
-                  110
-                ]
+                "value": [112, 111, 115, 105, 116, 105, 111, 110]
               },
               {
                 "kind": "account",
@@ -391,9 +315,7 @@
         {
           "name": "hook_reserve",
           "writable": true,
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         },
         {
           "name": "user_reserve",
@@ -420,23 +342,67 @@
               {
                 "kind": "const",
                 "value": [
-                  95,
-                  95,
-                  101,
-                  118,
-                  101,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111,
+                  114, 105, 116, 121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_position",
+      "discriminator": [123, 134, 81, 0, 49, 68, 98, 98],
+      "accounts": [
+        {
+          "name": "hook",
+          "writable": true
+        },
+        {
+          "name": "position"
+        },
+        {
+          "name": "hook_position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [112, 111, 115, 105, 116, 105, 111, 110]
+              },
+              {
+                "kind": "account",
+                "path": "hook"
+              },
+              {
+                "kind": "account",
+                "path": "position"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111,
+                  114, 105, 116, 121
                 ]
               }
             ]
@@ -450,16 +416,7 @@
     },
     {
       "name": "initialize_bin_array",
-      "discriminator": [
-        35,
-        86,
-        19,
-        185,
-        78,
-        212,
-        75,
-        211
-      ],
+      "discriminator": [35, 86, 19, 185, 78, 212, 75, 211],
       "accounts": [
         {
           "name": "hook"
@@ -471,17 +428,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  98,
-                  105,
-                  110,
-                  95,
-                  97,
-                  114,
-                  114,
-                  97,
-                  121
-                ]
+                "value": [98, 105, 110, 95, 97, 114, 114, 97, 121]
               },
               {
                 "kind": "account",
@@ -510,23 +457,8 @@
               {
                 "kind": "const",
                 "value": [
-                  95,
-                  95,
-                  101,
-                  118,
-                  101,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111,
+                  114, 105, 116, 121
                 ]
               }
             ]
@@ -545,16 +477,7 @@
     },
     {
       "name": "initialize_hook",
-      "discriminator": [
-        37,
-        101,
-        119,
-        255,
-        156,
-        39,
-        252,
-        232
-      ],
+      "discriminator": [37, 101, 119, 255, 156, 39, 252, 232],
       "accounts": [
         {
           "name": "hook",
@@ -563,12 +486,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  104,
-                  111,
-                  111,
-                  107
-                ]
+                "value": [104, 111, 111, 107]
               },
               {
                 "kind": "account",
@@ -605,38 +523,9 @@
             "program": {
               "kind": "const",
               "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89
               ]
             }
           }
@@ -664,23 +553,8 @@
               {
                 "kind": "const",
                 "value": [
-                  95,
-                  95,
-                  101,
-                  118,
-                  101,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111,
+                  114, 105, 116, 121
                 ]
               }
             ]
@@ -699,16 +573,7 @@
     },
     {
       "name": "initialize_position",
-      "discriminator": [
-        219,
-        192,
-        234,
-        71,
-        190,
-        191,
-        102,
-        80
-      ],
+      "discriminator": [219, 192, 234, 71, 190, 191, 102, 80],
       "accounts": [
         {
           "name": "hook"
@@ -723,16 +588,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  112,
-                  111,
-                  115,
-                  105,
-                  116,
-                  105,
-                  111,
-                  110
-                ]
+                "value": [112, 111, 115, 105, 116, 105, 111, 110]
               },
               {
                 "kind": "account",
@@ -761,23 +617,8 @@
               {
                 "kind": "const",
                 "value": [
-                  95,
-                  95,
-                  101,
-                  118,
-                  101,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111,
+                  114, 105, 116, 121
                 ]
               }
             ]
@@ -791,16 +632,7 @@
     },
     {
       "name": "on_hook_set",
-      "discriminator": [
-        23,
-        126,
-        214,
-        186,
-        197,
-        123,
-        0,
-        235
-      ],
+      "discriminator": [23, 126, 214, 186, 197, 123, 0, 235],
       "accounts": [
         {
           "name": "pair_account"
@@ -811,25 +643,14 @@
         {
           "name": "pair",
           "signer": true,
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         }
       ],
       "args": []
     },
     {
       "name": "set_reward_range",
-      "discriminator": [
-        124,
-        43,
-        236,
-        120,
-        6,
-        88,
-        112,
-        213
-      ],
+      "discriminator": [124, 43, 236, 120, 6, 88, 112, 213],
       "accounts": [
         {
           "name": "hook",
@@ -865,16 +686,12 @@
         },
         {
           "name": "hook_reserve",
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         },
         {
           "name": "authority",
           "signer": true,
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         },
         {
           "name": "event_authority",
@@ -883,23 +700,8 @@
               {
                 "kind": "const",
                 "value": [
-                  95,
-                  95,
-                  101,
-                  118,
-                  101,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111,
+                  114, 105, 116, 121
                 ]
               }
             ]
@@ -922,16 +724,7 @@
     },
     {
       "name": "set_rewards_parameters",
-      "discriminator": [
-        86,
-        145,
-        230,
-        205,
-        136,
-        137,
-        140,
-        193
-      ],
+      "discriminator": [86, 145, 230, 205, 136, 137, 140, 193],
       "accounts": [
         {
           "name": "hook",
@@ -967,16 +760,12 @@
         },
         {
           "name": "hook_reserve",
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         },
         {
           "name": "authority",
           "signer": true,
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         },
         {
           "name": "event_authority",
@@ -985,23 +774,8 @@
               {
                 "kind": "const",
                 "value": [
-                  95,
-                  95,
-                  101,
-                  118,
-                  101,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111,
+                  114, 105, 116, 121
                 ]
               }
             ]
@@ -1028,16 +802,7 @@
     },
     {
       "name": "set_rewards_per_second",
-      "discriminator": [
-        77,
-        81,
-        53,
-        27,
-        248,
-        29,
-        133,
-        203
-      ],
+      "discriminator": [77, 81, 53, 27, 248, 29, 133, 203],
       "accounts": [
         {
           "name": "hook",
@@ -1073,16 +838,12 @@
         },
         {
           "name": "hook_reserve",
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         },
         {
           "name": "authority",
           "signer": true,
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         },
         {
           "name": "event_authority",
@@ -1091,23 +852,8 @@
               {
                 "kind": "const",
                 "value": [
-                  95,
-                  95,
-                  101,
-                  118,
-                  101,
-                  110,
-                  116,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
+                  95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111,
+                  114, 105, 116, 121
                 ]
               }
             ]
@@ -1130,16 +876,7 @@
     },
     {
       "name": "sweep",
-      "discriminator": [
-        40,
-        23,
-        234,
-        175,
-        14,
-        61,
-        154,
-        177
-      ],
+      "discriminator": [40, 23, 234, 175, 14, 61, 154, 177],
       "accounts": [
         {
           "name": "hook",
@@ -1151,9 +888,7 @@
         {
           "name": "hook_reserve",
           "writable": true,
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         },
         {
           "name": "authority_reserve",
@@ -1162,9 +897,7 @@
         {
           "name": "authority",
           "signer": true,
-          "relations": [
-            "hook"
-          ]
+          "relations": ["hook"]
         },
         {
           "name": "reward_token_program"
@@ -1180,135 +913,45 @@
   "accounts": [
     {
       "name": "BinArray",
-      "discriminator": [
-        92,
-        142,
-        92,
-        220,
-        5,
-        148,
-        70,
-        181
-      ]
+      "discriminator": [92, 142, 92, 220, 5, 148, 70, 181]
     },
     {
       "name": "Hook",
-      "discriminator": [
-        125,
-        61,
-        76,
-        173,
-        200,
-        161,
-        92,
-        217
-      ]
+      "discriminator": [125, 61, 76, 173, 200, 161, 92, 217]
     },
     {
       "name": "HookBinArray",
-      "discriminator": [
-        103,
-        134,
-        57,
-        58,
-        74,
-        234,
-        9,
-        157
-      ]
+      "discriminator": [103, 134, 57, 58, 74, 234, 9, 157]
     },
     {
       "name": "HookPosition",
-      "discriminator": [
-        125,
-        149,
-        132,
-        62,
-        52,
-        71,
-        211,
-        143
-      ]
+      "discriminator": [125, 149, 132, 62, 52, 71, 211, 143]
     },
     {
       "name": "Pair",
-      "discriminator": [
-        85,
-        72,
-        49,
-        176,
-        182,
-        228,
-        141,
-        82
-      ]
+      "discriminator": [85, 72, 49, 176, 182, 228, 141, 82]
     },
     {
       "name": "Position",
-      "discriminator": [
-        170,
-        188,
-        143,
-        228,
-        122,
-        64,
-        247,
-        208
-      ]
+      "discriminator": [170, 188, 143, 228, 122, 64, 247, 208]
     }
   ],
   "events": [
     {
       "name": "ClaimEvent",
-      "discriminator": [
-        93,
-        15,
-        70,
-        170,
-        48,
-        140,
-        212,
-        219
-      ]
+      "discriminator": [93, 15, 70, 170, 48, 140, 212, 219]
     },
     {
       "name": "DeltaBinSetEvent",
-      "discriminator": [
-        0,
-        208,
-        34,
-        219,
-        151,
-        91,
-        139,
-        244
-      ]
+      "discriminator": [0, 208, 34, 219, 151, 91, 139, 244]
     },
     {
       "name": "HookInitializationEvent",
-      "discriminator": [
-        229,
-        217,
-        175,
-        38,
-        112,
-        240,
-        117,
-        95
-      ]
+      "discriminator": [229, 217, 175, 38, 112, 240, 117, 95]
     },
     {
       "name": "RewardParametersSetEvent",
-      "discriminator": [
-        191,
-        11,
-        46,
-        163,
-        150,
-        8,
-        126,
-        245
-      ]
+      "discriminator": [191, 11, 46, 163, 150, 8, 126, 245]
     }
   ],
   "errors": [
@@ -1376,6 +1019,21 @@
       "code": 6012,
       "name": "InvalidLBPosition",
       "msg": "Invalid LB position"
+    },
+    {
+      "code": 6013,
+      "name": "PairLowerBinArrayMismatch",
+      "msg": "Pair and lower bin array mismatch"
+    },
+    {
+      "code": 6014,
+      "name": "PairUpperBinArrayMismatch",
+      "msg": "Pair and upper bin array mismatch"
+    },
+    {
+      "code": 6015,
+      "name": "NeedToClaimPendingRewardsFirst",
+      "msg": "Need To Claim Pending Rewards First"
     }
   ],
   "types": [
@@ -1436,10 +1094,7 @@
           {
             "name": "_space",
             "type": {
-              "array": [
-                "u8",
-                12
-              ]
+              "array": ["u8", 12]
             }
           }
         ]
@@ -1509,10 +1164,7 @@
           {
             "name": "_space",
             "type": {
-              "array": [
-                "u8",
-                4
-              ]
+              "array": ["u8", 4]
             }
           }
         ]
@@ -1526,10 +1178,7 @@
           {
             "name": "bump",
             "type": {
-              "array": [
-                "u8",
-                1
-              ]
+              "array": ["u8", 1]
             }
           },
           {
@@ -1595,19 +1244,13 @@
           {
             "name": "_space",
             "type": {
-              "array": [
-                "u8",
-                28
-              ]
+              "array": ["u8", 28]
             }
           },
           {
             "name": "accrued_rewards_per_share",
             "type": {
-              "array": [
-                "u128",
-                256
-              ]
+              "array": ["u128", 256]
             }
           }
         ]
@@ -1645,10 +1288,7 @@
           {
             "name": "user_accrued_rewards_per_share",
             "type": {
-              "array": [
-                "u128",
-                64
-              ]
+              "array": ["u128", 64]
             }
           },
           {
@@ -1660,12 +1300,13 @@
             "type": "u8"
           },
           {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
             "name": "_space",
             "type": {
-              "array": [
-                "u8",
-                7
-              ]
+              "array": ["u8", 7]
             }
           }
         ]
@@ -1679,10 +1320,7 @@
           {
             "name": "bump",
             "type": {
-              "array": [
-                "u8",
-                1
-              ]
+              "array": ["u8", 1]
             }
           },
           {
@@ -1696,10 +1334,7 @@
           {
             "name": "bin_step_seed",
             "type": {
-              "array": [
-                "u8",
-                1
-              ]
+              "array": ["u8", 1]
             }
           },
           {
@@ -1767,10 +1402,7 @@
           {
             "name": "liquidity_shares",
             "type": {
-              "array": [
-                "u128",
-                64
-              ]
+              "array": ["u128", 64]
             }
           },
           {
@@ -1784,10 +1416,7 @@
           {
             "name": "_space",
             "type": {
-              "array": [
-                "u8",
-                8
-              ]
+              "array": ["u8", 8]
             }
           }
         ]
@@ -1853,10 +1482,7 @@
           {
             "name": "_space",
             "type": {
-              "array": [
-                "u8",
-                2
-              ]
+              "array": ["u8", 2]
             }
           }
         ]

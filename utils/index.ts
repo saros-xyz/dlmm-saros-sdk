@@ -536,3 +536,12 @@ export const getGasPrice = async (connection: Connection): Promise<number> => {
     return UNIT_PRICE_DEFAULT * buffNum;
   }
 };
+
+export const  getBinIndex = (binActiveIndex: number) => {
+  let binArrayIndex = Math.floor(binActiveIndex / BIN_ARRAY_SIZE)
+  if (binActiveIndex % BIN_ARRAY_SIZE < BIN_ARRAY_SIZE / 2) {
+    binArrayIndex -= 1
+  }
+
+  return binArrayIndex
+}
