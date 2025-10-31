@@ -443,6 +443,7 @@ const onAddliquidity = async () => {
           positionMint: new PublicKey(positionMint),
           payer,
           transaction,
+          lowerBinId: binLower
         });
 
         transaction.recentBlockhash = currentBlockhash;
@@ -681,5 +682,136 @@ const onRemoveLiquidity = async () => {
     }
     console.log("🚀 ~ onRemoveLiquidity ~ hash:", hash);
 };
+
+// Claim Reward
+const onClaimReward = async () => {
+    const pair = new PublicKey(POOL_PARAMS.address)
+    const payer = new PublicKey(YOUR_WALLET)
+    const positions = await liquidityBookServices.getUserPositions({
+      payer,
+      pair
+    })
+    const pairInfo = await liquidityBookServices.getPairAccount(pair)
+    const hookInfo = await liquidityBookServices.getHookInfo(pairInfo.hook)
+    const transaction = new Transaction()
+    let binActiveIndex = Math.floor(pairInfo.activeId / BIN_ARRAY_SIZE)
+
+    await Promise.all(
+      positions.map(async (currentPosition) => {
+      const binArrayIndex = Math.floor(
+        currentPosition.lowerBinId / BIN_ARRAY_SIZE
+        )
+      const { resultIndex } =
+        await liquidityBookServices.getBinArrayInfo({
+          binArrayIndex,
+          pair,
+          payer
+          })
+
+      if (binActiveIndex !== resultIndex) {
+      const { resultIndex: newResultIndex } =
+      await liquidityBookServices.getBinArrayInfo({
+        binArrayIndex: binActiveIndex,
+        pair,
+        payer
+        })
+
+        binActiveIndex = newResultIndex
+      }
+
+      const activeBinHookBinArrayLower =
+      await liquidityBookServices.getHookBinArray({
+        binArrayIndex: binActiveIndex,
+        hook: pairInfo.hook,
+        payer
+        })
+
+      const activeBinHookBinArrayUpper =
+        await liquidityBookServices.getHookBinArray({
+          binArrayIndex: binActiveIndex + 1,
+          hook: pairInfo.hook,
+          payer
+          })
+
+      const activeBinArrayLower =
+        await liquidityBookServices.getBinArray({
+          binArrayIndex: binActiveIndex,
+          pair: pair,
+          payer
+          })
+
+      const activeBinArrayUpper =
+        await liquidityBookServices.getBinArray({
+          binArrayIndex: binActiveIndex + 1,
+          pair: pair,
+          payer
+          })
+
+      const hookBinArrayLower = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(utils.bytes.utf8.encode('bin_array')),
+          pairInfo.hook.toBuffer(),
+          new BN(resultIndex).toArrayLike(Buffer, 'le', 4)
+          ],
+          liquidityBookServices.hooksProgram.programId
+          )[0]
+
+      const hookBinArrayUpper = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(utils.bytes.utf8.encode('bin_array')),
+          pairInfo.hook.toBuffer(),
+          new BN(resultIndex + 1).toArrayLike(Buffer, 'le', 4)
+          ],
+          liquidityBookServices.hooksProgram.programId
+          )[0]
+
+      const instruction = await liquidityBookServices.claimReward({
+        activeBinArrayLower: activeBinArrayLower,
+        activeBinArrayUpper: activeBinArrayUpper,
+        activeBinHookBinArrayLower,
+        activeBinHookBinArrayUpper,
+        hook: pairInfo.hook,
+        pair,
+        payer,
+        position: new PublicKey(currentPosition.position),
+        positionMint: currentPosition.positionMint as PublicKey,
+        rewardTokenMint: hookInfo.rewardTokenMint,
+        binHookArrayLower: hookBinArrayLower,
+        binHookArrayUpper: hookBinArrayUpper
+        })
+
+        transaction.add(instruction)
+        })
+      )
+
+      const { blockhash } = await liquidityBookServices.connection!.getLatestBlockhash()
+
+      transaction.feePayer = payer
+      transaction.recentBlockhash = blockhash
+
+      if(transaction.instructions.length === 0) {
+        return
+      }
+
+
+      const response = await window.coin98.sol.signAllTransactions([
+        transaction
+      ])
+      const publicKey = new PublicKey(response.publicKey)
+      const signatures = response.signatures
+
+      const signedTxs = [transaction].map((tx, index) => {
+        const signature = bs58.decode(signatures[index]!)
+        tx.addSignature(publicKey, signature)
+        return tx
+      })
+
+      const tx = signedTxs.shift()
+      const hash = await liquidityBookServices.connection!.sendRawTransaction(tx!.serialize(), {
+        skipPreflight: true,
+        preflightCommitment: 'finalized'
+      })
+      console.log("🚀 ~ onClaimReward ~ hash:", hash)
+    }
 
 ```
