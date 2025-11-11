@@ -1,5 +1,5 @@
 {
-  "name": "@oasismystre/dlmm-sdk",
+  "name": "@saros-finance/dlmm-sdk",
   "version": "0.0.0",
   "type": "module",
   "description": "Saros DLMM (Dynamic Liquidity Market Maker) - the engine that powers the Internet Capital Market on Solana.",
@@ -23,26 +23,29 @@
   "scripts": {
     "codegen": "",
     "lint": "bun x biome format --write && bun x biome lint --fix && biome check .",
-    "build": "tsup index.ts --format esm,cjs --minify --treeshake --dts && ./build.sh"
+    "build": "tsup index.ts --format esm,cjs --minify --treeshake --dts && chmod +x ./build.sh && ./build.sh"
   },
   "author": "Saros Finance",
   "license": "ISC",
-  "dependencies": {
+  "peerDependencies": {
     "@coral-xyz/anchor": "0.32.1",
     "@project-serum/borsh": "0.2.3",
     "@solana-program/token-2022": "0.4.0",
     "@solana/spl-token": "0.4.13",
     "@solana/web3.js": "1.98.4",
-    "bs58": "^6.0.0",
+    "bs58": "^6.0.0"
+  },
+  "dependencies": {
     "js-big-decimal": "^2.2.0",
     "lodash.clonedeep": "^4.5.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.2.5",
     "@types/jsdom": "^21.1.7",
     "@types/lodash.clonedeep": "^4.5.9",
     "@types/node": "^22.19.0",
-    "@biomejs/biome": "2.2.5",
     "ts-node": "^10.9.2",
+    "tsup": "^8.5.0",
     "typescript": "^5.9.3"
   }
 }
