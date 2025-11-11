@@ -1,39 +1,45 @@
 import { Connection } from "@solana/web3.js";
-import { AnchorProvider, Idl, Program, Wallet } from "@coral-xyz/anchor";
-import { ILiquidityBookConfig, MODE } from "../types";
 import { CONFIG } from "../constants/config";
-import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
+import { AnchorProvider, Program, type Wallet } from "@coral-xyz/anchor";
+import {
+  type ILiquidityBookConfig,
+  MODE,
+  type LiquidityBook,
+  type RewarderHook,
+} from "../types";
+
 import MdmaIDL from "../constants/idl/rewarder_hook.json";
-import LiquidityBookIDLDevnet from "../constants/idl_devnet/liquidity_book.json";
+import LiquidityBookIDL from "../constants/idl/liquidity_book.json";
 import MdmaIDLDevnet from "../constants/idl_devnet/rewarder_hook.json";
+import LiquidityBookIDLDevnet from "../constants/idl_devnet/liquidity_book.json";
 
 export abstract class LiquidityBookAbstract {
-  connection: Connection;
+  readonly connection: Connection;
 
-  lbProgram!: Program<Idl>;
-  hooksProgram!: Program<Idl>;
-  mode!: MODE
+  readonly mode: MODE;
+  readonly lbProgram: Program<LiquidityBook>;
+  readonly hooksProgram: Program<RewarderHook>;
 
   constructor(config: ILiquidityBookConfig) {
-    // Initialize the services heref
+    // Initialize the services here
     this.connection = new Connection(
       config.options?.rpcUrl || CONFIG[config.mode].rpc,
-      config.options?.commitmentOrConfig || "confirmed"
+      config.options?.commitmentOrConfig || "confirmed",
     );
 
     const provider = new AnchorProvider(
       this.connection,
       {} as Wallet,
-      AnchorProvider.defaultOptions()
+      AnchorProvider.defaultOptions(),
     );
-    this.mode = config.mode
+    this.mode = config.mode;
 
     if (config.mode === MODE.DEVNET) {
-      this.lbProgram = new Program(LiquidityBookIDLDevnet as Idl, provider);
-      this.hooksProgram = new Program(MdmaIDLDevnet as Idl, provider);
+      this.lbProgram = new Program(LiquidityBookIDLDevnet, provider);
+      this.hooksProgram = new Program(MdmaIDLDevnet, provider);
     } else {
-      this.lbProgram = new Program(LiquidityBookIDL as Idl, provider);
-      this.hooksProgram = new Program(MdmaIDL as Idl, provider);
+      this.lbProgram = new Program(LiquidityBookIDL, provider);
+      this.hooksProgram = new Program(MdmaIDL, provider);
     }
   }
 }

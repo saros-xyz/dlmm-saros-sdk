@@ -1,5 +1,5 @@
-import { PublicKey, Transaction } from "@solana/web3.js";
-import { BN } from "@coral-xyz/anchor";
+import type { PublicKey, Transaction } from "@solana/web3.js";
+import type { BN } from "@coral-xyz/anchor";
 
 export enum LiquidityShape {
   Spot = "Spot",
@@ -177,11 +177,11 @@ export interface AddLiquidityParams {
   payer: PublicKey;
 }
 export interface PositionHookOnChain {
-  userAccruedRewardsPerShare: BN[]
-  pendingRewards: BN
-  bump: number
-  space: number[]
-  user: PublicKey
+  userAccruedRewardsPerShare: BN[];
+  pendingRewards: BN;
+  bump: number;
+  space: number[];
+  user: PublicKey;
 }
 export interface RemoveMultipleLiquidityParams {
   maxPositionList: {
@@ -194,7 +194,7 @@ export interface RemoveMultipleLiquidityParams {
     bins: Bin[];
     inRange?: boolean;
     pendingRewards?: string;
-    hookPosition?: PositionHookOnChain
+    hookPosition?: PositionHookOnChain;
   }[];
   payer: PublicKey;
   type: "removeBoth" | "removeBaseToken" | "removeQuoteToken";
