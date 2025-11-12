@@ -8,6 +8,14 @@ The engine that powers the Internet Capital Market on Solana.
 pnpm add @saros-finance/dlmm-sdk
 ```
 
+```bash
+yarn add @saros-finance/dlmm-sdk
+```
+
+```bash
+npm install @saros-finance/dlmm-sdk
+```
+
 ### Core Components
 
 - **`SarosDLMM`** - Static factory class for protocol-level operations (creating pairs, discovering pools)
