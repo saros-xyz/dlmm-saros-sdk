@@ -1,5 +1,5 @@
-import { Commitment, ConnectionConfig, PublicKey } from "@solana/web3.js";
-import { BN } from "@coral-xyz/anchor";
+import type { Commitment, ConnectionConfig, PublicKey } from "@solana/web3.js";
+import type { BN } from "@coral-xyz/anchor";
 
 export enum MODE {
   TESTNET = "testnet",
@@ -29,8 +29,8 @@ export interface ILiquidityBookConfig {
   mode: MODE;
   options?: {
     rpcUrl: string;
-    commitmentOrConfig?: Commitment | ConnectionConfig
-  }
+    commitmentOrConfig?: Commitment | ConnectionConfig;
+  };
 }
 
 export type Bin = {
