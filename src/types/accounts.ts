@@ -32,6 +32,14 @@ export interface DLMMPairAccount {
   hook: PublicKey | null;
 }
 
+export interface HookPositionAccount {
+  userAccruedRewardsPerShare: BN[];
+  pendingRewards: BN;
+  bump: number;
+  space: number[];
+  user: PublicKey;
+}
+
 /** a User Position within a pair */
 export interface PositionAccount {
   pair: PublicKey;
@@ -41,6 +49,7 @@ export interface PositionAccount {
   lowerBinId: number;
   upperBinId: number;
   space: number[];
+  hookPosition?: HookPositionAccount;
 }
 
 /** Bin data for for a single price bin */
@@ -59,4 +68,18 @@ export interface BinArray {
   bins: Bin[];
   /** The bin array index on-chain */
   index: number;
+}
+
+export interface HookAccount {
+  bump: number[];
+  authority: PublicKey;
+  pair: PublicKey;
+  rewardTokenMint: PublicKey;
+  hookReserve: PublicKey;
+  rewardsPerSecond: BN;
+  endTime: BN;
+  lastUpdate: BN;
+  deltaBinA: number;
+  deltaBinB: number;
+  totalUnclaimedRewards: BN;
 }

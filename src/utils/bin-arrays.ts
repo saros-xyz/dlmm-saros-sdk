@@ -5,7 +5,11 @@ import { SarosDLMMError } from './errors';
 import { deriveBinArrayHookPDA, deriveBinArrayPDA } from './pda';
 
 export function calculateBinArrayIndex(binId: number): number {
-  return Math.floor(binId / BIN_ARRAY_SIZE);
+  let binArrayIndex = Math.floor(binId / BIN_ARRAY_SIZE);
+  if (binId % BIN_ARRAY_SIZE < BIN_ARRAY_SIZE / 2) {
+    binArrayIndex -= 1;
+  }
+  return binArrayIndex;
 }
 
 /** Calculate a range of bin array indices around an active binId  */

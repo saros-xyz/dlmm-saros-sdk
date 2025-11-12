@@ -53,4 +53,8 @@ export abstract class SarosBaseService {
   get hooksConfig(): PublicKey {
     return DLMM_PROGRAM_IDS[this.config.mode].hooks;
   }
+
+  get ownerConfig(): PublicKey {
+    return DLMM_PROGRAM_IDS[this.config.mode].owner;
+  }
 }

@@ -188,10 +188,48 @@ export async function getUserVaults(
   }
 }
 
+export async function getUserVaultInfo(
+  tokenAddress: PublicKey,
+  payer: PublicKey,
+  connection: Connection,
+  transaction?: Transaction
+): Promise<PublicKey> {
+  try {
+    // Step 1: Get token program for token
+    const tokenAccountInfo = await connection.getAccountInfo(tokenAddress);
+
+    if (!tokenAccountInfo) {
+      throw SarosDLMMError.TokenMintNotFound(tokenAddress.toBase58());
+    }
+
+    const tokenProgram = getTokenProgramFromAccountInfo(tokenAddress, tokenAccountInfo);
+
+    const associatedUserVault = spl.getAssociatedTokenAddressSync(tokenAddress, payer, true, tokenProgram);
+
+    if (transaction) {
+      const infoUserVault = await connection.getAccountInfo(associatedUserVault);
+
+      if (!infoUserVault) {
+        const userVaultYInstructions = spl.createAssociatedTokenAccountInstruction(
+          payer,
+          associatedUserVault,
+          payer,
+          tokenAddress,
+          tokenProgram
+        );
+        transaction.add(userVaultYInstructions);
+      }
+    }
+    return associatedUserVault;
+  } catch (error) {
+    SarosDLMMError.handleError(error, SarosDLMMError.AccountFetchFailed());
+  }
+}
+
 /**
  * Helper to determine token program from account info
  */
-function getTokenProgramFromAccountInfo(address: PublicKey, accountInfo: any): PublicKey {
+export function getTokenProgramFromAccountInfo(address: PublicKey, accountInfo: any): PublicKey {
   // Special-case: WSOL is always legacy SPL
   if (address.equals(WRAP_SOL_PUBKEY)) {
     return spl.TOKEN_PROGRAM_ID;

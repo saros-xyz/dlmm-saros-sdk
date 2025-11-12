@@ -15,9 +15,9 @@ export function derivePositionHookPDA(hook: PublicKey, position: PublicKey, prog
   )[0];
 }
 
-export function deriveHookPDA(hooksConfig: PublicKey, pairAddress: PublicKey, programId: PublicKey): PublicKey {
+export function deriveHookPDA(ownerConfig: PublicKey, pairAddress: PublicKey, programId: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from(utils.bytes.utf8.encode('hook')), hooksConfig.toBuffer(), pairAddress.toBuffer()],
+    [Buffer.from(utils.bytes.utf8.encode('hook')), ownerConfig.toBuffer(), pairAddress.toBuffer()],
     programId
   )[0];
 }

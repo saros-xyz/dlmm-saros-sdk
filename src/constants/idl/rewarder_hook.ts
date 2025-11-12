@@ -34,15 +34,15 @@ export type RewarderHook = {
           name: 'position';
         },
         {
-          name: 'activeBinArrayLower';
+          name: 'binArrayLower';
         },
         {
-          name: 'activeBinArrayUpper';
+          name: 'binArrayUpper';
         },
         {
           name: 'pair';
           signer: true;
-          relations: ['hook'];
+          relations: ['hook', 'activeBinArrayLower', 'activeBinArrayUpper'];
         },
         {
           name: 'activeBinHookBinArrayLower';
@@ -78,6 +78,14 @@ export type RewarderHook = {
         },
         {
           name: 'positionHookBinArrayUpper';
+          writable: true;
+        },
+        {
+          name: 'activeBinArrayLower';
+          writable: true;
+        },
+        {
+          name: 'activeBinArrayUpper';
           writable: true;
         },
       ];
@@ -104,15 +112,15 @@ export type RewarderHook = {
           name: 'position';
         },
         {
-          name: 'activeBinArrayLower';
+          name: 'binArrayLower';
         },
         {
-          name: 'activeBinArrayUpper';
+          name: 'binArrayUpper';
         },
         {
           name: 'pair';
           signer: true;
-          relations: ['hook'];
+          relations: ['hook', 'activeBinArrayLower', 'activeBinArrayUpper'];
         },
         {
           name: 'activeBinHookBinArrayLower';
@@ -148,6 +156,14 @@ export type RewarderHook = {
         },
         {
           name: 'positionHookBinArrayUpper';
+          writable: true;
+        },
+        {
+          name: 'activeBinArrayLower';
+          writable: true;
+        },
+        {
+          name: 'activeBinArrayUpper';
           writable: true;
         },
       ];
@@ -337,6 +353,62 @@ export type RewarderHook = {
         {
           name: 'memoProgram';
           address: 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+        },
+        {
+          name: 'eventAuthority';
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111, 114, 105, 116, 121];
+              },
+            ];
+          };
+        },
+        {
+          name: 'program';
+        },
+      ];
+      args: [];
+    },
+    {
+      name: 'closePosition';
+      discriminator: [123, 134, 81, 0, 49, 68, 98, 98];
+      accounts: [
+        {
+          name: 'hook';
+          writable: true;
+        },
+        {
+          name: 'position';
+        },
+        {
+          name: 'hookPosition';
+          writable: true;
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [112, 111, 115, 105, 116, 105, 111, 110];
+              },
+              {
+                kind: 'account';
+                path: 'hook';
+              },
+              {
+                kind: 'account';
+                path: 'position';
+              },
+            ];
+          };
+        },
+        {
+          name: 'user';
+          writable: true;
+        },
+        {
+          name: 'systemProgram';
+          address: '11111111111111111111111111111111';
         },
         {
           name: 'eventAuthority';
@@ -951,6 +1023,21 @@ export type RewarderHook = {
       name: 'invalidLbPosition';
       msg: 'Invalid LB position';
     },
+    {
+      code: 6013;
+      name: 'pairLowerBinArrayMismatch';
+      msg: 'Pair and lower bin array mismatch';
+    },
+    {
+      code: 6014;
+      name: 'pairUpperBinArrayMismatch';
+      msg: 'Pair and upper bin array mismatch';
+    },
+    {
+      code: 6015;
+      name: 'needToClaimPendingRewardsFirst';
+      msg: 'Need To Claim Pending Rewards First';
+    },
   ];
   types: [
     {
@@ -1214,6 +1301,10 @@ export type RewarderHook = {
           {
             name: 'bump';
             type: 'u8';
+          },
+          {
+            name: 'user';
+            type: 'pubkey';
           },
           {
             name: 'space';

@@ -3,14 +3,16 @@ import { MODE } from './config';
 
 export * from './config';
 
-export const DLMM_PROGRAM_IDS: Record<MODE, { lb: PublicKey; hooks: PublicKey }> = {
+export const DLMM_PROGRAM_IDS: Record<MODE, { lb: PublicKey; hooks: PublicKey; owner: PublicKey }> = {
   [MODE.MAINNET]: {
     lb: new PublicKey('BqPmjcPbAwE7mH23BY8q8VUEN4LSjhLUv41W87GsXVn8'),
     hooks: new PublicKey('DgW5ARD9sU3W6SJqtyJSH3QPivxWt7EMvjER9hfFKWXF'),
+    owner: new PublicKey('3Rqiej3tf6pa9fGCbT7ZKNLT6XzidZgPmF8JQEXpBqQ7'),
   },
   [MODE.DEVNET]: {
     lb: new PublicKey('BJG6uz2zY2XFG7uomiyi17qqDeYJUnbprGbpyzYN1ncU'),
     hooks: new PublicKey('GN3UN8CtcSvC1VZxgHwfKqXXi642EwNk5K19FupZGMrZ'),
+    owner: new PublicKey('5CRcTr8Xmc4hZAW7QSZZekjKG7D9UihXyfp8wXSMnbxZ'),
   },
 };
 

@@ -1,9 +1,10 @@
 import { BN } from '@coral-xyz/anchor';
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import * as spl from '@solana/spl-token';
 import { SarosBaseService, SarosConfig } from './base/index';
 import {
   calculateBinArrayIndex,
+  getBinArrayAddresses,
   getBinArrayWithAdjacent,
   getLiquidityBinArrays,
   getQuoteBinArrays,
@@ -35,9 +36,16 @@ import {
   CreatePositionParams,
   AddLiquidityByShapeParams,
   RemoveLiquidityParams,
+  ClaimRewardParams,
+  HookAccount,
 } from '../types';
 import { getPriceFromId } from '../utils/price';
-import { getPairTokenAccounts, getUserVaults } from '../utils/vault-accounts';
+import {
+  getPairTokenAccounts,
+  getTokenProgramFromAccountInfo,
+  getUserVaultInfo,
+  getUserVaults,
+} from '../utils/vault-accounts';
 import { SarosDLMMError } from '../utils/errors';
 import {
   getAmountInByPrice,
@@ -46,9 +54,8 @@ import {
   getMinOutputWithSlippage,
   getMaxInputWithSlippage,
 } from '../utils/calculations';
-import { addSolTransferInstructions, addOptimalComputeBudget } from '../utils/transaction';
+import { addSolTransferInstructions, addOptimalComputeBudget, addCloseAccountInstruction } from '../utils/transaction';
 import { createUniformDistribution, Distribution, calculateDistributionAmounts } from '../utils/bin-distribution';
-import { ensureHookTokenAccount } from '../utils/hooks';
 import { derivePositionTokenAccount, getMultiplePositionAccounts } from '../utils/positions';
 import { handleSolWrapping } from '../utils/transaction';
 import { calculateRemovedShares } from '../utils/remove-liquidity';
@@ -110,6 +117,14 @@ export class SarosDLMMPair extends SarosBaseService {
     return await this.lbProgram.account.position.fetch(position);
   }
 
+  /** Get hook account data by hook */
+  public async getHookAccount(): Promise<HookAccount | null> {
+    if (!this.pairAccount.hook) {
+      return null;
+    }
+    return await this.hooksProgram.account.hook.fetch(this.pairAccount.hook);
+  }
+
   /** Legacy: get reserves for bin array */
   public async getBinArrayReserves(binArrayIndex: number): Promise<BinArray> {
     try {
@@ -141,6 +156,12 @@ export class SarosDLMMPair extends SarosBaseService {
           }
         : null;
     }).filter(Boolean);
+  }
+
+  public getHook(): PublicKey {
+    const hook =
+      this.pairAccount.hook || deriveHookPDA(this.ownerConfig, this.pairAddress, this.hooksProgram.programId);
+    return hook;
   }
 
   /**
@@ -187,18 +208,20 @@ export class SarosDLMMPair extends SarosBaseService {
 
     if (!!this.pairAccount.hook) {
       const hookPosition = derivePositionHookPDA(this.pairAccount.hook, position, this.hooksProgram.programId);
-      const initializeHookPositionTx = await this.hooksProgram.methods
-        .initializePosition()
-        .accountsPartial({
-          hook: this.pairAccount.hook,
-          lbPosition: position,
-          position: hookPosition,
-          user: payer,
-        })
-        .instruction();
-      transaction.add(initializeHookPositionTx);
+      const infoHookPosition = await this.connection.getAccountInfo(hookPosition);
+      if (!infoHookPosition) {
+        const initializeHookPositionTx = await this.hooksProgram.methods
+          .initializePosition()
+          .accountsPartial({
+            hook: this.pairAccount.hook,
+            lbPosition: position,
+            position: hookPosition,
+            user: payer,
+          })
+          .instruction();
+        transaction.add(initializeHookPositionTx);
+      }
     }
-
     return transaction;
   }
 
@@ -269,7 +292,7 @@ export class SarosDLMMPair extends SarosBaseService {
       isSigner: boolean;
     }[] = [];
 
-    const hook = this.pairAccount.hook;
+    const hook = this.getHook();
     const position = derivePositionPDA(positionMint, this.lbProgram.programId);
 
     if (!!hook) {
@@ -277,8 +300,8 @@ export class SarosDLMMPair extends SarosBaseService {
 
       const positionAccount = await this.getPositionAccount(position);
 
-      const binIndex = Math.floor(positionAccount.lowerBinId / BIN_ARRAY_SIZE);
-      const activeBinIndex = Math.floor(this.pairAccount.activeId / BIN_ARRAY_SIZE);
+      const binIndex = calculateBinArrayIndex(positionAccount.lowerBinId);
+      const activeBinIndex = calculateBinArrayIndex(this.pairAccount.activeId);
 
       const binArrayHookActiveLower = deriveBinArrayHookPDA(hook, activeBinIndex, this.hooksProgram.programId);
       const binArrayHookActiveUpper = deriveBinArrayHookPDA(hook, activeBinIndex + 1, this.hooksProgram.programId);
@@ -292,11 +315,11 @@ export class SarosDLMMPair extends SarosBaseService {
       accounts = [
         { pubkey: binArrayHookActiveLower, isWritable: true, isSigner: false },
         { pubkey: binArrayHookActiveUpper, isWritable: true, isSigner: false },
-        { pubkey: binArrayActiveLower, isWritable: true, isSigner: false },
-        { pubkey: binArrayActiveUpper, isWritable: true, isSigner: false },
         { pubkey: hookPosition, isWritable: true, isSigner: false },
         { pubkey: binArrayHookLower, isWritable: true, isSigner: false },
         { pubkey: binArrayHookUpper, isWritable: true, isSigner: false },
+        { pubkey: binArrayActiveLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayActiveUpper, isWritable: true, isSigner: false },
       ];
     }
 
@@ -432,8 +455,7 @@ export class SarosDLMMPair extends SarosBaseService {
       this.connection,
       setupTransaction
     );
-    const hook = deriveHookPDA(this.hooksConfig, this.pairAddress, this.hooksProgram.programId);
-    await ensureHookTokenAccount(hook, tokenMintY, this.tokenProgramY!, payer, this.connection, setupTransaction);
+    const hook = this.getHook();
 
     const closedPositions: PublicKey[] = [];
     const transactions = await Promise.all(
@@ -466,6 +488,26 @@ export class SarosDLMMPair extends SarosBaseService {
         );
 
         if (shouldClosePosition) {
+          const hookInfo = await this.getHookAccount();
+
+          const rewardTokenMint = hookInfo?.rewardTokenMint;
+
+          if (!!rewardTokenMint) {
+            if (
+              rewardTokenMint.toString() !== tokenMintX.toString() &&
+              rewardTokenMint.toString() !== tokenMintY.toString()
+            ) {
+              await getUserVaultInfo(rewardTokenMint, payer, this.connection, setupTransaction);
+            }
+
+            const ixClaimReward = await this.initializeClaimRewardIntructions({
+              positionMint,
+              payer,
+              rewardTokenMint,
+            });
+            tx.add(ixClaimReward);
+          }
+
           const ix = await this.lbProgram.methods
             .closePosition()
             .accountsPartial({
@@ -492,7 +534,53 @@ export class SarosDLMMPair extends SarosBaseService {
 
           closedPositions.push(position);
           tx.add(ix);
+
+          if (!!rewardTokenMint) {
+            const closeHookPositionIns = await this.hooksProgram.methods
+              .closePosition()
+              .accountsPartial({
+                hook,
+                position,
+                user: positionAccount.hookPosition?.user || payer,
+                program: this.hooksProgram.programId,
+                hookPosition,
+              })
+              .instruction();
+
+            tx.add(closeHookPositionIns);
+          }
         } else {
+          let accounts = [
+            { pubkey: this.pairAddress, isWritable: false, isSigner: false },
+            { pubkey: binArrayLower, isWritable: false, isSigner: false },
+            { pubkey: binArrayUpper, isWritable: false, isSigner: false },
+            { pubkey: hookBinArrayLower, isWritable: true, isSigner: false },
+            { pubkey: hookBinArrayUpper, isWritable: true, isSigner: false },
+            { pubkey: hookPosition, isWritable: true, isSigner: false },
+          ];
+
+          if (!!this.pairAccount.hook) {
+            accounts = await this.genHookAccountsInfo({
+              activeId: this.pairAccount.activeId,
+              binId: positionAccount.lowerBinId,
+              hook,
+              hookPosition,
+            });
+
+            const infoHookPosition = await this.connection.getAccountInfo(hookPosition);
+            if (!infoHookPosition) {
+              const initializeHookPositionTx = await this.hooksProgram.methods
+                .initializePosition()
+                .accountsPartial({
+                  hook: this.pairAccount.hook,
+                  lbPosition: position,
+                  position: hookPosition,
+                  user: payer,
+                })
+                .instruction();
+              setupTransaction.add(initializeHookPositionTx);
+            }
+          }
           const ix = await this.lbProgram.methods
             .decreasePosition(removedShares.map((share) => new BN(share.toString())))
             .accountsPartial({
@@ -515,14 +603,7 @@ export class SarosDLMMPair extends SarosBaseService {
               user: payer,
               positionMint,
             })
-            .remainingAccounts([
-              { pubkey: this.pairAddress, isWritable: false, isSigner: false },
-              { pubkey: binArrayLower, isWritable: false, isSigner: false },
-              { pubkey: binArrayUpper, isWritable: false, isSigner: false },
-              { pubkey: hookBinArrayLower, isWritable: true, isSigner: false },
-              { pubkey: hookBinArrayUpper, isWritable: true, isSigner: false },
-              { pubkey: hookPosition, isWritable: true, isSigner: false },
-            ])
+            .remainingAccounts(accounts)
             .instruction();
 
           tx.add(ix);
@@ -721,6 +802,88 @@ export class SarosDLMMPair extends SarosBaseService {
     });
 
     return tx;
+  }
+
+  public async claimReward(params: ClaimRewardParams): Promise<Transaction> {
+    try {
+      const { rewardTokenMint, payer } = params;
+      const transaction = new Transaction();
+      const userVault = await getUserVaultInfo(rewardTokenMint, payer, this.connection, transaction);
+      const instruction = await this.initializeClaimRewardIntructions(params);
+      transaction.add(instruction);
+      if (rewardTokenMint.equals(WRAP_SOL_PUBKEY)) {
+        addCloseAccountInstruction(transaction, userVault, payer);
+      }
+      return transaction;
+    } catch (error) {
+      SarosDLMMError.handleError(error, SarosDLMMError.ClaimRewardFailed());
+    }
+  }
+
+  private async initializeClaimRewardIntructions(params: ClaimRewardParams): Promise<TransactionInstruction> {
+    const { payer, rewardTokenMint, positionMint } = params;
+    const tokenAccount = await this.connection.getAccountInfo(rewardTokenMint);
+    if (!tokenAccount) {
+      throw SarosDLMMError.TokenMintNotFound(rewardTokenMint.toBase58());
+    }
+    const tokenProgram = getTokenProgramFromAccountInfo(rewardTokenMint, tokenAccount);
+
+    const hook = this.getPairAccount().hook;
+    if (!hook) {
+      throw SarosDLMMError.HookNotFound();
+    }
+
+    const hookReserve = spl.getAssociatedTokenAddressSync(rewardTokenMint, hook, true, tokenProgram);
+
+    const userVault = spl.getAssociatedTokenAddressSync(rewardTokenMint, payer, true, tokenProgram);
+
+    const position = derivePositionPDA(positionMint, this.lbProgram.programId);
+
+    const positionAccount = await this.getPositionAccount(position);
+
+    const binIndex = calculateBinArrayIndex(positionAccount.lowerBinId);
+
+    const activeBinIndex = calculateBinArrayIndex(this.pairAccount.activeId);
+
+    const { binArrayLower: activeBinArrayLower, binArrayUpper: activeBinArrayUpper } = getBinArrayAddresses(
+      activeBinIndex,
+      this.pairAddress,
+      this.lbProgram.programId
+    );
+
+    const { binArrayLower: activeBinHookBinArrayLower, binArrayUpper: activeBinHookBinArrayUpper } =
+      getBinArrayAddresses(activeBinIndex, hook, this.hooksProgram.programId);
+
+    const { binArrayLower: positionHookBinArrayLower, binArrayUpper: positionHookBinArrayUpper } = getBinArrayAddresses(
+      binIndex,
+      hook,
+      this.hooksProgram.programId
+    );
+
+    const instruction = await this.hooksProgram.methods
+      .claim()
+      .accountsPartial({
+        hook,
+        pair: this.pairAddress,
+        position,
+        positionMint,
+        activeBinArrayLower,
+        activeBinArrayUpper,
+        activeBinHookBinArrayLower,
+        activeBinHookBinArrayUpper,
+        positionHookBinArrayLower,
+        positionHookBinArrayUpper,
+        rewardTokenMint,
+        hookReserve,
+        userReserve: userVault,
+        rewardTokenProgram: tokenProgram,
+        positionTokenProgram: spl.TOKEN_2022_PROGRAM_ID,
+        user: payer,
+        program: this.hooksProgram.programId,
+      })
+      .instruction();
+
+    return instruction;
   }
 
   /**
@@ -1034,5 +1197,64 @@ export class SarosDLMMPair extends SarosBaseService {
     } else {
       return pairId + 1;
     }
+  }
+
+  private async genHookAccountsInfo(params: {
+    binId: number;
+    activeId: number;
+    hook: PublicKey;
+    hookPosition: PublicKey;
+  }): Promise<AccountMeta[]> {
+    const { activeId, binId, hook, hookPosition } = params;
+
+    const binIndex = calculateBinArrayIndex(binId);
+    const activeBinIndex = calculateBinArrayIndex(activeId);
+
+    const binArrayHookActiveLower = deriveBinArrayHookPDA(hook, activeBinIndex, this.hooksProgram.programId);
+    const binArrayHookActiveUpper = deriveBinArrayHookPDA(hook, activeBinIndex + 1, this.hooksProgram.programId);
+
+    const binArrayActiveLower = deriveBinArrayPDA(activeBinIndex, this.pairAddress, this.lbProgram.programId);
+    const binArrayActiveUpper = deriveBinArrayPDA(activeBinIndex + 1, this.pairAddress, this.lbProgram.programId);
+
+    const binArrayHookLower = deriveBinArrayHookPDA(hook, binIndex, this.hooksProgram.programId);
+    const binArrayHookUpper = deriveBinArrayHookPDA(hook, binIndex + 1, this.hooksProgram.programId);
+
+    return [
+      {
+        pubkey: binArrayHookActiveLower,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: binArrayHookActiveUpper,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: hookPosition,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: binArrayHookLower,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: binArrayHookUpper,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: binArrayActiveLower,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: binArrayActiveUpper,
+        isWritable: true,
+        isSigner: false,
+      },
+    ];
   }
 }

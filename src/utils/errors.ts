@@ -5,6 +5,8 @@ export enum SarosDLMMErrorCode {
   InvalidPrice = 'INVALID_PRICE',
   InvalidBinStep = 'INVALID_BIN_STEP',
   PairCreationFailed = 'PAIR_CREATION_FAILED',
+  HookNotFound = 'HOOK_NOT_FOUND',
+  ClaimRewardFailed = 'CLAIM_REWARD_FAILED',
 
   // Swap errors
   ZeroAmount = 'ZERO_AMOUNT',
@@ -56,6 +58,12 @@ export class SarosDLMMError extends Error {
   }
   static PairCreationFailed(): SarosDLMMError {
     return new SarosDLMMError('Failed to create pair', SarosDLMMErrorCode.PairCreationFailed);
+  }
+  static HookNotFound(): SarosDLMMError {
+    return new SarosDLMMError('No hook found', SarosDLMMErrorCode.HookNotFound);
+  }
+  static ClaimRewardFailed(): SarosDLMMError {
+    return new SarosDLMMError('Failed to claim reward', SarosDLMMErrorCode.ClaimRewardFailed);
   }
 
   // --------------------------

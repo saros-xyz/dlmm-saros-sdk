@@ -72,3 +72,10 @@ export interface PositionReserve {
   /** Index of this bin within the user's position range (0-based) */
   binPosition: number;
 }
+
+export interface ClaimRewardParams {
+  payer: PublicKey;
+  positionMint: PublicKey;
+  rewardTokenMint: PublicKey;
+  transaction?: Transaction;
+}
