@@ -1,0 +1,36 @@
+import { PublicKey } from '@solana/web3.js';
+import { MODE } from './config';
+
+export * from './config';
+
+export const DLMM_PROGRAM_IDS: Record<MODE, { lb: PublicKey; hooks: PublicKey; owner: PublicKey }> = {
+  [MODE.MAINNET]: {
+    lb: new PublicKey('BqPmjcPbAwE7mH23BY8q8VUEN4LSjhLUv41W87GsXVn8'),
+    hooks: new PublicKey('DgW5ARD9sU3W6SJqtyJSH3QPivxWt7EMvjER9hfFKWXF'),
+    owner: new PublicKey('3Rqiej3tf6pa9fGCbT7ZKNLT6XzidZgPmF8JQEXpBqQ7'),
+  },
+  [MODE.DEVNET]: {
+    lb: new PublicKey('BJG6uz2zY2XFG7uomiyi17qqDeYJUnbprGbpyzYN1ncU'),
+    hooks: new PublicKey('GN3UN8CtcSvC1VZxgHwfKqXXi642EwNk5K19FupZGMrZ'),
+    owner: new PublicKey('5CRcTr8Xmc4hZAW7QSZZekjKG7D9UihXyfp8wXSMnbxZ'),
+  },
+};
+
+export const FIXED_LENGTH = 16;
+export const MAX_BIN_CROSSINGS = 30; // Maximum number of bins that can be crossed in a swap
+export const BIN_ARRAY_SIZE = 256;
+export const CENTER_BIN_ID = 8388608; // 2^23
+
+export const MAX_BASIS_POINTS = 10_000;
+export const CCU_LIMIT = 400_000;
+export const UNIT_PRICE_DEFAULT = 1_000_000;
+export const BIN_ARRAY_INDEX = CENTER_BIN_ID / BIN_ARRAY_SIZE - 1;
+
+// BigInt constants
+export const PRECISION_BIGINT = BigInt(1_000_000_000);
+export const VARIABLE_FEE_PRECISION_BIGINT = BigInt(100_000_000_000);
+export const MAX_BASIS_POINTS_BIGINT = BigInt(MAX_BASIS_POINTS);
+export const SCALE_OFFSET_BIGINT = 64n;
+export const SCALE_MULTIPLIER = Math.pow(2, 64);
+
+export const WRAP_SOL_PUBKEY = new PublicKey('So11111111111111111111111111111111111111112');
