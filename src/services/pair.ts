@@ -1,0 +1,1308 @@
+import { BN } from '@coral-xyz/anchor';
+import { AccountMeta, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
+import * as spl from '@solana/spl-token';
+import { SarosBaseService, SarosConfig } from './base/index';
+import {
+  calculateBinArrayIndex,
+  getBinArrayAddresses,
+  getBinArrayWithAdjacent,
+  getLiquidityBinArrays,
+  getQuoteBinArrays,
+  getRemovalBinArrays,
+  getSwapBinArrays,
+} from '../utils/bin-arrays';
+import {
+  getFeeAmount,
+  getFeeForAmount,
+  getFeeMetadata,
+  getProtocolFee,
+  getTotalFee,
+  getTransferFeeFromOnchain,
+} from '../utils/fees';
+import { Volatility } from '../utils/volatility';
+import { BinArrayRange } from '../utils/bin-range';
+import {
+  BIN_ARRAY_SIZE,
+  MAX_BIN_CROSSINGS,
+  SCALE_OFFSET_BIGINT,
+  SCALE_MULTIPLIER,
+  WRAP_SOL_PUBKEY,
+} from '../constants';
+import {
+  DLMMPairAccount,
+  PairMetadata,
+  QuoteResponse,
+  BinArray,
+  RemoveLiquidityResponse,
+  PositionAccount,
+  PositionReserve,
+  GetMaxAmountOutWithFeeResponse,
+  QuoteParams,
+  SwapParams,
+  GetMaxAmountOutWithFeeParams,
+  CreatePositionParams,
+  AddLiquidityByShapeParams,
+  RemoveLiquidityParams,
+  ClaimRewardParams,
+  HookAccount,
+} from '../types';
+import { getPriceFromId } from '../utils/price';
+import {
+  getPairTokenAccounts,
+  getTokenProgramFromAccountInfo,
+  getUserVaultInfo,
+  getUserVaults,
+} from '../utils/vault-accounts';
+import { SarosDLMMError } from '../utils/errors';
+import {
+  getAmountInByPrice,
+  getAmountOutByPrice,
+  getPriceImpact,
+  getMinOutputWithSlippage,
+  getMaxInputWithSlippage,
+} from '../utils/calculations';
+import { addSolTransferInstructions, addOptimalComputeBudget, addCloseAccountInstruction } from '../utils/transaction';
+import { createUniformDistribution, Distribution, calculateDistributionAmounts } from '../utils/bin-distribution';
+import { derivePositionTokenAccount, getMultiplePositionAccounts } from '../utils/positions';
+import { handleSolWrapping } from '../utils/transaction';
+import { calculateRemovedShares } from '../utils/remove-liquidity';
+import {
+  deriveBinArrayHookPDA,
+  deriveBinArrayPDA,
+  deriveHookPDA,
+  derivePositionHookPDA,
+  derivePositionPDA,
+} from '../utils/pda';
+
+export class SarosDLMMPair extends SarosBaseService {
+  private pairAddress: PublicKey;
+  private pairAccount!: DLMMPairAccount;
+  private metadata!: PairMetadata;
+  private volatilityManager: Volatility;
+  bufferGas?: number;
+
+  private tokenProgramX?: PublicKey;
+  private tokenProgramY?: PublicKey;
+  private tokenVaultX?: PublicKey;
+  private tokenVaultY?: PublicKey;
+
+  constructor(config: SarosConfig, pairAddress: PublicKey) {
+    super(config);
+    this.pairAddress = pairAddress;
+    this.volatilityManager = new Volatility();
+  }
+
+  /** Get pair metadata */
+  public getPairMetadata(): PairMetadata {
+    return this.metadata;
+  }
+
+  /** Get pair account data */
+  public getPairAccount(): DLMMPairAccount {
+    return this.pairAccount;
+  }
+
+  /** Get pair address */
+  public getPairAddress(): PublicKey {
+    return this.pairAddress;
+  }
+
+  /** Refresh pair state data (active bin, price, reserves, etc.) */
+  public async refreshState(pairAddress?: string): Promise<void> {
+    try {
+      this.pairAccount = await this.lbProgram.account.pair.fetch(this.pairAddress || pairAddress);
+      if (!this.pairAccount) throw SarosDLMMError.PairFetchFailed();
+
+      this.metadata = await this.buildPairMetadata();
+    } catch (error) {
+      SarosDLMMError.handleError(error, SarosDLMMError.PairFetchFailed());
+    }
+  }
+
+  /** Get position account data by position address  */
+  public async getPositionAccount(position: PublicKey): Promise<PositionAccount> {
+    return await this.lbProgram.account.position.fetch(position);
+  }
+
+  /** Get hook account data by hook */
+  public async getHookAccount(): Promise<HookAccount | null> {
+    if (!this.pairAccount.hook) {
+      return null;
+    }
+    return await this.hooksProgram.account.hook.fetch(this.pairAccount.hook);
+  }
+
+  /** Legacy: get reserves for bin array */
+  public async getBinArrayReserves(binArrayIndex: number): Promise<BinArray> {
+    try {
+      return await getBinArrayWithAdjacent(binArrayIndex, this.pairAddress, this.lbProgram);
+    } catch (_error) {
+      throw SarosDLMMError.BinArrayInfoFailed();
+    }
+  }
+
+  /** Get reserves around the active bin for this pair. */
+  public async getActiveReserves(range: number = 1) {
+    const { activeId } = this.pairAccount;
+    const binArrayIndex = calculateBinArrayIndex(activeId);
+    const { bins, index } = await this.getBinArrayReserves(binArrayIndex);
+
+    const firstBinIndex = index * BIN_ARRAY_SIZE;
+
+    return Array.from({ length: range * 2 + 1 }, (_, i) => {
+      const binId = activeId - range + i;
+      const relativeIdx = binId - firstBinIndex;
+      const bin = bins[relativeIdx];
+
+      return bin
+        ? {
+            binId,
+            reserveX: BigInt(bin.reserveX.toString()),
+            reserveY: BigInt(bin.reserveY.toString()),
+            totalSupply: BigInt(bin.totalSupply.toString()),
+          }
+        : null;
+    }).filter(Boolean);
+  }
+
+  public getHook(): PublicKey {
+    const hook =
+      this.pairAccount.hook || deriveHookPDA(this.ownerConfig, this.pairAddress, this.hooksProgram.programId);
+    return hook;
+  }
+
+  /**
+   * Create a new position in this pair.
+   *
+   * Must be executed before adding liquidity with {@link addLiquidityByShape}.
+   */
+  async createPosition(params: CreatePositionParams): Promise<Transaction> {
+    const { payer, binRange, positionMint } = params;
+    const [binIdLeft, binIdRight] = binRange;
+    const activeBinId = this.pairAccount.activeId;
+    const lowerBinId = activeBinId + binIdLeft;
+    const upperBinId = activeBinId + binIdRight;
+
+    const transaction = new Transaction();
+
+    await getLiquidityBinArrays(
+      lowerBinId,
+      upperBinId,
+      this.pairAddress,
+      this.connection,
+      this.lbProgram.programId,
+      payer,
+      this.lbProgram,
+      transaction
+    );
+
+    const position = derivePositionPDA(positionMint, this.lbProgram.programId);
+    const positionTokenAccount = derivePositionTokenAccount(positionMint, payer);
+
+    const ix = await this.lbProgram.methods
+      .createPosition(binIdLeft, binIdRight)
+      .accountsPartial({
+        pair: this.pairAddress,
+        position,
+        positionMint,
+        positionTokenAccount,
+        tokenProgram: spl.TOKEN_2022_PROGRAM_ID,
+        user: payer,
+      })
+      .instruction();
+
+    transaction.add(ix);
+
+    if (!!this.pairAccount.hook) {
+      const hookPosition = derivePositionHookPDA(this.pairAccount.hook, position, this.hooksProgram.programId);
+      const infoHookPosition = await this.connection.getAccountInfo(hookPosition);
+      if (!infoHookPosition) {
+        const initializeHookPositionTx = await this.hooksProgram.methods
+          .initializePosition()
+          .accountsPartial({
+            hook: this.pairAccount.hook,
+            lbPosition: position,
+            position: hookPosition,
+            user: payer,
+          })
+          .instruction();
+        transaction.add(initializeHookPositionTx);
+      }
+    }
+    return transaction;
+  }
+
+  /**
+   * Add liquidity to an existing position using a shape distribution.
+   *
+   * Requires a position to be created first via {@link createPosition},
+   * and that transaction must be executed before calling this method.
+   */
+  async addLiquidityByShape(params: AddLiquidityByShapeParams): Promise<Transaction> {
+    const { positionMint, payer, transaction: userTxn, amountTokenX, amountTokenY, liquidityShape, binRange } = params;
+
+    const { tokenMintX, tokenMintY } = this.pairAccount;
+    if (amountTokenX <= 0n && amountTokenY <= 0n) {
+      throw SarosDLMMError.CannotAddZero();
+    }
+
+    const tx = userTxn || new Transaction();
+
+    const { userVaultX, userVaultY } = await getUserVaults(tokenMintX, tokenMintY, payer, this.connection, tx);
+
+    // Get or create pair vault addresses
+    const pairTokenAccounts = await getPairTokenAccounts(tokenMintX, tokenMintY, this.pairAddress, this.connection, {
+      payer,
+      transaction: tx,
+      createVaultsIfNeeded: true,
+    });
+    const associatedPairVaultX = pairTokenAccounts.vaultX;
+    const associatedPairVaultY = pairTokenAccounts.vaultY;
+
+    const liquidityDistribution: Distribution[] = createUniformDistribution({
+      shape: liquidityShape,
+      binRange,
+    });
+
+    const lowerBinId = this.pairAccount.activeId + binRange[0];
+    const upperBinId = this.pairAccount.activeId + binRange[1];
+
+    const { binArrayLower, binArrayUpper } = await getLiquidityBinArrays(
+      lowerBinId,
+      upperBinId,
+      this.pairAddress,
+      this.connection,
+      this.lbProgram.programId,
+      payer,
+      this.lbProgram,
+      tx
+    );
+
+    if (this.pairAccount.tokenMintY.equals(WRAP_SOL_PUBKEY) || this.pairAccount.tokenMintX.equals(WRAP_SOL_PUBKEY)) {
+      const isNativeY = this.pairAccount.tokenMintY.equals(WRAP_SOL_PUBKEY);
+      const { scaledAmount } = calculateDistributionAmounts(
+        liquidityDistribution,
+        amountTokenX,
+        amountTokenY,
+        isNativeY
+      );
+
+      if (scaledAmount > 0n) {
+        const associatedUserVault = isNativeY ? userVaultY : userVaultX;
+        addSolTransferInstructions(tx, payer, associatedUserVault, scaledAmount);
+      }
+    }
+
+    let accounts: {
+      pubkey: PublicKey;
+      isWritable: boolean;
+      isSigner: boolean;
+    }[] = [];
+
+    const hook = this.getHook();
+    const position = derivePositionPDA(positionMint, this.lbProgram.programId);
+
+    if (!!hook) {
+      const hookPosition = derivePositionHookPDA(hook, position, this.hooksProgram.programId);
+
+      const positionAccount = await this.getPositionAccount(position);
+
+      const binIndex = calculateBinArrayIndex(positionAccount.lowerBinId);
+      const activeBinIndex = calculateBinArrayIndex(this.pairAccount.activeId);
+
+      const binArrayHookActiveLower = deriveBinArrayHookPDA(hook, activeBinIndex, this.hooksProgram.programId);
+      const binArrayHookActiveUpper = deriveBinArrayHookPDA(hook, activeBinIndex + 1, this.hooksProgram.programId);
+
+      const binArrayActiveLower = deriveBinArrayPDA(activeBinIndex, this.pairAddress, this.lbProgram.programId);
+      const binArrayActiveUpper = deriveBinArrayPDA(activeBinIndex + 1, this.pairAddress, this.lbProgram.programId);
+
+      const binArrayHookLower = deriveBinArrayHookPDA(hook, binIndex, this.hooksProgram.programId);
+      const binArrayHookUpper = deriveBinArrayHookPDA(hook, binIndex + 1, this.hooksProgram.programId);
+
+      accounts = [
+        { pubkey: binArrayHookActiveLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayHookActiveUpper, isWritable: true, isSigner: false },
+        { pubkey: hookPosition, isWritable: true, isSigner: false },
+        { pubkey: binArrayHookLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayHookUpper, isWritable: true, isSigner: false },
+        { pubkey: binArrayActiveLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayActiveUpper, isWritable: true, isSigner: false },
+      ];
+    }
+
+    const positionTokenAccount = derivePositionTokenAccount(positionMint, payer);
+
+    const ix = await this.lbProgram.methods
+      .increasePosition(new BN(amountTokenX.toString()), new BN(amountTokenY.toString()), liquidityDistribution)
+      .accountsPartial({
+        pair: this.pairAddress,
+        position,
+        binArrayLower,
+        binArrayUpper,
+        tokenVaultX: associatedPairVaultX,
+        tokenVaultY: associatedPairVaultY,
+        userVaultX,
+        userVaultY,
+        positionTokenAccount,
+        tokenMintX,
+        tokenMintY,
+        tokenProgramX: this.tokenProgramX,
+        tokenProgramY: this.tokenProgramY,
+        positionTokenProgram: spl.TOKEN_2022_PROGRAM_ID,
+        hook,
+        hooksProgram: this.hooksProgram.programId,
+        user: payer,
+        positionMint,
+      })
+      .remainingAccounts(accounts)
+      .instruction();
+
+    await addOptimalComputeBudget(tx, this.connection, this.bufferGas);
+    tx.add(ix);
+
+    return tx;
+  }
+
+  /** Get all user positions in this pair */
+  public async getUserPositions(params: { payer: PublicKey }): Promise<PositionAccount[]> {
+    // Position mints are TOKEN_2022
+    const token2022Accounts = await this.connection.getParsedTokenAccountsByOwner(params.payer, {
+      programId: spl.TOKEN_2022_PROGRAM_ID,
+    });
+
+    if (token2022Accounts.value.length === 0) {
+      return [];
+    }
+
+    // Extract position mints from accounts with balance > 0
+    const positionMints = token2022Accounts.value
+      .filter((acc) => acc.account.data.parsed.info.tokenAmount.uiAmount > 0)
+      .map((acc) => new PublicKey(acc.account.data.parsed.info.mint));
+
+    if (positionMints.length === 0) {
+      return [];
+    }
+
+    // Derive position PDAs
+    const positionPdas = positionMints.map((mint) => derivePositionPDA(mint, this.lbProgram.programId));
+
+    const positions = await getMultiplePositionAccounts(positionPdas, this.pairAddress, this.lbProgram);
+    return positions.filter(Boolean).sort((a, b) => a.lowerBinId - b.lowerBinId);
+  }
+
+  /** Get token balances for each bin in a position */
+  public async getPositionReserves(position: PublicKey): Promise<PositionReserve[]> {
+    const positionInfo = await this.getPositionAccount(position);
+    const firstBinId = positionInfo.lowerBinId;
+    const binArrayIndex = calculateBinArrayIndex(firstBinId);
+
+    const { bins, index } = await this.getBinArrayReserves(binArrayIndex);
+
+    const firstBinIndex = index * BIN_ARRAY_SIZE;
+    const binIds = Array.from(
+      { length: positionInfo.upperBinId - firstBinId + 1 },
+      (_, i) => firstBinId - firstBinIndex + i
+    );
+
+    return binIds.map((binId: number, idx: number) => {
+      const liquidityShare = BigInt(positionInfo.liquidityShares[idx].toString());
+      const activeBin = bins[binId];
+
+      if (activeBin) {
+        const reserveX = BigInt(activeBin.reserveX.toString());
+        const reserveY = BigInt(activeBin.reserveY.toString());
+        const totalSupply = BigInt(activeBin.totalSupply.toString());
+
+        const baseReserve = reserveX > 0n && totalSupply > 0n ? (liquidityShare * reserveX) / totalSupply : 0n;
+
+        const quoteReserve = reserveY > 0n && totalSupply > 0n ? (liquidityShare * reserveY) / totalSupply : 0n;
+
+        return {
+          reserveX: baseReserve,
+          reserveY: quoteReserve,
+          totalSupply,
+          binId: firstBinId + idx,
+          binPosition: binId,
+          liquidityShare,
+        };
+      }
+
+      return {
+        reserveX: 0n,
+        reserveY: 0n,
+        totalSupply: 0n,
+        binId: firstBinId + idx,
+        binPosition: binId,
+        liquidityShare,
+      };
+    });
+  }
+
+  /**
+   * Remove liquidity from one or more positions in this pair.
+   *
+   * Callers are responsible for submitting these transactions in order:
+   * 1. setupTransaction (if present)
+   * 2. transactions
+   * 3. cleanupTransaction (if present)
+   */
+  public async removeLiquidity(params: RemoveLiquidityParams): Promise<RemoveLiquidityResponse> {
+    const { positionMints, payer, type } = params;
+    const { tokenMintX, tokenMintY } = this.pairAccount;
+
+    const setupTransaction = new Transaction();
+
+    const tokenVaultX = this.tokenVaultX;
+    const tokenVaultY = this.tokenVaultY;
+
+    const { userVaultX, userVaultY } = await getUserVaults(
+      tokenMintX,
+      tokenMintY,
+      payer,
+      this.connection,
+      setupTransaction
+    );
+    const hook = this.getHook();
+
+    const closedPositions: PublicKey[] = [];
+    const transactions = await Promise.all(
+      positionMints.map(async (positionMint) => {
+        const position = derivePositionPDA(positionMint, this.lbProgram.programId);
+        const positionAccount = await this.getPositionAccount(position);
+        const binArrayIndex = calculateBinArrayIndex(positionAccount.lowerBinId);
+        const { index } = await this.getBinArrayReserves(binArrayIndex);
+
+        const { binArrayLower, binArrayUpper, hookBinArrayLower, hookBinArrayUpper } = getRemovalBinArrays(
+          index,
+          this.pairAddress,
+          hook,
+          this.lbProgram.programId,
+          this.hooksProgram.programId
+        );
+
+        const tx = new Transaction();
+        await addOptimalComputeBudget(tx, this.connection, this.bufferGas);
+
+        const positionTokenAccount = derivePositionTokenAccount(positionMint, payer);
+        const reserveXY = await this.getPositionReserves(position);
+        const hookPosition = derivePositionHookPDA(hook, position, this.hooksProgram.programId);
+
+        const { removedShares, shouldClosePosition } = calculateRemovedShares(
+          reserveXY,
+          type,
+          positionAccount.lowerBinId,
+          positionAccount.upperBinId
+        );
+
+        if (shouldClosePosition) {
+          const hookInfo = await this.getHookAccount();
+
+          const rewardTokenMint = hookInfo?.rewardTokenMint;
+
+          if (!!rewardTokenMint) {
+            if (
+              rewardTokenMint.toString() !== tokenMintX.toString() &&
+              rewardTokenMint.toString() !== tokenMintY.toString()
+            ) {
+              await getUserVaultInfo(rewardTokenMint, payer, this.connection, setupTransaction);
+            }
+
+            const ixClaimReward = await this.initializeClaimRewardIntructions({
+              positionMint,
+              payer,
+              rewardTokenMint,
+            });
+            tx.add(ixClaimReward);
+          }
+
+          const ix = await this.lbProgram.methods
+            .closePosition()
+            .accountsPartial({
+              pair: this.pairAddress,
+              position,
+              binArrayLower,
+              binArrayUpper,
+              tokenVaultX,
+              tokenVaultY,
+              userVaultX,
+              userVaultY,
+              positionTokenAccount,
+              tokenMintX,
+              tokenMintY,
+              tokenProgramX: this.tokenProgramX,
+              tokenProgramY: this.tokenProgramY,
+              positionTokenProgram: spl.TOKEN_2022_PROGRAM_ID,
+              hook,
+              hooksProgram: this.hooksProgram.programId,
+              user: payer,
+              positionMint,
+            })
+            .instruction();
+
+          closedPositions.push(position);
+          tx.add(ix);
+
+          if (!!rewardTokenMint) {
+            const closeHookPositionIns = await this.hooksProgram.methods
+              .closePosition()
+              .accountsPartial({
+                hook,
+                position,
+                user: positionAccount.hookPosition?.user || payer,
+                program: this.hooksProgram.programId,
+                hookPosition,
+              })
+              .instruction();
+
+            tx.add(closeHookPositionIns);
+          }
+        } else {
+          let accounts = [
+            { pubkey: this.pairAddress, isWritable: false, isSigner: false },
+            { pubkey: binArrayLower, isWritable: false, isSigner: false },
+            { pubkey: binArrayUpper, isWritable: false, isSigner: false },
+            { pubkey: hookBinArrayLower, isWritable: true, isSigner: false },
+            { pubkey: hookBinArrayUpper, isWritable: true, isSigner: false },
+            { pubkey: hookPosition, isWritable: true, isSigner: false },
+          ];
+
+          if (!!this.pairAccount.hook) {
+            accounts = await this.genHookAccountsInfo({
+              activeId: this.pairAccount.activeId,
+              binId: positionAccount.lowerBinId,
+              hook,
+              hookPosition,
+            });
+
+            const infoHookPosition = await this.connection.getAccountInfo(hookPosition);
+            if (!infoHookPosition) {
+              const initializeHookPositionTx = await this.hooksProgram.methods
+                .initializePosition()
+                .accountsPartial({
+                  hook: this.pairAccount.hook,
+                  lbPosition: position,
+                  position: hookPosition,
+                  user: payer,
+                })
+                .instruction();
+              setupTransaction.add(initializeHookPositionTx);
+            }
+          }
+          const ix = await this.lbProgram.methods
+            .decreasePosition(removedShares.map((share) => new BN(share.toString())))
+            .accountsPartial({
+              pair: this.pairAddress,
+              position,
+              binArrayLower,
+              binArrayUpper,
+              tokenVaultX,
+              tokenVaultY,
+              userVaultX,
+              userVaultY,
+              positionTokenAccount,
+              tokenMintX,
+              tokenMintY,
+              tokenProgramX: this.tokenProgramX,
+              tokenProgramY: this.tokenProgramY,
+              positionTokenProgram: spl.TOKEN_2022_PROGRAM_ID,
+              hook,
+              hooksProgram: this.hooksProgram.programId,
+              user: payer,
+              positionMint,
+            })
+            .remainingAccounts(accounts)
+            .instruction();
+
+          tx.add(ix);
+        }
+
+        return tx;
+      })
+    );
+
+    const cleanupTransaction = new Transaction();
+    handleSolWrapping(
+      cleanupTransaction,
+      this.pairAccount.tokenMintX,
+      this.pairAccount.tokenMintY,
+      userVaultX,
+      userVaultY,
+      payer,
+      { isPreSwap: false }
+    );
+
+    return {
+      transactions,
+      setupTransaction: setupTransaction.instructions.length ? setupTransaction : undefined,
+      cleanupTransaction: cleanupTransaction.instructions.length ? cleanupTransaction : undefined,
+      closedPositions,
+    };
+  }
+
+  /** Get a quote for a swap on this pair */
+  public async getQuote(params: QuoteParams): Promise<QuoteResponse> {
+    if (params.amount <= 0n) throw SarosDLMMError.ZeroAmount();
+    if (params.slippage < 0 || params.slippage >= 100) throw SarosDLMMError.InvalidSlippage();
+
+    try {
+      const { tokenX, tokenY } = this.metadata;
+      const {
+        slippage,
+        options: { swapForY, isExactInput },
+      } = params;
+
+      const { amountIn, amountOut } = await this.calculateInOutAmount(params);
+
+      let maxAmountIn = amountIn;
+      let minAmountOut = amountOut;
+
+      if (isExactInput) {
+        minAmountOut = getMinOutputWithSlippage(amountOut, slippage);
+      } else {
+        maxAmountIn = getMaxInputWithSlippage(amountIn, slippage);
+      }
+
+      const { maxAmountOut } = await this.getMaxAmountOutWithFee({
+        amount: amountIn,
+        swapForY,
+        decimalTokenX: tokenX.decimals,
+        decimalTokenY: tokenY.decimals,
+      });
+
+      const priceImpact = getPriceImpact(amountOut, maxAmountOut);
+
+      return {
+        amountIn: amountIn,
+        amountOut: amountOut,
+        amount: maxAmountIn,
+        // minTokenOut serves as slippage protection:
+        // - Exact input: minimum output willing to accept
+        // - Exact output: maximum input willing to pay
+        minTokenOut: isExactInput ? minAmountOut : maxAmountIn,
+        priceImpact: priceImpact,
+      };
+    } catch (error) {
+      SarosDLMMError.handleError(error, SarosDLMMError.QuoteCalculationFailed());
+    }
+  }
+
+  /**
+   * Execute a swap transaction on this pair
+   *
+   * @example
+   * // Always get a quote first, then pass quote.minTokenOut to swap
+   * const quote = await pair.getQuote({
+   *   amount: 1_000_000n,
+   *   options: { swapForY: true, isExactInput: true },
+   *   slippage: 1
+   * });
+   *
+   * const tx = await pair.swap({
+   *   tokenIn: tokenX,
+   *   tokenOut: tokenY,
+   *   amount: 1_000_000n,
+   *   options: { swapForY: true, isExactInput: true },
+   *   minTokenOut: quote.minTokenOut, // <- Slippage protection
+   *   payer: wallet.publicKey
+   * });
+   */
+  public async swap(params: SwapParams): Promise<Transaction> {
+    const {
+      amount,
+      minTokenOut,
+      options: { swapForY, isExactInput },
+      payer,
+    } = params;
+
+    if (amount <= 0n) throw SarosDLMMError.ZeroAmount();
+    if (minTokenOut < 0n) throw SarosDLMMError.ZeroAmount();
+
+    const tokenVaultX = this.tokenVaultX;
+    const tokenVaultY = this.tokenVaultY;
+    const tokenMintX = this.pairAccount.tokenMintX;
+    const tokenMintY = this.pairAccount.tokenMintY;
+
+    const { binArrayLower, binArrayUpper, binArrayLowerIndex, binArrayUpperIndex } = await getSwapBinArrays(
+      this.pairAccount.activeId,
+      this.pairAddress,
+      this.connection,
+      this.lbProgram.programId
+    );
+
+    const latestBlockHash = await this.connection.getLatestBlockhash();
+    const tx = new Transaction({
+      feePayer: payer,
+      blockhash: latestBlockHash.blockhash,
+      lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+    });
+
+    const { userVaultX, userVaultY } = await getUserVaults(tokenMintX, tokenMintY, payer, this.connection, tx);
+
+    handleSolWrapping(tx, tokenMintX, tokenMintY, userVaultX, userVaultY, payer, {
+      swapForY,
+      amount,
+      isPreSwap: true,
+    });
+
+    let remainingAccounts = [
+      { pubkey: this.pairAddress, isWritable: false, isSigner: false },
+      { pubkey: binArrayLower, isWritable: false, isSigner: false },
+      { pubkey: binArrayUpper, isWritable: false, isSigner: false },
+    ];
+
+    // Add binArrayHook if pair has a hook
+    if (!!this.pairAccount.hook) {
+      const binArrayHookLower = deriveBinArrayHookPDA(
+        this.pairAccount.hook,
+        binArrayLowerIndex,
+        this.hooksProgram.programId
+      );
+      const binArrayHookUpper = deriveBinArrayHookPDA(
+        this.pairAccount.hook,
+        binArrayUpperIndex,
+        this.hooksProgram.programId
+      );
+
+      remainingAccounts = [
+        { pubkey: binArrayHookLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayHookUpper, isWritable: true, isSigner: false },
+        { pubkey: this.pairAddress, isWritable: false, isSigner: false },
+        { pubkey: binArrayHookLower, isWritable: true, isSigner: false },
+        { pubkey: binArrayHookUpper, isWritable: true, isSigner: false },
+      ];
+    }
+
+    // minTokenOut is the slippage protection:
+    // - Exact input: minimum output to accept
+    // - Exact output: maximum input to pay
+    const swapInstructions = await this.lbProgram.methods
+      .swap(
+        new BN(amount.toString()),
+        new BN(minTokenOut.toString()),
+        swapForY,
+        isExactInput ? { exactInput: {} } : { exactOutput: {} }
+      )
+      .accountsPartial({
+        pair: this.pairAddress,
+        binArrayLower: binArrayLower,
+        binArrayUpper: binArrayUpper,
+        tokenVaultX,
+        tokenVaultY,
+        userVaultX,
+        userVaultY,
+        tokenMintX,
+        tokenMintY,
+        tokenProgramX: this.tokenProgramX,
+        tokenProgramY: this.tokenProgramY,
+        user: payer,
+        hook: this.pairAccount.hook,
+        hooksProgram: this.hooksProgram.programId,
+      })
+      .remainingAccounts(remainingAccounts)
+      .instruction();
+
+    tx.add(swapInstructions);
+
+    handleSolWrapping(tx, tokenMintX, tokenMintY, userVaultX, userVaultY, payer, {
+      swapForY,
+      isPreSwap: false,
+    });
+
+    return tx;
+  }
+
+  public async claimReward(params: ClaimRewardParams): Promise<Transaction> {
+    try {
+      const { rewardTokenMint, payer } = params;
+      const transaction = new Transaction();
+      const userVault = await getUserVaultInfo(rewardTokenMint, payer, this.connection, transaction);
+      const instruction = await this.initializeClaimRewardIntructions(params);
+      transaction.add(instruction);
+      if (rewardTokenMint.equals(WRAP_SOL_PUBKEY)) {
+        addCloseAccountInstruction(transaction, userVault, payer);
+      }
+      return transaction;
+    } catch (error) {
+      SarosDLMMError.handleError(error, SarosDLMMError.ClaimRewardFailed());
+    }
+  }
+
+  private async initializeClaimRewardIntructions(params: ClaimRewardParams): Promise<TransactionInstruction> {
+    const { payer, rewardTokenMint, positionMint } = params;
+    const tokenAccount = await this.connection.getAccountInfo(rewardTokenMint);
+    if (!tokenAccount) {
+      throw SarosDLMMError.TokenMintNotFound(rewardTokenMint.toBase58());
+    }
+    const tokenProgram = getTokenProgramFromAccountInfo(rewardTokenMint, tokenAccount);
+
+    const hook = this.getPairAccount().hook;
+    if (!hook) {
+      throw SarosDLMMError.HookNotFound();
+    }
+
+    const hookReserve = spl.getAssociatedTokenAddressSync(rewardTokenMint, hook, true, tokenProgram);
+
+    const userVault = spl.getAssociatedTokenAddressSync(rewardTokenMint, payer, true, tokenProgram);
+
+    const position = derivePositionPDA(positionMint, this.lbProgram.programId);
+
+    const positionAccount = await this.getPositionAccount(position);
+
+    const binIndex = calculateBinArrayIndex(positionAccount.lowerBinId);
+
+    const activeBinIndex = calculateBinArrayIndex(this.pairAccount.activeId);
+
+    const { binArrayLower: activeBinArrayLower, binArrayUpper: activeBinArrayUpper } = getBinArrayAddresses(
+      activeBinIndex,
+      this.pairAddress,
+      this.lbProgram.programId
+    );
+
+    const { binArrayLower: activeBinHookBinArrayLower, binArrayUpper: activeBinHookBinArrayUpper } =
+      getBinArrayAddresses(activeBinIndex, hook, this.hooksProgram.programId);
+
+    const { binArrayLower: positionHookBinArrayLower, binArrayUpper: positionHookBinArrayUpper } = getBinArrayAddresses(
+      binIndex,
+      hook,
+      this.hooksProgram.programId
+    );
+
+    const instruction = await this.hooksProgram.methods
+      .claim()
+      .accountsPartial({
+        hook,
+        pair: this.pairAddress,
+        position,
+        positionMint,
+        activeBinArrayLower,
+        activeBinArrayUpper,
+        activeBinHookBinArrayLower,
+        activeBinHookBinArrayUpper,
+        positionHookBinArrayLower,
+        positionHookBinArrayUpper,
+        rewardTokenMint,
+        hookReserve,
+        userReserve: userVault,
+        rewardTokenProgram: tokenProgram,
+        positionTokenProgram: spl.TOKEN_2022_PROGRAM_ID,
+        user: payer,
+        program: this.hooksProgram.programId,
+      })
+      .instruction();
+
+    return instruction;
+  }
+
+  /**
+   * Calculate maximum output
+   */
+  public async getMaxAmountOutWithFee(params: GetMaxAmountOutWithFeeParams): Promise<GetMaxAmountOutWithFeeResponse> {
+    try {
+      const { amount, swapForY = false, decimalTokenX = 9, decimalTokenY = 9 } = params;
+      if (amount <= 0n) throw SarosDLMMError.ZeroAmount();
+
+      const { activeId, binStep } = this.pairAccount;
+
+      const feePrice = getTotalFee(this.pairAccount, this.volatilityManager.getVolatilityAccumulator());
+      const activePrice = getPriceFromId(binStep, activeId, decimalTokenX, decimalTokenY);
+
+      const feeAmount = getFeeAmount(amount, feePrice);
+      const amountAfterFee = amount - feeAmount;
+      const maxAmountOut = swapForY
+        ? (amountAfterFee * BigInt(activePrice)) >> SCALE_OFFSET_BIGINT
+        : (amountAfterFee << SCALE_OFFSET_BIGINT) / BigInt(activePrice);
+
+      return { maxAmountOut, price: activePrice };
+    } catch {
+      return { maxAmountOut: 0n, price: 0 };
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // Internal/private helpers
+  // The methods below are private helpers and not part of the public SDK.
+  // -----------------------------------------------------------------------------
+
+  private async buildPairMetadata(): Promise<PairMetadata> {
+    const { tokenMintX, tokenMintY, hook, activeId, binStep } = this.pairAccount;
+    const tokenAccountsData = await getPairTokenAccounts(tokenMintX, tokenMintY, this.pairAddress, this.connection);
+    const feeInfo = getFeeMetadata(this.pairAccount);
+
+    // Store results
+    this.tokenVaultX = tokenAccountsData.vaultX;
+    this.tokenVaultY = tokenAccountsData.vaultY;
+    this.tokenProgramX = tokenAccountsData.tokenProgramX;
+    this.tokenProgramY = tokenAccountsData.tokenProgramY;
+
+    const activePrice = getPriceFromId(
+      binStep,
+      activeId,
+      tokenAccountsData.baseDecimals,
+      tokenAccountsData.quoteDecimals
+    );
+
+    return {
+      pair: this.pairAddress,
+      tokenX: {
+        mintAddress: tokenMintX,
+        decimals: tokenAccountsData.baseDecimals,
+        reserve: tokenAccountsData.reserveX.value.amount,
+      },
+      tokenY: {
+        mintAddress: tokenMintY,
+        decimals: tokenAccountsData.quoteDecimals,
+        reserve: tokenAccountsData.reserveY.value.amount,
+      },
+      binStep: this.pairAccount.binStep,
+      baseFee: feeInfo.baseFee,
+      dynamicFee: feeInfo.dynamicFee,
+      protocolFee: feeInfo.protocolFee,
+      activeId,
+      activePrice,
+      extra: { hook: hook || undefined },
+    };
+  }
+
+  private async calculateInOutAmount(params: QuoteParams) {
+    const {
+      amount,
+      options: { swapForY, isExactInput },
+    } = params;
+    try {
+      const { binArrays } = await getQuoteBinArrays(this.pairAccount.activeId, this.pairAddress, this.lbProgram);
+
+      const binRange = new BinArrayRange(binArrays[0], binArrays[1], binArrays[2]);
+      const totalSupply = binRange.getAllBins().reduce((acc, cur) => acc + BigInt(cur.totalSupply.toString()), 0n);
+      if (totalSupply === 0n) {
+        return {
+          amountIn: 0n,
+          amountOut: 0n,
+        };
+      }
+
+      // Get transfer fee configs for Token 2022 support
+      const [tokenBaseFeeConfig, tokenQuoteFeeConfig] = await Promise.all([
+        getTransferFeeFromOnchain({
+          mintToken: this.pairAccount.tokenMintX,
+          connection: this.connection,
+        }),
+        getTransferFeeFromOnchain({
+          mintToken: this.pairAccount.tokenMintY,
+          connection: this.connection,
+        }),
+      ]);
+
+      const inputTokenFeeConfig = swapForY ? tokenBaseFeeConfig : tokenQuoteFeeConfig;
+      const outputTokenFeeConfig = swapForY ? tokenQuoteFeeConfig : tokenBaseFeeConfig;
+
+      if (isExactInput) {
+        let amountAfterTransferFee = amount;
+        let transferFeeIn = 0n;
+        let transferFeeOut = 0n;
+
+        if (inputTokenFeeConfig) {
+          transferFeeIn = spl.calculateFee(inputTokenFeeConfig, amount);
+          amountAfterTransferFee = amount - transferFeeIn;
+        }
+
+        let amountOut = await this.calculateAmountOut(amountAfterTransferFee, binRange, this.pairAccount, swapForY);
+
+        if (outputTokenFeeConfig && amountOut) {
+          transferFeeOut = spl.calculateFee(outputTokenFeeConfig, amountOut);
+          amountOut = amountOut - transferFeeOut;
+        }
+
+        return {
+          amountIn: amount,
+          amountOut,
+        };
+      } else {
+        let amountIncludingOutputFee = amount;
+        let transferFeeOut = 0n;
+        let transferFeeIn = 0n;
+
+        if (outputTokenFeeConfig) {
+          transferFeeOut = spl.calculateFee(outputTokenFeeConfig, amount);
+          amountIncludingOutputFee = amount + transferFeeOut;
+        }
+
+        let amountIn = await this.calculateAmountIn(amountIncludingOutputFee, binRange, this.pairAccount, swapForY);
+
+        if (inputTokenFeeConfig && amountIn) {
+          transferFeeIn = spl.calculateFee(inputTokenFeeConfig, amountIn);
+          amountIn = amountIn + transferFeeIn;
+        }
+
+        return {
+          amountIn,
+          amountOut: amount,
+        };
+      }
+    } catch (error) {
+      SarosDLMMError.handleError(error, SarosDLMMError.QuoteCalculationFailed());
+    }
+  }
+
+  private async calculateAmountIn(amount: bigint, bins: BinArrayRange, pairInfo: DLMMPairAccount, swapForY: boolean) {
+    try {
+      let amountIn = 0n;
+      let amountOutLeft = amount;
+      let activeId = pairInfo.activeId;
+      let totalBinUsed = 0;
+
+      await this.volatilityManager.updateReferences(
+        pairInfo,
+        activeId,
+        () => this.connection.getSlot(),
+        (slot) => this.connection.getBlockTime(slot)
+      );
+
+      while (amountOutLeft > 0n) {
+        totalBinUsed++;
+        this.volatilityManager.updateVolatilityAccumulator(pairInfo, activeId);
+
+        const activeBin = bins.getBinMut(activeId);
+        if (!activeBin) {
+          break;
+        }
+
+        const volatility = this.volatilityManager.getVolatilityAccumulator();
+        const fee = getTotalFee(pairInfo, volatility);
+
+        const { amountInWithFees, amountOut: amountOutOfBin } = this.swapExactOutput({
+          binStep: pairInfo.binStep,
+          activeId,
+          amountOutLeft,
+          fee,
+          protocolShare: pairInfo.staticFeeParameters.protocolShare,
+          swapForY,
+          reserveX: BigInt(activeBin.reserveX.toString()),
+          reserveY: BigInt(activeBin.reserveY.toString()),
+        });
+
+        amountIn += amountInWithFees;
+        amountOutLeft -= amountOutOfBin;
+
+        if (!amountOutLeft) break;
+        activeId = this.moveActiveId(activeId, swapForY);
+      }
+
+      if (totalBinUsed >= MAX_BIN_CROSSINGS) {
+        throw SarosDLMMError.SwapExceedsMaxBinCrossings();
+      }
+
+      return amountIn;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  private async calculateAmountOut(amount: bigint, bins: BinArrayRange, pairInfo: DLMMPairAccount, swapForY: boolean) {
+    try {
+      let amountOut = 0n;
+      let amountInLeft = amount;
+      let activeId = pairInfo.activeId;
+      let totalBinUsed = 0;
+
+      await this.volatilityManager.updateReferences(
+        pairInfo,
+        activeId,
+        () => this.connection.getSlot(),
+        (slot) => this.connection.getBlockTime(slot)
+      );
+
+      while (amountInLeft > 0n) {
+        totalBinUsed++;
+        this.volatilityManager.updateVolatilityAccumulator(pairInfo, activeId);
+
+        const activeBin = bins.getBinMut(activeId);
+        if (!activeBin) {
+          break;
+        }
+
+        const fee = getTotalFee(pairInfo, this.volatilityManager.getVolatilityAccumulator());
+
+        const { amountInWithFees, amountOut: amountOutOfBin } = this.swapExactInput({
+          binStep: pairInfo.binStep,
+          activeId,
+          amountInLeft,
+          fee,
+          protocolShare: pairInfo.staticFeeParameters.protocolShare,
+          swapForY,
+          reserveX: BigInt(activeBin.reserveX.toString()),
+          reserveY: BigInt(activeBin.reserveY.toString()),
+        });
+
+        amountOut += amountOutOfBin;
+        amountInLeft -= amountInWithFees;
+
+        if (!amountInLeft) break;
+        activeId = this.moveActiveId(activeId, swapForY);
+      }
+      if (totalBinUsed >= MAX_BIN_CROSSINGS) {
+        throw SarosDLMMError.SwapExceedsMaxBinCrossings();
+      }
+
+      return amountOut;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  private swapExactOutput(params: {
+    binStep: number;
+    activeId: number;
+    amountOutLeft: bigint;
+    fee: bigint;
+    protocolShare: number;
+    swapForY: boolean;
+    reserveX: bigint;
+    reserveY: bigint;
+  }) {
+    const { binStep, activeId, amountOutLeft, protocolShare, swapForY, reserveX, reserveY, fee } = params;
+    const protocolShareBigInt = BigInt(protocolShare);
+    const binReserveOut = swapForY ? reserveY : reserveX;
+
+    if (binReserveOut === 0n) {
+      throw SarosDLMMError.BinHasNoReserves();
+    }
+
+    const amountOut = amountOutLeft > binReserveOut ? binReserveOut : amountOutLeft;
+
+    const price = getPriceFromId(binStep, activeId, this.metadata.tokenX.decimals, this.metadata.tokenY.decimals);
+    const priceScaled = BigInt(Math.round(Number(price) * SCALE_MULTIPLIER));
+
+    const amountInWithoutFee = getAmountInByPrice(amountOut, priceScaled, swapForY, 'up');
+
+    const feeAmount = getFeeForAmount(amountInWithoutFee, fee);
+    const amountIn = amountInWithoutFee + feeAmount;
+    const protocolFeeAmount = getProtocolFee(feeAmount, protocolShareBigInt);
+
+    return {
+      amountInWithFees: amountIn,
+      amountOut,
+      feeAmount,
+      protocolFeeAmount,
+    };
+  }
+
+  private swapExactInput(params: {
+    binStep: number;
+    activeId: number;
+    amountInLeft: bigint;
+    fee: bigint;
+    protocolShare: number;
+    swapForY: boolean;
+    reserveX: bigint;
+    reserveY: bigint;
+  }) {
+    const { binStep, activeId, amountInLeft, protocolShare, swapForY, reserveX, reserveY, fee } = params;
+    const protocolShareBigInt = BigInt(protocolShare);
+    const binReserveOut = swapForY ? reserveY : reserveX;
+
+    if (binReserveOut === 0n) {
+      throw SarosDLMMError.BinHasNoReserves();
+    }
+
+    const price = getPriceFromId(binStep, activeId, this.metadata.tokenX.decimals, this.metadata.tokenY.decimals);
+    const priceScaled = BigInt(Math.round(Number(price) * SCALE_MULTIPLIER));
+
+    let maxAmountIn = getAmountInByPrice(binReserveOut, priceScaled, swapForY, 'up');
+
+    const maxFeeAmount = getFeeForAmount(maxAmountIn, fee);
+    maxAmountIn += maxFeeAmount;
+
+    let amountOut = 0n;
+    let amountIn = 0n;
+    let feeAmount = 0n;
+
+    if (amountInLeft >= maxAmountIn) {
+      feeAmount = maxFeeAmount;
+      amountIn = maxAmountIn - feeAmount;
+      amountOut = binReserveOut;
+    } else {
+      feeAmount = getFeeAmount(amountInLeft, fee);
+      amountIn = amountInLeft - feeAmount;
+      amountOut = getAmountOutByPrice(amountIn, priceScaled, swapForY, 'down');
+      if (amountOut > binReserveOut) {
+        amountOut = binReserveOut;
+      }
+    }
+
+    const protocolFeeAmount = protocolShare > 0 ? getProtocolFee(feeAmount, protocolShareBigInt) : 0n;
+
+    return {
+      amountInWithFees: amountIn + feeAmount,
+      amountOut,
+      feeAmount,
+      protocolFeeAmount,
+    };
+  }
+
+  private moveActiveId(pairId: number, swapForY: boolean): number {
+    if (swapForY) {
+      return pairId - 1;
+    } else {
+      return pairId + 1;
+    }
+  }
+
+  private async genHookAccountsInfo(params: {
+    binId: number;
+    activeId: number;
+    hook: PublicKey;
+    hookPosition: PublicKey;
+  }): Promise<AccountMeta[]> {
+    const { activeId, binId, hook, hookPosition } = params;
+
+    const binIndex = calculateBinArrayIndex(binId);
+    const activeBinIndex = calculateBinArrayIndex(activeId);
+
+    const binArrayHookActiveLower = deriveBinArrayHookPDA(hook, activeBinIndex, this.hooksProgram.programId);
+    const binArrayHookActiveUpper = deriveBinArrayHookPDA(hook, activeBinIndex + 1, this.hooksProgram.programId);
+
+    const binArrayActiveLower = deriveBinArrayPDA(activeBinIndex, this.pairAddress, this.lbProgram.programId);
+    const binArrayActiveUpper = deriveBinArrayPDA(activeBinIndex + 1, this.pairAddress, this.lbProgram.programId);
+
+    const binArrayHookLower = deriveBinArrayHookPDA(hook, binIndex, this.hooksProgram.programId);
+    const binArrayHookUpper = deriveBinArrayHookPDA(hook, binIndex + 1, this.hooksProgram.programId);
+
+    return [
+      {
+        pubkey: binArrayHookActiveLower,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: binArrayHookActiveUpper,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: hookPosition,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: binArrayHookLower,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: binArrayHookUpper,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: binArrayActiveLower,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: binArrayActiveUpper,
+        isWritable: true,
+        isSigner: false,
+      },
+    ];
+  }
+}

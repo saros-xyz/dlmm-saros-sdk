@@ -1,33 +1,58 @@
 {
   "name": "@saros-finance/dlmm-sdk",
-  "version": "1.5.0",
+  "version": "2.0.0",
+  "type": "module",
   "description": "Saros DLMM (Dynamic Liquidity Market Maker) - the engine that powers the Internet Capital Market on Solana.",
   "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsdx watch --entry index.ts",
-    "build": "tsdx build --entry index.ts",
-    "lint": "tsdx lint",
-    "prepare": "tsdx build --entry index.ts"
+    "start": "tsup --watch",
+    "build": "tsup",
+    "prepare": "pnpm run build",
+    "lint": "eslint . --ext .ts --fix",
+    "lint:check": "eslint . --ext .ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "fix": "prettier --write . && eslint . --ext .ts --fix",
+    "test": "vitest",
+    "test:cleanup": "vitest run src/tests/integration/batch-close-positions.test.ts --reporter=verbose"
   },
   "author": "Saros Finance",
   "license": "ISC",
+  "keywords": [
+    "saros",
+    "solana",
+    "defi",
+    "swap",
+    "liquidity",
+    "DLMM"
+  ],
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",
-    "@project-serum/borsh": "0.2.3",
-    "@solana-program/token-2022": "0.4.0",
     "@solana/spl-token": "0.4.13",
-    "@solana/web3.js": "1.98.2",
+    "@solana/web3.js": "1.98.4",
     "bs58": "^6.0.0",
-    "js-big-decimal": "^2.2.0",
-    "lodash": "^4.17.21",
-    "tsdx": "^0.14.1"
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@types/jsdom": "^21.1.7",
-    "@types/lodash": "^4.17.17",
-    "@types/node": "^22.15.21",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "@types/lodash": "^4.17.20",
+    "@types/node": "^22.18.3",
+    "@typescript-eslint/eslint-plugin": "^8.44.0",
+    "@typescript-eslint/parser": "^8.44.0",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "vitest": "^3.2.4"
   }
 }
