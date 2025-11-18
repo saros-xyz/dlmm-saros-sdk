@@ -33,7 +33,7 @@ const connection = new Connection('https://api.mainnet-beta.solana.com', 'confir
 const wallet = "WALLET_KEYPAIR"
 
 const sdk = new SarosDLMM({
-  mode: MODE.MAINNET,
+  mode: MODE.MAINNET,  // or MODE.DEVNET
   connection
 });
 ```
@@ -71,16 +71,8 @@ console.log(`Active bin: ${activeBin}`);
 const pairAddress = new PublicKey('PAIR_ADDRESS');
 const pair = await sdk.getPair(pairAddress);
 
-const metadata = pair.getPairMetadata();
-console.log({
-  pair: metadata.pair.toString(),
-  tokenX: metadata.tokenX.mintAddress.toString(),
-  tokenY: metadata.tokenY.mintAddress.toString(),
-  binStep: metadata.binStep,
-  baseFee: metadata.baseFee,      // Base fee percentage
-  dynamicFee: metadata.dynamicFee, // Current fee based on volatility
-  protocolFee: metadata.protocolFee, // Protocol fee
-});
+// Get pool metadata (price, fees, tokens, etc.)
+const { tokenX, tokenY, binStep, baseFee, dynamicFee, activePrice } = pair.getPairMetadata();
 ```
 
 ## Providing Liquidity
@@ -155,16 +147,6 @@ for (const position of positions) {
     }
   });
 }
-```
-
-Alternatively, if you have a position mint and need to derive the position PDA:
-
-```typescript
-import { derivePositionPDA, DLMM_PROGRAM_IDS, MODE } from '@saros-finance/dlmm-sdk';
-
-const programId = DLMM_PROGRAM_IDS[MODE.MAINNET].lb;
-const position = derivePositionPDA(positionKeypair.publicKey, programId);
-const reserves = await pair.getPositionReserves(position);
 ```
 
 ## Removing Liquidity
