@@ -70,16 +70,28 @@ export interface BinArray {
   index: number;
 }
 
+/** Reward hook configuration and state for a liquidity pool */
 export interface HookAccount {
+  /** PDA bump seed */
   bump: number[];
+  /** Authority that can modify the hook configuration */
   authority: PublicKey;
+  /** The liquidity pair this hook is attached to */
   pair: PublicKey;
+  /** Mint address of the token used for rewards */
   rewardTokenMint: PublicKey;
+  /** Account holding the reward token reserves */
   hookReserve: PublicKey;
+  /** Rate of reward distribution per second */
   rewardsPerSecond: BN;
+  /** Timestamp when reward distribution ends */
   endTime: BN;
+  /** Last time rewards were calculated */
   lastUpdate: BN;
+  /** Lower bin offset for reward distribution range */
   deltaBinA: number;
+  /** Upper bin offset for reward distribution range */
   deltaBinB: number;
+  /** Total accumulated rewards earned by all positions that have not yet been claimed */
   totalUnclaimedRewards: BN;
 }
