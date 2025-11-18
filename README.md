@@ -74,8 +74,8 @@ const pair = await sdk.getPair(pairAddress);
 const metadata = pair.getPairMetadata();
 console.log({
   pair: metadata.pair.toString(),
-  tokenX: metadata.tokenX.mint.toString(),
-  tokenY: metadata.tokenY.mint.toString(),
+  tokenX: metadata.tokenX.mintAddress.toString(),
+  tokenY: metadata.tokenY.mintAddress.toString(),
   binStep: metadata.binStep,
   baseFee: metadata.baseFee,      // Base fee percentage
   dynamicFee: metadata.dynamicFee, // Current fee based on volatility
@@ -160,9 +160,10 @@ for (const position of positions) {
 Alternatively, if you have a position mint and need to derive the position PDA:
 
 ```typescript
-import { derivePositionPDA } from '@saros-finance/dlmm-sdk';
+import { derivePositionPDA, DLMM_PROGRAM_IDS, MODE } from '@saros-finance/dlmm-sdk';
 
-const position = derivePositionPDA(positionKeypair.publicKey, pair.getPairAddress());
+const programId = DLMM_PROGRAM_IDS[MODE.MAINNET].lb;
+const position = derivePositionPDA(positionKeypair.publicKey, programId);
 const reserves = await pair.getPositionReserves(position);
 ```
 
@@ -220,8 +221,8 @@ console.log({
 
 ```typescript
 const swapTx = await pair.swap({
-  tokenIn: pair.getPairMetadata().tokenX.mint,
-  tokenOut: pair.getPairMetadata().tokenY.mint,
+  tokenIn: pair.getPairMetadata().tokenX.mintAddress,
+  tokenOut: pair.getPairMetadata().tokenY.mintAddress,
   amount: 1_000_000n,
   options: {
     swapForY: true,
@@ -261,6 +262,28 @@ const pairs = await sdk.getPairs([
   new PublicKey('PAIR_1'),
   new PublicKey('PAIR_2'),
 ]);
+```
+
+## Claiming Rewards
+
+If a pool has rewards enabled, you can claim accumulated rewards from your positions:
+
+```typescript
+// Check if the pool has rewards
+const hookInfo = await pair.getHookAccount();
+if (!hookInfo || !hookInfo.rewardTokenMint) {
+  throw new Error('This pool has no reward token');
+}
+
+// Claim rewards for a position
+const claimTx = await pair.claimReward({
+  payer: wallet.publicKey,
+  positionMint: positionKeypair.publicKey,
+  rewardTokenMint: hookInfo.rewardTokenMint,
+});
+
+const sig = await connection.sendTransaction(claimTx, [wallet]);
+await connection.confirmTransaction(sig);
 ```
 
 ## Additional Resources
