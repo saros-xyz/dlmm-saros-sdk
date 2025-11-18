@@ -194,26 +194,6 @@ if (cleanupTransaction) {
 console.log(`Closed positions: ${closedPositions.length}`);
 ```
 
-## Claim Reward
-
-```typescript
-
-const hookInfo = await pair.getHookAccount()
-if (!hookInfo.rewardTokenMint) {
-  throw new Error('This pool has no reward token')
-}
-
-const transaction =
-  await pair.claimReward({
-    payer: wallet.publicKey,
-    positionMint: [positionKeypair.publicKey],
-    rewardTokenMint: hookInfo.rewardTokenMint,
-  });
-
-// Execute transaction
-await connection.sendTransaction(transaction, [wallet]);
-```
-
 ## Swapping Tokens
 
 ### Get a Quote
