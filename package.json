@@ -1,6 +1,6 @@
 {
   "name": "@saros-finance/dlmm-sdk",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "type": "module",
   "description": "Saros DLMM (Dynamic Liquidity Market Maker) - the engine that powers the Internet Capital Market on Solana.",
   "main": "dist/index.js",

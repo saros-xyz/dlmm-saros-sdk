@@ -33,7 +33,7 @@ const connection = new Connection('https://api.mainnet-beta.solana.com', 'confir
 const wallet = "WALLET_KEYPAIR"
 
 const sdk = new SarosDLMM({
-  mode: MODE.MAINNET,
+  mode: MODE.MAINNET,  // or MODE.DEVNET
   connection
 });
 ```
@@ -71,16 +71,8 @@ console.log(`Active bin: ${activeBin}`);
 const pairAddress = new PublicKey('PAIR_ADDRESS');
 const pair = await sdk.getPair(pairAddress);
 
-const metadata = pair.getPairMetadata();
-console.log({
-  pair: metadata.pair.toString(),
-  tokenX: metadata.tokenX.mint.toString(),
-  tokenY: metadata.tokenY.mint.toString(),
-  binStep: metadata.binStep,
-  baseFee: metadata.baseFee,      // Base fee percentage
-  dynamicFee: metadata.dynamicFee, // Current fee based on volatility
-  protocolFee: metadata.protocolFee, // Protocol fee
-});
+// Get pool metadata (price, fees, tokens, etc.)
+const { tokenX, tokenY, binStep, baseFee, dynamicFee, activePrice } = pair.getPairMetadata();
 ```
 
 ## Providing Liquidity
@@ -157,15 +149,6 @@ for (const position of positions) {
 }
 ```
 
-Alternatively, if you have a position mint and need to derive the position PDA:
-
-```typescript
-import { derivePositionPDA } from '@saros-finance/dlmm-sdk';
-
-const position = derivePositionPDA(positionKeypair.publicKey, pair.getPairAddress());
-const reserves = await pair.getPositionReserves(position);
-```
-
 ## Removing Liquidity
 
 ```typescript
@@ -194,26 +177,6 @@ if (cleanupTransaction) {
 console.log(`Closed positions: ${closedPositions.length}`);
 ```
 
-## Claim Reward
-
-```typescript
-
-const hookInfo = await pair.getHookAccount()
-if (!hookInfo.rewardTokenMint) {
-  throw new Error('This pool has no reward token')
-}
-
-const transaction =
-  await pair.claimReward({
-    payer: wallet.publicKey,
-    positionMint: [positionKeypair.publicKey],
-    rewardTokenMint: hookInfo.rewardTokenMint,
-  });
-
-// Execute transaction
-await connection.sendTransaction(transaction, [wallet]);
-```
-
 ## Swapping Tokens
 
 ### Get a Quote
@@ -240,8 +203,8 @@ console.log({
 
 ```typescript
 const swapTx = await pair.swap({
-  tokenIn: pair.getPairMetadata().tokenX.mint,
-  tokenOut: pair.getPairMetadata().tokenY.mint,
+  tokenIn: pair.getPairMetadata().tokenX.mintAddress,
+  tokenOut: pair.getPairMetadata().tokenY.mintAddress,
   amount: 1_000_000n,
   options: {
     swapForY: true,
@@ -281,6 +244,28 @@ const pairs = await sdk.getPairs([
   new PublicKey('PAIR_1'),
   new PublicKey('PAIR_2'),
 ]);
+```
+
+## Claiming Rewards
+
+If a pool has rewards enabled, you can claim accumulated rewards from your positions:
+
+```typescript
+// Check if the pool has rewards
+const hookInfo = await pair.getHookAccount();
+if (!hookInfo || !hookInfo.rewardTokenMint) {
+  throw new Error('This pool has no reward token');
+}
+
+// Claim rewards for a position
+const claimTx = await pair.claimReward({
+  payer: wallet.publicKey,
+  positionMint: positionKeypair.publicKey,
+  rewardTokenMint: hookInfo.rewardTokenMint,
+});
+
+const sig = await connection.sendTransaction(claimTx, [wallet]);
+await connection.confirmTransaction(sig);
 ```
 
 ## Additional Resources

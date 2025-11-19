@@ -73,9 +73,14 @@ export interface PositionReserve {
   binPosition: number;
 }
 
+/** Parameters for claiming accumulated rewards from a liquidity position */
 export interface ClaimRewardParams {
+  /** The wallet that owns the position and will receive the rewards */
   payer: PublicKey;
+  /** The NFT mint representing the position to claim rewards from */
   positionMint: PublicKey;
+  /** The mint address of the reward token to be claimed */
   rewardTokenMint: PublicKey;
+  /** Optional pre-built transaction to append instructions to */
   transaction?: Transaction;
 }
